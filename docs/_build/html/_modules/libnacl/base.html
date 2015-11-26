@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>libnacl.base &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="libnacl" href="../libnacl.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../libnacl.html" accesskey="U">libnacl</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for libnacl.base</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Implement the base key object for other keys to inherit convenience functions</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="c"># Import libnacl libs</span>
+<span class="kn">import</span> <span class="nn">libnacl.encode</span>
+
+<span class="c"># Import python libs</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">stat</span>
+
+<div class="viewcode-block" id="BaseKey"><a class="viewcode-back" href="../../libnacl.html#libnacl.base.BaseKey">[docs]</a><span class="k">class</span> <span class="nc">BaseKey</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Include methods for key management convenience</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="BaseKey.hex_sk"><a class="viewcode-back" href="../../libnacl.html#libnacl.base.BaseKey.hex_sk">[docs]</a>    <span class="k">def</span> <span class="nf">hex_sk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;sk&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">encode</span><span class="o">.</span><span class="n">hex_encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sk</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&#39;&#39;</span>
+</div>
+<div class="viewcode-block" id="BaseKey.hex_pk"><a class="viewcode-back" href="../../libnacl.html#libnacl.base.BaseKey.hex_pk">[docs]</a>    <span class="k">def</span> <span class="nf">hex_pk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;pk&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">encode</span><span class="o">.</span><span class="n">hex_encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pk</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BaseKey.hex_vk"><a class="viewcode-back" href="../../libnacl.html#libnacl.base.BaseKey.hex_vk">[docs]</a>    <span class="k">def</span> <span class="nf">hex_vk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;vk&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">encode</span><span class="o">.</span><span class="n">hex_encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vk</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BaseKey.hex_seed"><a class="viewcode-back" href="../../libnacl.html#libnacl.base.BaseKey.hex_seed">[docs]</a>    <span class="k">def</span> <span class="nf">hex_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;seed&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">encode</span><span class="o">.</span><span class="n">hex_encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BaseKey.save"><a class="viewcode-back" href="../../libnacl.html#libnacl.base.BaseKey.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">serial</span><span class="o">=</span><span class="s">&#39;json&#39;</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Safely save keys with perms of 0400</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">pre</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">sk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hex_sk</span><span class="p">()</span>
+        <span class="n">pk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hex_pk</span><span class="p">()</span>
+        <span class="n">vk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hex_vk</span><span class="p">()</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hex_seed</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sk</span> <span class="ow">and</span> <span class="n">pk</span><span class="p">:</span>
+            <span class="n">pre</span><span class="p">[</span><span class="s">&#39;priv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pk</span><span class="p">:</span>
+            <span class="n">pre</span><span class="p">[</span><span class="s">&#39;pub&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pk</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">vk</span><span class="p">:</span>
+            <span class="n">pre</span><span class="p">[</span><span class="s">&#39;verify&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vk</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">seed</span><span class="p">:</span>
+            <span class="n">pre</span><span class="p">[</span><span class="s">&#39;sign&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">seed</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">serial</span> <span class="o">==</span> <span class="s">&#39;msgpack&#39;</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">msgpack</span>
+            <span class="n">packaged</span> <span class="o">=</span> <span class="n">msgpack</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">pre</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">serial</span> <span class="o">==</span> <span class="s">&#39;json&#39;</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">json</span>
+            <span class="n">packaged</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">pre</span><span class="p">)</span>
+
+        <span class="n">perm_other</span> <span class="o">=</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IWOTH</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXOTH</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IWOTH</span>
+        <span class="n">perm_group</span> <span class="o">=</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXGRP</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IWGRP</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IRWXG</span>
+
+        <span class="n">cumask</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">umask</span><span class="p">(</span><span class="n">perm_other</span> <span class="o">|</span> <span class="n">perm_group</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;w+&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp_</span><span class="p">:</span>
+            <span class="n">fp_</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">packaged</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">umask</span><span class="p">(</span><span class="n">cumask</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../libnacl.html" >libnacl</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

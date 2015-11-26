@@ -1,0 +1,456 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bitcoin.bci &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bitcoin.bci</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/python</span>
+<span class="kn">import</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib.request</span> <span class="kn">import</span> <span class="n">build_opener</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib2</span> <span class="kn">import</span> <span class="n">build_opener</span>
+
+
+<span class="c"># Makes a request to a given URL (first arg) and optional params (second arg)</span>
+<div class="viewcode-block" id="make_request"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.make_request">[docs]</a><span class="k">def</span> <span class="nf">make_request</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">opener</span> <span class="o">=</span> <span class="n">build_opener</span><span class="p">()</span>
+    <span class="n">opener</span><span class="o">.</span><span class="n">addheaders</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;User-agent&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;Mozilla/5.0&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">1000000</span><span class="p">)))]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">opener</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">e</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="parse_addr_args"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.parse_addr_args">[docs]</a><span class="k">def</span> <span class="nf">parse_addr_args</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c"># Valid input formats: blockr_unspent([addr1, addr2,addr3])</span>
+    <span class="c">#                      blockr_unspent(addr1, addr2, addr3)</span>
+    <span class="c">#                      blockr_unspent([addr1, addr2, addr3], network)</span>
+    <span class="c">#                      blockr_unspent(addr1, addr2, addr3, network)</span>
+    <span class="c"># Where network is &#39;btc&#39; or &#39;testnet&#39;</span>
+    <span class="n">network</span> <span class="o">=</span> <span class="s">&#39;btc&#39;</span>
+    <span class="n">addr_args</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">args</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;testnet&#39;</span><span class="p">,</span> <span class="s">&#39;btc&#39;</span><span class="p">):</span>
+        <span class="n">network</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">addr_args</span> <span class="o">=</span> <span class="n">args</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">addr_args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">addr_args</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">addr_args</span> <span class="o">=</span> <span class="n">addr_args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">network</span><span class="p">,</span> <span class="n">addr_args</span>
+
+
+<span class="c"># Gets the unspent outputs of one or more addresses</span></div>
+<div class="viewcode-block" id="bci_unspent"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.bci_unspent">[docs]</a><span class="k">def</span> <span class="nf">bci_unspent</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">network</span><span class="p">,</span> <span class="n">addrs</span> <span class="o">=</span> <span class="n">parse_addr_args</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span><span class="s">&#39;https://blockchain.info/unspent?address=&#39;</span><span class="o">+</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;No free outputs to spend&#39;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">jsonobj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">jsonobj</span><span class="p">[</span><span class="s">&quot;unspent_outputs&quot;</span><span class="p">]:</span>
+                <span class="n">h</span> <span class="o">=</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;tx_hash&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+                <span class="n">u</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s">&quot;output&quot;</span><span class="p">:</span> <span class="n">h</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s">&#39;tx_output_n&#39;</span><span class="p">]),</span>
+                    <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span>
+                <span class="p">})</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Failed to decode data: &quot;</span><span class="o">+</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">u</span>
+
+</div>
+<div class="viewcode-block" id="blockr_unspent"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.blockr_unspent">[docs]</a><span class="k">def</span> <span class="nf">blockr_unspent</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c"># Valid input formats: blockr_unspent([addr1, addr2,addr3])</span>
+    <span class="c">#                      blockr_unspent(addr1, addr2, addr3)</span>
+    <span class="c">#                      blockr_unspent([addr1, addr2, addr3], network)</span>
+    <span class="c">#                      blockr_unspent(addr1, addr2, addr3, network)</span>
+    <span class="c"># Where network is &#39;btc&#39; or &#39;testnet&#39;</span>
+    <span class="n">network</span><span class="p">,</span> <span class="n">addr_args</span> <span class="o">=</span> <span class="n">parse_addr_args</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+        <span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://tbtc.blockr.io/api/v1/address/unspent/&#39;</span>
+    <span class="k">elif</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;btc&#39;</span><span class="p">:</span>
+        <span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://btc.blockr.io/api/v1/address/unspent/&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+            <span class="s">&#39;Unsupported network {0} for blockr_unspent&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">network</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">addr_args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">addr_args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">addrs</span> <span class="o">=</span> <span class="n">addr_args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">addrs</span> <span class="o">=</span> <span class="n">addr_args</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span><span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">addrs</span><span class="p">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">res</span><span class="p">)[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+    <span class="n">o</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="s">&#39;unspent&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">dat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">dat</span><span class="p">[</span><span class="s">&#39;unspent&#39;</span><span class="p">]:</span>
+            <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s">&quot;output&quot;</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">]),</span>
+                <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;amount&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">))</span>
+            <span class="p">})</span>
+    <span class="k">return</span> <span class="n">o</span>
+
+</div>
+<div class="viewcode-block" id="helloblock_unspent"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.helloblock_unspent">[docs]</a><span class="k">def</span> <span class="nf">helloblock_unspent</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">network</span><span class="p">,</span> <span class="n">addrs</span> <span class="o">=</span> <span class="n">parse_addr_args</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;http://testnet.helloblock.io/v1/addresses/</span><span class="si">%s</span><span class="s">/unspents?limit=500&amp;offset=</span><span class="si">%s</span><span class="s">&#39;</span>
+    <span class="k">elif</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;btc&#39;</span><span class="p">:</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;http://mainnet.helloblock.io/v1/addresses/</span><span class="si">%s</span><span class="s">/unspents?limit=500&amp;offset=</span><span class="si">%s</span><span class="s">&#39;</span>
+    <span class="n">o</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="o">**</span><span class="mi">9</span><span class="p">,</span> <span class="mi">500</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span><span class="n">url</span> <span class="o">%</span> <span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">offset</span><span class="p">))</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">res</span><span class="p">)[</span><span class="s">&quot;data&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&quot;unspents&quot;</span><span class="p">]):</span>
+                <span class="k">break</span>
+            <span class="k">elif</span> <span class="n">offset</span><span class="p">:</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Getting more unspents: </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">offset</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">dat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;unspents&quot;</span><span class="p">]:</span>
+                <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s">&quot;output&quot;</span><span class="p">:</span> <span class="n">dat</span><span class="p">[</span><span class="s">&quot;txHash&quot;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="s">&quot;index&quot;</span><span class="p">]),</span>
+                    <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="n">dat</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">],</span>
+                <span class="p">})</span>
+    <span class="k">return</span> <span class="n">o</span>
+
+</div>
+<span class="n">unspent_getters</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;bci&#39;</span><span class="p">:</span> <span class="n">bci_unspent</span><span class="p">,</span>
+    <span class="s">&#39;blockr&#39;</span><span class="p">:</span> <span class="n">blockr_unspent</span><span class="p">,</span>
+    <span class="s">&#39;helloblock&#39;</span><span class="p">:</span> <span class="n">helloblock_unspent</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="unspent"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.unspent">[docs]</a><span class="k">def</span> <span class="nf">unspent</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">unspent_getters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;source&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span> <span class="n">bci_unspent</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+
+<span class="c"># Gets the transaction output history of a given set of addresses,</span>
+<span class="c"># including whether or not they have been spent</span></div>
+<div class="viewcode-block" id="history"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.history">[docs]</a><span class="k">def</span> <span class="nf">history</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c"># Valid input formats: history([addr1, addr2,addr3])</span>
+    <span class="c">#                      history(addr1, addr2, addr3)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">addrs</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">addrs</span> <span class="o">=</span> <span class="n">args</span>
+
+    <span class="n">txs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span>
+                <span class="s">&#39;https://blockchain.info/address/</span><span class="si">%s</span><span class="s">?format=json&amp;offset=</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span>
+                <span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">offset</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">jsonobj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Failed to decode data: &quot;</span><span class="o">+</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">txs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">jsonobj</span><span class="p">[</span><span class="s">&quot;txs&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">jsonobj</span><span class="p">[</span><span class="s">&quot;txs&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="mi">50</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Fetching more transactions... &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="n">outs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">txs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">tx</span><span class="p">[</span><span class="s">&quot;out&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;addr&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="s">&quot;tx_index&quot;</span><span class="p">])</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s">&quot;n&quot;</span><span class="p">])</span>
+                <span class="n">outs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s">&quot;address&quot;</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="s">&quot;addr&quot;</span><span class="p">],</span>
+                    <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">],</span>
+                    <span class="s">&quot;output&quot;</span><span class="p">:</span> <span class="n">tx</span><span class="p">[</span><span class="s">&quot;hash&quot;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s">&quot;n&quot;</span><span class="p">]),</span>
+                    <span class="s">&quot;block_height&quot;</span><span class="p">:</span> <span class="n">tx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;block_height&quot;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+                <span class="p">}</span>
+    <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">txs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">inp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="s">&quot;inputs&quot;</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">inp</span><span class="p">[</span><span class="s">&quot;prev_out&quot;</span><span class="p">][</span><span class="s">&quot;addr&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;prev_out&quot;</span><span class="p">][</span><span class="s">&quot;tx_index&quot;</span><span class="p">])</span> <span class="o">+</span> \
+                    <span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;prev_out&quot;</span><span class="p">][</span><span class="s">&quot;n&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">outs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                    <span class="n">outs</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s">&quot;spend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tx</span><span class="p">[</span><span class="s">&quot;hash&quot;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">outs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">outs</span><span class="p">]</span>
+
+
+<span class="c"># Pushes a transaction to the network using https://blockchain.info/pushtx</span></div>
+<div class="viewcode-block" id="bci_pushtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.bci_pushtx">[docs]</a><span class="k">def</span> <span class="nf">bci_pushtx</span><span class="p">(</span><span class="n">tx</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">tx</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">make_request</span><span class="p">(</span><span class="s">&#39;https://blockchain.info/pushtx&#39;</span><span class="p">,</span> <span class="s">&#39;tx=&#39;</span><span class="o">+</span><span class="n">tx</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="eligius_pushtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.eligius_pushtx">[docs]</a><span class="k">def</span> <span class="nf">eligius_pushtx</span><span class="p">(</span><span class="n">tx</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">tx</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span>
+        <span class="s">&#39;http://eligius.st/~wizkid057/newstats/pushtxn.php&#39;</span><span class="p">,</span>
+        <span class="s">&#39;transaction=&#39;</span><span class="o">+</span><span class="n">tx</span><span class="o">+</span><span class="s">&#39;&amp;send=Push&#39;</span><span class="p">)</span>
+    <span class="n">strings</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&#39;string[^&quot;]*&quot;[^&quot;]*&quot;&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">string</span> <span class="ow">in</span> <span class="n">strings</span><span class="p">:</span>
+        <span class="n">quote</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&#39;&quot;[^&quot;]*&quot;&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">quote</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">quote</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="blockr_pushtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.blockr_pushtx">[docs]</a><span class="k">def</span> <span class="nf">blockr_pushtx</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s">&#39;btc&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+        <span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://tbtc.blockr.io/api/v1/tx/push&#39;</span>
+    <span class="k">elif</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;btc&#39;</span><span class="p">:</span>
+        <span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://btc.blockr.io/api/v1/tx/push&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+            <span class="s">&#39;Unsupported network {0} for blockr_pushtx&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">network</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">tx</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span><span class="p">,</span> <span class="s">&#39;{&quot;hex&quot;:&quot;</span><span class="si">%s</span><span class="s">&quot;}&#39;</span> <span class="o">%</span> <span class="n">tx</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="helloblock_pushtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.helloblock_pushtx">[docs]</a><span class="k">def</span> <span class="nf">helloblock_pushtx</span><span class="p">(</span><span class="n">tx</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">tx</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">make_request</span><span class="p">(</span><span class="s">&#39;http://mainnet.helloblock.io/v1/transactions&#39;</span><span class="p">,</span>
+                        <span class="s">&#39;rawTxHex=&#39;</span><span class="o">+</span><span class="n">tx</span><span class="p">)</span>
+</div>
+<span class="n">pushtx_getters</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;bci&#39;</span><span class="p">:</span> <span class="n">bci_pushtx</span><span class="p">,</span>
+    <span class="s">&#39;blockr&#39;</span><span class="p">:</span> <span class="n">blockr_pushtx</span><span class="p">,</span>
+    <span class="s">&#39;helloblock&#39;</span><span class="p">:</span> <span class="n">helloblock_pushtx</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="pushtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.pushtx">[docs]</a><span class="k">def</span> <span class="nf">pushtx</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">pushtx_getters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;source&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span> <span class="n">bci_pushtx</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="last_block_height"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.last_block_height">[docs]</a><span class="k">def</span> <span class="nf">last_block_height</span><span class="p">():</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span><span class="s">&#39;https://blockchain.info/latestblock&#39;</span><span class="p">)</span>
+    <span class="n">jsonobj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jsonobj</span><span class="p">[</span><span class="s">&quot;height&quot;</span><span class="p">]</span>
+
+
+<span class="c"># Gets a specific transaction</span></div>
+<div class="viewcode-block" id="bci_fetchtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.bci_fetchtx">[docs]</a><span class="k">def</span> <span class="nf">bci_fetchtx</span><span class="p">(</span><span class="n">txhash</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">txhash</span><span class="p">):</span>
+        <span class="n">txhash</span> <span class="o">=</span> <span class="n">txhash</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">make_request</span><span class="p">(</span><span class="s">&#39;https://blockchain.info/rawtx/&#39;</span><span class="o">+</span><span class="n">txhash</span><span class="o">+</span><span class="s">&#39;?format=hex&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span>
+
+</div>
+<div class="viewcode-block" id="blockr_fetchtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.blockr_fetchtx">[docs]</a><span class="k">def</span> <span class="nf">blockr_fetchtx</span><span class="p">(</span><span class="n">txhash</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s">&#39;btc&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+        <span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://tbtc.blockr.io/api/v1/tx/raw/&#39;</span>
+    <span class="k">elif</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;btc&#39;</span><span class="p">:</span>
+        <span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://btc.blockr.io/api/v1/tx/raw/&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+            <span class="s">&#39;Unsupported network {0} for blockr_fetchtx&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">network</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">txhash</span><span class="p">):</span>
+        <span class="n">txhash</span> <span class="o">=</span> <span class="n">txhash</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="n">jsondata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span><span class="o">+</span><span class="n">txhash</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">jsondata</span><span class="p">[</span><span class="s">&#39;data&#39;</span><span class="p">][</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;hex&#39;</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="helloblock_fetchtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.helloblock_fetchtx">[docs]</a><span class="k">def</span> <span class="nf">helloblock_fetchtx</span><span class="p">(</span><span class="n">txhash</span><span class="p">,</span> <span class="n">network</span><span class="o">=</span><span class="s">&#39;btc&#39;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">txhash</span><span class="p">):</span>
+        <span class="n">txhash</span> <span class="o">=</span> <span class="n">txhash</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;http://testnet.helloblock.io/v1/transactions/&#39;</span>
+    <span class="k">elif</span> <span class="n">network</span> <span class="o">==</span> <span class="s">&#39;btc&#39;</span><span class="p">:</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;http://mainnet.helloblock.io/v1/transactions/&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+            <span class="s">&#39;Unsupported network {0} for helloblock_fetchtx&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">network</span><span class="p">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">make_request</span><span class="p">(</span><span class="n">url</span> <span class="o">+</span> <span class="n">txhash</span><span class="p">))[</span><span class="s">&quot;data&quot;</span><span class="p">][</span><span class="s">&quot;transaction&quot;</span><span class="p">]</span>
+    <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&quot;locktime&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;locktime&quot;</span><span class="p">],</span>
+        <span class="s">&quot;version&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;version&quot;</span><span class="p">],</span>
+        <span class="s">&quot;ins&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s">&quot;outs&quot;</span><span class="p">:</span> <span class="p">[]</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;inputs&quot;</span><span class="p">]:</span>
+        <span class="n">o</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s">&quot;script&quot;</span><span class="p">:</span> <span class="n">inp</span><span class="p">[</span><span class="s">&quot;scriptSig&quot;</span><span class="p">],</span>
+            <span class="s">&quot;outpoint&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;index&quot;</span><span class="p">:</span> <span class="n">inp</span><span class="p">[</span><span class="s">&quot;prevTxoutIndex&quot;</span><span class="p">],</span>
+                <span class="s">&quot;hash&quot;</span><span class="p">:</span> <span class="n">inp</span><span class="p">[</span><span class="s">&quot;prevTxHash&quot;</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="s">&quot;sequence&quot;</span><span class="p">:</span> <span class="mi">4294967295</span>
+        <span class="p">})</span>
+    <span class="k">for</span> <span class="n">outp</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;outputs&quot;</span><span class="p">]:</span>
+        <span class="n">o</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="n">outp</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">],</span>
+            <span class="s">&quot;script&quot;</span><span class="p">:</span> <span class="n">outp</span><span class="p">[</span><span class="s">&quot;scriptPubKey&quot;</span><span class="p">]</span>
+        <span class="p">})</span>
+    <span class="kn">from</span> <span class="nn">bitcoin.transaction</span> <span class="kn">import</span> <span class="n">serialize</span>
+    <span class="kn">from</span> <span class="nn">bitcoin.transaction</span> <span class="kn">import</span> <span class="n">txhash</span> <span class="k">as</span> <span class="n">TXHASH</span>
+    <span class="n">tx</span> <span class="o">=</span> <span class="n">serialize</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">TXHASH</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span> <span class="o">==</span> <span class="n">txhash</span>
+    <span class="k">return</span> <span class="n">tx</span>
+
+</div>
+<span class="n">fetchtx_getters</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;bci&#39;</span><span class="p">:</span> <span class="n">bci_fetchtx</span><span class="p">,</span>
+    <span class="s">&#39;blockr&#39;</span><span class="p">:</span> <span class="n">blockr_fetchtx</span><span class="p">,</span>
+    <span class="s">&#39;helloblock&#39;</span><span class="p">:</span> <span class="n">helloblock_fetchtx</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="fetchtx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.fetchtx">[docs]</a><span class="k">def</span> <span class="nf">fetchtx</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">fetchtx_getters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;source&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span> <span class="n">bci_fetchtx</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="firstbits"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.firstbits">[docs]</a><span class="k">def</span> <span class="nf">firstbits</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">address</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">25</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">make_request</span><span class="p">(</span><span class="s">&#39;https://blockchain.info/q/getfirstbits/&#39;</span><span class="o">+</span><span class="n">address</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">make_request</span><span class="p">(</span>
+            <span class="s">&#39;https://blockchain.info/q/resolvefirstbits/&#39;</span><span class="o">+</span><span class="n">address</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_block_at_height"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.get_block_at_height">[docs]</a><span class="k">def</span> <span class="nf">get_block_at_height</span><span class="p">(</span><span class="n">height</span><span class="p">):</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">make_request</span><span class="p">(</span><span class="s">&quot;https://blockchain.info/block-height/&quot;</span> <span class="o">+</span>
+                   <span class="nb">str</span><span class="p">(</span><span class="n">height</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;?format=json&quot;</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;blocks&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">b</span><span class="p">[</span><span class="s">&#39;main_chain&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">b</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Block at this height not found&quot;</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_get_block</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">inp</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">64</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_block_at_height</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">make_request</span><span class="p">(</span>
+                          <span class="s">&#39;https://blockchain.info/rawblock/&#39;</span><span class="o">+</span><span class="n">inp</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="get_block_header_data"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.get_block_header_data">[docs]</a><span class="k">def</span> <span class="nf">get_block_header_data</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">_get_block</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s">&#39;version&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;ver&#39;</span><span class="p">],</span>
+        <span class="s">&#39;hash&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;hash&#39;</span><span class="p">],</span>
+        <span class="s">&#39;prevhash&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;prev_block&#39;</span><span class="p">],</span>
+        <span class="s">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;time&#39;</span><span class="p">],</span>
+        <span class="s">&#39;merkle_root&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;mrkl_root&#39;</span><span class="p">],</span>
+        <span class="s">&#39;bits&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;bits&#39;</span><span class="p">],</span>
+        <span class="s">&#39;nonce&#39;</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;nonce&#39;</span><span class="p">],</span>
+    <span class="p">}</span>
+
+</div>
+<div class="viewcode-block" id="get_txs_in_block"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.get_txs_in_block">[docs]</a><span class="k">def</span> <span class="nf">get_txs_in_block</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">_get_block</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
+    <span class="n">hashes</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="s">&#39;hash&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">hashes</span>
+
+</div>
+<div class="viewcode-block" id="get_block_height"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.bci.get_block_height">[docs]</a><span class="k">def</span> <span class="nf">get_block_height</span><span class="p">(</span><span class="n">txhash</span><span class="p">):</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">make_request</span><span class="p">(</span><span class="s">&#39;https://blockchain.info/rawtx/&#39;</span><span class="o">+</span><span class="n">txhash</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">j</span><span class="p">[</span><span class="s">&#39;block_height&#39;</span><span class="p">]</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

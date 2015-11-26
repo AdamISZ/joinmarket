@@ -1,0 +1,228 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>socks module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-socks">
+<span id="socks-module"></span><h1>socks module<a class="headerlink" href="#module-socks" title="Permalink to this headline">¶</a></h1>
+<p>SocksiPy - Python SOCKS module.
+Version 1.00</p>
+<p>Copyright 2006 Dan-Haim. All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+1. Redistributions of source code must retain the above copyright notice, this</p>
+<blockquote>
+<div>list of conditions and the following disclaimer.</div></blockquote>
+<ol class="arabic simple" start="2">
+<li>Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.</li>
+<li>Neither the name of Dan Haim nor the names of his contributors may be used
+to endorse or promote products derived from this software without specific
+prior written permission.</li>
+</ol>
+<p>THIS SOFTWARE IS PROVIDED BY DAN HAIM &#8220;AS IS&#8221; AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+EVENT SHALL DAN HAIM OR HIS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA
+OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMANGE.</p>
+<p>This module provides a standard socket-like interface for Python
+for tunneling connections through SOCKS proxies.</p>
+<dl class="exception">
+<dt id="socks.GeneralProxyError">
+<em class="property">exception </em><tt class="descclassname">socks.</tt><tt class="descname">GeneralProxyError</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="_modules/socks.html#GeneralProxyError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.GeneralProxyError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#socks.ProxyError" title="socks.ProxyError"><tt class="xref py py-class docutils literal"><span class="pre">socks.ProxyError</span></tt></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="socks.HTTPError">
+<em class="property">exception </em><tt class="descclassname">socks.</tt><tt class="descname">HTTPError</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="_modules/socks.html#HTTPError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.HTTPError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#socks.ProxyError" title="socks.ProxyError"><tt class="xref py py-class docutils literal"><span class="pre">socks.ProxyError</span></tt></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="socks.ProxyError">
+<em class="property">exception </em><tt class="descclassname">socks.</tt><tt class="descname">ProxyError</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="_modules/socks.html#ProxyError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.ProxyError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="socks.Socks4Error">
+<em class="property">exception </em><tt class="descclassname">socks.</tt><tt class="descname">Socks4Error</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="_modules/socks.html#Socks4Error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.Socks4Error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#socks.ProxyError" title="socks.ProxyError"><tt class="xref py py-class docutils literal"><span class="pre">socks.ProxyError</span></tt></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="socks.Socks5AuthError">
+<em class="property">exception </em><tt class="descclassname">socks.</tt><tt class="descname">Socks5AuthError</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="_modules/socks.html#Socks5AuthError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.Socks5AuthError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#socks.ProxyError" title="socks.ProxyError"><tt class="xref py py-class docutils literal"><span class="pre">socks.ProxyError</span></tt></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="socks.Socks5Error">
+<em class="property">exception </em><tt class="descclassname">socks.</tt><tt class="descname">Socks5Error</tt><big>(</big><em>value</em><big>)</big><a class="reference internal" href="_modules/socks.html#Socks5Error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.Socks5Error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#socks.ProxyError" title="socks.ProxyError"><tt class="xref py py-class docutils literal"><span class="pre">socks.ProxyError</span></tt></a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="socks.setdefaultproxy">
+<tt class="descclassname">socks.</tt><tt class="descname">setdefaultproxy</tt><big>(</big><em>proxytype</em>, <em>addr</em><span class="optional">[</span>, <em>port</em><span class="optional">[</span>, <em>rdns</em><span class="optional">[</span>, <em>username</em><span class="optional">[</span>, <em>password</em><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/socks.html#setdefaultproxy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.setdefaultproxy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a default proxy which all further socksocket objects will use,
+unless explicitly changed.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="socks.socksocket">
+<em class="property">class </em><tt class="descclassname">socks.</tt><tt class="descname">socksocket</tt><big>(</big><em>family=2</em>, <em>type=1</em>, <em>proto=0</em>, <em>_sock=None</em><big>)</big><a class="reference internal" href="_modules/socks.html#socksocket"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.socksocket" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">socket._socketobject</span></tt></p>
+<p>socksocket([family[, type[, proto]]]) -&gt; socket object</p>
+<p>Open a SOCKS enabled socket. The parameters are the same as
+those of the standard socket init. In order for SOCKS to work,
+you must specify family=AF_INET, type=SOCK_STREAM and proto=0.</p>
+<dl class="method">
+<dt id="socks.socksocket.connect">
+<tt class="descname">connect</tt><big>(</big><em>self</em>, <em>despair</em><big>)</big><a class="reference internal" href="_modules/socks.html#socksocket.connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.socksocket.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connects to the specified destination through a proxy.
+destpar - A tuple of the IP/DNS address and the port number.
+(identical to socket&#8217;s connect).
+To select the proxy server use setproxy().</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="socks.socksocket.getpeername">
+<tt class="descname">getpeername</tt><big>(</big><big>)</big> &rarr; address info<a class="reference internal" href="_modules/socks.html#socksocket.getpeername"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.socksocket.getpeername" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the IP address and port number of the destination
+machine (note: getproxypeername returns the proxy)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="socks.socksocket.getproxypeername">
+<tt class="descname">getproxypeername</tt><big>(</big><big>)</big> &rarr; address info<a class="reference internal" href="_modules/socks.html#socksocket.getproxypeername"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.socksocket.getproxypeername" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the IP and port number of the proxy.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="socks.socksocket.getproxysockname">
+<tt class="descname">getproxysockname</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/socks.html#socksocket.getproxysockname"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.socksocket.getproxysockname" title="Permalink to this definition">¶</a></dt>
+<dd><p>getsockname() -&gt; address info
+Returns the bound IP address and port number at the proxy.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="socks.socksocket.setproxy">
+<tt class="descname">setproxy</tt><big>(</big><em>proxytype</em>, <em>addr</em><span class="optional">[</span>, <em>port</em><span class="optional">[</span>, <em>rdns</em><span class="optional">[</span>, <em>username</em><span class="optional">[</span>, <em>password</em><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/socks.html#socksocket.setproxy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#socks.socksocket.setproxy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the proxy to be used.
+proxytype -     The type of the proxy to be used. Three types</p>
+<blockquote>
+<div>are supported: PROXY_TYPE_SOCKS4 (including socks4a),
+PROXY_TYPE_SOCKS5 and PROXY_TYPE_HTTP</div></blockquote>
+<p>addr -          The address of the server (IP or DNS).
+port -          The port of the server. Defaults to 1080 for SOCKS</p>
+<blockquote>
+<div>servers and 8080 for HTTP proxy servers.</div></blockquote>
+<dl class="docutils">
+<dt>rdns -          Should DNS queries be preformed on the remote side</dt>
+<dd>(rather than the local side). The default is True.
+Note: This has no effect with SOCKS4 servers.</dd>
+<dt>username -      Username to authenticate with to the server.</dt>
+<dd>The default is no authentication.</dd>
+<dt>password -      Password to authenticate with to the server.</dt>
+<dd>Only relevant when username is also provided.</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/socks.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

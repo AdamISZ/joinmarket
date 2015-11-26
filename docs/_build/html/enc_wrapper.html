@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>enc_wrapper module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-enc_wrapper">
+<span id="enc-wrapper-module"></span><h1>enc_wrapper module<a class="headerlink" href="#module-enc_wrapper" title="Permalink to this headline">¶</a></h1>
+<p>A wrapper for public key
+authenticated encryption
+using Diffie Hellman key
+exchange to set up a 
+symmetric encryption.</p>
+<dl class="function">
+<dt id="enc_wrapper.as_init_encryption">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">as_init_encryption</tt><big>(</big><em>kp</em>, <em>c_pk</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#as_init_encryption"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.as_init_encryption" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given an initialised
+keypair kp and a counterparty
+pubkey c_pk, create a Box 
+ready for encryption/decryption.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.decode_decrypt">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">decode_decrypt</tt><big>(</big><em>msg</em>, <em>box</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#decode_decrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.decode_decrypt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.encrypt_encode">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">encrypt_encode</tt><big>(</big><em>msg</em>, <em>box</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#encrypt_encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.encrypt_encode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.get_pubkey">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">get_pubkey</tt><big>(</big><em>kp</em>, <em>as_hex=False</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#get_pubkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.get_pubkey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a keypair object,
+return its public key, 
+optionally in hex.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.init_keypair">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">init_keypair</tt><big>(</big><em>fname=None</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#init_keypair"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.init_keypair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new encryption 
+keypair; stored in file fname
+if provided. The keypair object
+is returned.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.init_pubkey">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">init_pubkey</tt><big>(</big><em>hexpk</em>, <em>fname=None</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#init_pubkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.init_pubkey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a pubkey object from a
+hex formatted string.
+Save to file fname if specified.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.test_case">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">test_case</tt><big>(</big><em>case_name</em>, <em>alice_box</em>, <em>bob_box</em>, <em>ab_message</em>, <em>ba_message</em>, <em>num_iterations=1</em><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#test_case"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.test_case" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="enc_wrapper.test_keypair_setup">
+<tt class="descclassname">enc_wrapper.</tt><tt class="descname">test_keypair_setup</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/enc_wrapper.html#test_keypair_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#enc_wrapper.test_keypair_setup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/enc_wrapper.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

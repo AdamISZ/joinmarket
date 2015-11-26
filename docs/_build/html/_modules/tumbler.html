@@ -1,0 +1,485 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tumbler &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for tumbler</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">datetime</span><span class="o">,</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">binascii</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">copy</span>
+<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">__file__</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s">&#39;lib&#39;</span><span class="p">))</span>
+
+<span class="kn">import</span> <span class="nn">taker</span> <span class="kn">as</span> <span class="nn">takermodule</span>
+<span class="kn">import</span> <span class="nn">common</span>
+<span class="kn">from</span> <span class="nn">common</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">irc</span> <span class="kn">import</span> <span class="n">IRCMessageChannel</span><span class="p">,</span> <span class="n">random_nick</span>
+
+<span class="kn">from</span> <span class="nn">optparse</span> <span class="kn">import</span> <span class="n">OptionParser</span>
+<span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pprint</span>
+
+<span class="k">def</span> <span class="nf">lower_bounded_int</span><span class="p">(</span><span class="n">thelist</span><span class="p">,</span> <span class="n">lowerbound</span><span class="p">):</span>
+<div class="viewcode-block" id="lower_bounded_int"><a class="viewcode-back" href="../tumbler.html#tumbler.lower_bounded_int">[docs]</a>	<span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">lowerbound</span> <span class="k">else</span> <span class="n">lowerbound</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">thelist</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">generate_tumbler_tx</span><span class="p">(</span><span class="n">destaddrs</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span></div>
+<div class="viewcode-block" id="generate_tumbler_tx"><a class="viewcode-back" href="../tumbler.html#tumbler.generate_tumbler_tx">[docs]</a>	<span class="c">#sends the coins up through a few mixing depths</span>
+	<span class="c">#send to the destination addresses from different mixing depths</span>
+
+	<span class="c">#simple algo, move coins completely from one mixing depth to the next</span>
+	<span class="c"># until you get to the end, then send to destaddrs</span>
+
+	<span class="c">#txcounts for going completely from one mixdepth to the next</span>
+	<span class="c"># follows a normal distribution</span>
+	<span class="n">txcounts</span> <span class="o">=</span> <span class="n">rand_norm_array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">txcountparams</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+		<span class="n">options</span><span class="o">.</span><span class="n">txcountparams</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthcount</span><span class="p">)</span>
+	<span class="n">txcounts</span> <span class="o">=</span> <span class="n">lower_bounded_int</span><span class="p">(</span><span class="n">txcounts</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mintxcount</span><span class="p">)</span>
+	<span class="n">tx_list</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">txcount</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">txcounts</span><span class="p">):</span>
+		<span class="c">#assume that the sizes of outputs will follow a power law</span>
+		<span class="n">amount_fractions</span> <span class="o">=</span> <span class="n">rand_pow_array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">amountpower</span><span class="p">,</span> <span class="n">txcount</span><span class="p">)</span>
+		<span class="n">amount_fractions</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">amount_fractions</span><span class="p">]</span>
+		<span class="n">amount_fractions</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">amount_fractions</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">amount_fractions</span><span class="p">]</span>
+		<span class="c">#transaction times are uncorrelated</span>
+		<span class="c">#time between events in a poisson process followed exp</span>
+		<span class="n">waits</span> <span class="o">=</span> <span class="n">rand_exp_array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">timelambda</span><span class="p">,</span> <span class="n">txcount</span><span class="p">)</span>
+		<span class="c">#number of makers to use follows a normal distribution</span>
+		<span class="n">makercounts</span> <span class="o">=</span> <span class="n">rand_norm_array</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">makercountrange</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">options</span><span class="o">.</span><span class="n">makercountrange</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">txcount</span><span class="p">)</span>
+		<span class="n">makercounts</span> <span class="o">=</span> <span class="n">lower_bounded_int</span><span class="p">(</span><span class="n">makercounts</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">minmakercount</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">m</span> <span class="o">==</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthcount</span> <span class="o">-</span> <span class="n">options</span><span class="o">.</span><span class="n">addrcount</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">donateamount</span><span class="p">:</span>
+			<span class="n">tx_list</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s">&#39;amount_fraction&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;wait&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">waits</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
+				<span class="s">&#39;srcmixdepth&#39;</span><span class="p">:</span> <span class="n">m</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthsrc</span><span class="p">,</span> <span class="s">&#39;makercount&#39;</span><span class="p">:</span> <span class="n">makercounts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+				<span class="s">&#39;destination&#39;</span><span class="p">:</span> <span class="s">&#39;internal&#39;</span><span class="p">})</span>
+		<span class="k">for</span> <span class="n">amount_fraction</span><span class="p">,</span> <span class="n">wait</span><span class="p">,</span> <span class="n">makercount</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">amount_fractions</span><span class="p">,</span> <span class="n">waits</span><span class="p">,</span> <span class="n">makercounts</span><span class="p">):</span>
+			<span class="n">tx</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;amount_fraction&#39;</span><span class="p">:</span> <span class="n">amount_fraction</span><span class="p">,</span> <span class="s">&#39;wait&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">wait</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+				<span class="s">&#39;srcmixdepth&#39;</span><span class="p">:</span> <span class="n">m</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthsrc</span><span class="p">,</span> <span class="s">&#39;makercount&#39;</span><span class="p">:</span> <span class="n">makercount</span><span class="p">,</span> <span class="s">&#39;destination&#39;</span><span class="p">:</span> <span class="s">&#39;internal&#39;</span><span class="p">}</span>
+			<span class="n">tx_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+
+	<span class="n">addrask</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">addrcount</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">destaddrs</span><span class="p">)</span>
+	<span class="n">external_dest_addrs</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;addrask&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">addrask</span> <span class="o">+</span> <span class="n">destaddrs</span>
+	<span class="k">for</span> <span class="n">mix_offset</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">addrcount</span><span class="p">):</span>
+		<span class="n">srcmix</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthsrc</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthcount</span> <span class="o">-</span> <span class="n">mix_offset</span> <span class="o">-</span> <span class="mi">1</span>
+		<span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">tx_list</span><span class="p">):</span>
+			<span class="k">if</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">srcmix</span><span class="p">:</span>
+				<span class="n">tx</span><span class="p">[</span><span class="s">&#39;destination&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">external_dest_addrs</span><span class="p">[</span><span class="n">mix_offset</span><span class="p">]</span>
+				<span class="k">break</span>
+		<span class="k">if</span> <span class="n">mix_offset</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="c">#setting last mixdepth to send all to dest</span>
+			<span class="n">tx_list_remove</span> <span class="o">=</span> <span class="p">[]</span>
+			<span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">tx_list</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">srcmix</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;destination&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;internal&#39;</span><span class="p">:</span>
+						<span class="n">tx_list_remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+					<span class="k">else</span><span class="p">:</span>
+						<span class="n">tx</span><span class="p">[</span><span class="s">&#39;amount_fraction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+			<span class="p">[</span><span class="n">tx_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tx_list_remove</span><span class="p">]</span>
+	<span class="k">return</span> <span class="n">tx_list</span>
+
+<span class="c">#thread which does the buy-side algorithm</span>
+<span class="c"># chooses which coinjoins to initiate and when</span>
+<span class="k">class</span> <span class="nc">TumblerThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TumblerThread"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread">[docs]</a>	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">taker</span><span class="p">):</span>
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">taker</span> <span class="o">=</span> <span class="n">taker</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sweeping</span> <span class="o">=</span> <span class="bp">False</span>
+
+	<span class="k">def</span> <span class="nf">unconfirm_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">):</span>
+<div class="viewcode-block" id="TumblerThread.unconfirm_callback"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.unconfirm_callback">[docs]</a>		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;that was </span><span class="si">%d</span><span class="s"> tx out of </span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_tx</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">tx_list</span><span class="p">)))</span>
+
+	<span class="k">def</span> <span class="nf">confirm_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">,</span> <span class="n">confirmations</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TumblerThread.confirm_callback"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.confirm_callback">[docs]</a>		<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">add_new_utxos</span><span class="p">(</span><span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">notify</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">finishcallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coinjointx</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TumblerThread.finishcallback"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.finishcallback">[docs]</a>		<span class="k">if</span> <span class="n">coinjointx</span><span class="o">.</span><span class="n">all_responded</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">add_tx_notify</span><span class="p">(</span><span class="n">coinjointx</span><span class="o">.</span><span class="n">latest_tx</span><span class="p">,</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">unconfirm_callback</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">confirm_callback</span><span class="p">,</span> <span class="n">coinjointx</span><span class="o">.</span><span class="n">my_cj_addr</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">remove_old_utxos</span><span class="p">(</span><span class="n">coinjointx</span><span class="o">.</span><span class="n">latest_tx</span><span class="p">)</span>
+			<span class="n">coinjointx</span><span class="o">.</span><span class="n">self_sign_and_push</span><span class="p">()</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">+=</span> <span class="n">coinjointx</span><span class="o">.</span><span class="n">nonrespondants</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;recreating the tx, ignored_makers=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">create_tx</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">tumbler_choose_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">makercount</span><span class="p">,</span> <span class="n">nonrespondants</span><span class="o">=</span><span class="p">[],</span> <span class="n">active_nicks</span><span class="o">=</span><span class="p">[]):</span></div>
+<div class="viewcode-block" id="TumblerThread.tumbler_choose_orders"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.tumbler_choose_orders">[docs]</a>		<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">+=</span> <span class="n">nonrespondants</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span> <span class="o">=</span> <span class="n">choose_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span>
+				<span class="n">makercount</span><span class="p">,</span> <span class="n">weighted_order_choose</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">+</span> <span class="n">active_nicks</span><span class="p">)</span>
+			<span class="n">abs_cj_fee</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="n">total_cj_fee</span> <span class="o">/</span> <span class="n">makercount</span>
+			<span class="n">rel_cj_fee</span> <span class="o">=</span> <span class="n">abs_cj_fee</span> <span class="o">/</span> <span class="n">cj_amount</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;rel/abs average fee = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">rel_cj_fee</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; / &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">abs_cj_fee</span><span class="p">))</span>
+
+			<span class="k">if</span> <span class="n">rel_cj_fee</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">maxcjfee</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">abs_cj_fee</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">maxcjfee</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;cj fee higher than maxcjfee, waiting &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; seconds&#39;</span><span class="p">)</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span>
+				<span class="k">continue</span>
+			<span class="k">if</span> <span class="n">orders</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;waiting for liquidity &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;secs, hopefully more orders should come in&#39;</span><span class="p">)</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span>
+				<span class="k">continue</span>
+			<span class="k">break</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;chosen orders to fill &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; totalcjfee=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_cj_fee</span><span class="p">))</span>
+		<span class="k">return</span> <span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span>
+
+	<span class="k">def</span> <span class="nf">create_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TumblerThread.create_tx"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.create_tx">[docs]</a>		<span class="n">utxos</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">cj_amount</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">change_addr</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">choose_orders_recover</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sweep</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;sweeping&#39;</span><span class="p">)</span>
+			<span class="n">utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_utxos_by_mixdepth</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]]</span>
+			<span class="n">total_value</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">addrval</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">addrval</span> <span class="ow">in</span> <span class="n">utxos</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+			<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+				<span class="n">orders</span><span class="p">,</span> <span class="n">cj_amount</span> <span class="o">=</span> <span class="n">choose_sweep_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">total_value</span><span class="p">,</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;makercount&#39;</span><span class="p">],</span> <span class="n">weighted_order_choose</span><span class="p">,</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">orders</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;waiting for liquidity &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;secs, hopefully more orders should come in&#39;</span><span class="p">)</span>
+					<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span>
+					<span class="k">continue</span>
+				<span class="n">abs_cj_fee</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="p">(</span><span class="n">total_value</span> <span class="o">-</span> <span class="n">cj_amount</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;makercount&#39;</span><span class="p">]</span>
+				<span class="n">rel_cj_fee</span> <span class="o">=</span> <span class="n">abs_cj_fee</span> <span class="o">/</span> <span class="n">cj_amount</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;rel/abs average fee = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">rel_cj_fee</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; / &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">abs_cj_fee</span><span class="p">))</span>
+				<span class="k">if</span> <span class="n">rel_cj_fee</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">maxcjfee</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">abs_cj_fee</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">maxcjfee</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;cj fee higher than maxcjfee, waiting &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; seconds&#39;</span><span class="p">)</span>
+					<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">liquiditywait</span><span class="p">)</span>
+					<span class="k">continue</span>
+				<span class="k">break</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;amount_fraction&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">cj_amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">balance</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">donateamount</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">destaddr</span> <span class="o">=</span> <span class="bp">None</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">cj_amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;amount_fraction&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">balance</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">cj_amount</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mincjamount</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;cj amount too low, bringing up&#39;</span><span class="p">)</span>
+				<span class="n">cj_amount</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mincjamount</span>
+			<span class="n">change_addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">])</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;coinjoining &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cj_amount</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; satoshi&#39;</span><span class="p">)</span>
+			<span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tumbler_choose_orders</span><span class="p">(</span><span class="n">cj_amount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;makercount&#39;</span><span class="p">])</span>
+			<span class="n">total_amount</span> <span class="o">=</span> <span class="n">cj_amount</span> <span class="o">+</span> <span class="n">total_cj_fee</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">txfee</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;total amount spent = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_amount</span><span class="p">))</span>
+			<span class="n">utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">select_utxos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">],</span> <span class="n">total_amount</span><span class="p">)</span>
+			<span class="n">choose_orders_recover</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tumbler_choose_orders</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">start_cj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">utxos</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">destaddr</span><span class="p">,</span> <span class="n">change_addr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">finishcallback</span><span class="p">,</span> <span class="n">choose_orders_recover</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">init_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">balance</span><span class="p">,</span> <span class="n">sweep</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TumblerThread.init_tx"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.init_tx">[docs]</a>		<span class="n">destaddr</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;destination&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;internal&#39;</span><span class="p">:</span>
+			<span class="n">destaddr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_receive_addr</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;destination&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;addrask&#39;</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug_silence</span> <span class="o">=</span> <span class="bp">True</span>
+			<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+				<span class="n">destaddr</span> <span class="o">=</span> <span class="nb">raw_input</span><span class="p">(</span><span class="s">&#39;insert new address: &#39;</span><span class="p">)</span>
+				<span class="n">addr_valid</span><span class="p">,</span> <span class="n">errormsg</span> <span class="o">=</span> <span class="n">validate_address</span><span class="p">(</span><span class="n">destaddr</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">addr_valid</span><span class="p">:</span>
+					<span class="k">break</span>
+				<span class="k">print</span> <span class="s">&#39;Address &#39;</span> <span class="o">+</span> <span class="n">destaddr</span> <span class="o">+</span> <span class="s">&#39; invalid. &#39;</span> <span class="o">+</span> <span class="n">errormsg</span> <span class="o">+</span> <span class="s">&#39; try again&#39;</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug_silence</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">destaddr</span> <span class="o">=</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;destination&#39;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sweep</span> <span class="o">=</span> <span class="n">sweep</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">balance</span> <span class="o">=</span> <span class="n">balance</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tx</span> <span class="o">=</span> <span class="n">tx</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">destaddr</span> <span class="o">=</span> <span class="n">destaddr</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">create_tx</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;tx confirmed, waiting for &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;wait&#39;</span><span class="p">])</span> <span class="o">+</span> <span class="s">&#39; minutes&#39;</span><span class="p">)</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;wait&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;woken&#39;</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TumblerThread.run"><a class="viewcode-back" href="../tumbler.html#tumbler.TumblerThread.run">[docs]</a>		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;waiting for all orders to certainly arrive&#39;</span><span class="p">)</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">waittime</span><span class="p">)</span>
+
+		<span class="n">sqlorders</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT cjfee, ordertype FROM orderbook;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="p">[</span><span class="s">&#39;cjfee&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">sqlorders</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;ordertype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;relorder&#39;</span><span class="p">]</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;There are no orders at all in the orderbook! Is the bot connecting to the right server?&#39;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="n">relorder_fee</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">orders</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;relorder fee = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">relorder_fee</span><span class="p">))</span>
+		<span class="n">maker_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;makercount&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">tx_list</span><span class="p">])</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;uses &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">maker_count</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; makers, at &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">relorder_fee</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;% per maker, estimated total cost &#39;</span>
+			<span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">relorder_fee</span><span class="p">)</span><span class="o">**</span><span class="n">maker_count</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39;%&#39;</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;starting&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Condition</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">balance_by_mixdepth</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">tx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">tx_list</span><span class="p">):</span>
+			<span class="k">if</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">balance_by_mixdepth</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">balance_by_mixdepth</span><span class="p">[</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_balance_by_mixdepth</span><span class="p">()[</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]]</span>
+			<span class="n">sweep</span> <span class="o">=</span> <span class="bp">True</span>
+			<span class="k">for</span> <span class="n">later_tx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">tx_list</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]:</span>
+				<span class="k">if</span> <span class="n">later_tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]:</span>
+					<span class="n">sweep</span> <span class="o">=</span> <span class="bp">False</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">current_tx</span> <span class="o">=</span> <span class="n">i</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">init_tx</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">balance_by_mixdepth</span><span class="p">[</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]],</span> <span class="n">sweep</span><span class="p">)</span>
+
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;total finished&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		crow = self.taker.db.execute(&#39;SELECT COUNT(DISTINCT counterparty) FROM orderbook;&#39;).fetchone()</span>
+<span class="sd">		counterparty_count = crow[&#39;COUNT(DISTINCT counterparty)&#39;]</span>
+<span class="sd">		if counterparty_count &lt; self.taker.makercount:</span>
+<span class="sd">			print &#39;not enough counterparties to fill order, ending&#39;</span>
+<span class="sd">			self.taker.msgchan.shutdown()</span>
+<span class="sd">			return</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">Tumbler</span><span class="p">(</span><span class="n">takermodule</span><span class="o">.</span><span class="n">Taker</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="Tumbler"><a class="viewcode-back" href="../tumbler.html#tumbler.Tumbler">[docs]</a>	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">,</span> <span class="n">wallet</span><span class="p">,</span> <span class="n">tx_list</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+		<span class="n">takermodule</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet</span> <span class="o">=</span> <span class="n">wallet</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tx_list</span> <span class="o">=</span> <span class="n">tx_list</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">options</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tumbler_thread</span> <span class="o">=</span> <span class="bp">None</span>
+
+	<span class="k">def</span> <span class="nf">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Tumbler.on_welcome"><a class="viewcode-back" href="../tumbler.html#tumbler.Tumbler.on_welcome">[docs]</a>		<span class="n">takermodule</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">tumbler_thread</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">tumbler_thread</span> <span class="o">=</span> <span class="n">TumblerThread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">tumbler_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span></div></div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../tumbler.html#tumbler.main">[docs]</a>	<span class="n">parser</span> <span class="o">=</span> <span class="n">OptionParser</span><span class="p">(</span><span class="n">usage</span><span class="o">=</span><span class="s">&#39;usage: %prog [options] [wallet file] [destaddr(s)...]&#39;</span><span class="p">,</span>
+		<span class="n">description</span><span class="o">=</span><span class="s">&#39;Sends bitcoins to many different addresses using coinjoin in&#39;</span>
+			<span class="s">&#39; an attempt to break the link between them. Sending to multiple &#39;</span>
+			<span class="s">&#39; addresses is highly recommended for privacy. This tumbler can&#39;</span>
+			<span class="s">&#39; be configured to ask for more address mid-run, giving the user&#39;</span>
+			<span class="s">&#39; a chance to click `Generate New Deposit Address` on whatever service&#39;</span>
+			<span class="s">&#39; they are using.&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--mixdepthsource&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mixdepthsrc&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;Mixing depth to spend from. Useful if a previous tumbler run prematurely ended with &#39;</span>
+		<span class="o">+</span> <span class="s">&#39;coins being left in higher mixing levels, this option can be used to resume without needing&#39;</span>
+		<span class="o">+</span> <span class="s">&#39; to send to another address. default=0&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-f&#39;</span><span class="p">,</span> <span class="s">&#39;--txfee&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;txfee&#39;</span><span class="p">,</span>
+		<span class="n">default</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&#39;total miner fee in satoshis, default=10000&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-a&#39;</span><span class="p">,</span> <span class="s">&#39;--addrcount&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;addrcount&#39;</span><span class="p">,</span>
+		<span class="n">default</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&#39;How many destination addresses in total should be used. If not enough are given&#39;</span>
+			<span class="s">&#39; as command line arguments, the script will ask for more. This parameter is required&#39;</span>
+			<span class="s">&#39; to stop amount correlation. default=3&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-x&#39;</span><span class="p">,</span> <span class="s">&#39;--maxcjfee&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;maxcjfee&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+		<span class="n">default</span><span class="o">=</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">10000</span><span class="p">),</span> <span class="n">help</span><span class="o">=</span><span class="s">&#39;maximum coinjoin fee and bitcoin value the tumbler is &#39;</span>
+		<span class="s">&#39;willing to pay to a single market maker. Both values need to be exceeded, so if &#39;</span>
+		<span class="s">&#39;the fee is 30% but only 500satoshi is paid the tx will go ahead. default=0.01, 10000 (1%, 10000satoshi)&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-N&#39;</span><span class="p">,</span> <span class="s">&#39;--makercountrange&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;makercountrange&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;Input the mean and spread of number of makers to use. e.g. 3 1.5 will be a normal distribution &#39;</span>
+		<span class="s">&#39;with mean 3 and standard deveation 1.5 inclusive, default=3 1.5&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">))</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--minmakercount&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;minmakercount&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;The minimum maker count in a transaction, random values below this are clamped at this number. default=2&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-M&#39;</span><span class="p">,</span> <span class="s">&#39;--mixdepthcount&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mixdepthcount&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;How many mixing depths to mix through&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-c&#39;</span><span class="p">,</span> <span class="s">&#39;--txcountparams&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;txcountparams&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;The number of transactions to take coins from one mixing depth to the next, it is&#39;</span>
+		<span class="s">&#39; randomly chosen following a normal distribution. Should be similar to --addrask. &#39;</span>
+		<span class="s">&#39;This option controls the parameters of the normal distribution curve. (mean, standard deviation). default=(4, 1)&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--mintxcount&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mintxcount&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;The minimum transaction count per mixing level, default=1&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--donateamount&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;donateamount&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;percent of funds to donate to joinmarket development, or zero to opt out (default=0%)&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--amountpower&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;amountpower&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;The output amounts follow a power law distribution, this is the power, default=100.0&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-l&#39;</span><span class="p">,</span> <span class="s">&#39;--timelambda&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;timelambda&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;Average the number of minutes to wait between transactions. Randomly chosen &#39;</span>
+		<span class="s">&#39; following an exponential distribution, which describes the time between uncorrelated&#39;</span>
+		<span class="s">&#39; events. default=30&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-w&#39;</span><span class="p">,</span> <span class="s">&#39;--wait-time&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;waittime&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;wait time in seconds to allow orders to arrive, default=20&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-s&#39;</span><span class="p">,</span> <span class="s">&#39;--mincjamount&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mincjamount&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;minimum coinjoin amount in transaction in satoshi, default 100k&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-q&#39;</span><span class="p">,</span> <span class="s">&#39;--liquiditywait&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;liquiditywait&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;amount of seconds to wait after failing to choose suitable orders before trying again, default 60&#39;</span><span class="p">)</span>
+	<span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;Needs a wallet file&#39;</span><span class="p">)</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">wallet_file</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">destaddrs</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+	<span class="k">print</span> <span class="n">destaddrs</span>
+	
+	<span class="n">common</span><span class="o">.</span><span class="n">load_program_config</span><span class="p">()</span>
+	<span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">destaddrs</span><span class="p">:</span>
+		<span class="n">addr_valid</span><span class="p">,</span> <span class="n">errormsg</span> <span class="o">=</span> <span class="n">validate_address</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">addr_valid</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;ERROR: Address &#39;</span> <span class="o">+</span> <span class="n">addr</span> <span class="o">+</span> <span class="s">&#39; invalid. &#39;</span> <span class="o">+</span> <span class="n">errormsg</span>
+			<span class="k">return</span>
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">destaddrs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">options</span><span class="o">.</span><span class="n">addrcount</span><span class="p">:</span>
+		<span class="n">options</span><span class="o">.</span><span class="n">addrcount</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">destaddrs</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">addrcount</span><span class="o">+</span><span class="mi">1</span> <span class="o">&gt;</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthcount</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;not enough mixing depths to pay to all destination addresses, increasing mixdepthcount&#39;</span>
+		<span class="n">options</span><span class="o">.</span><span class="n">mixdepthcount</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">addrcount</span><span class="o">+</span><span class="mi">1</span>
+	<span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">donateamount</span> <span class="o">&gt;</span> <span class="mf">10.0</span><span class="p">:</span>
+		<span class="c">#fat finger probably, or misunderstanding</span>
+		<span class="n">options</span><span class="o">.</span><span class="n">donateamount</span> <span class="o">=</span> <span class="mf">0.9</span>
+
+	<span class="k">print</span> <span class="nb">str</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+	<span class="n">tx_list</span> <span class="o">=</span> <span class="n">generate_tumbler_tx</span><span class="p">(</span><span class="n">destaddrs</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">tx_list</span><span class="p">:</span>
+		<span class="k">return</span>
+
+	<span class="n">tx_list2</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">tx_list</span><span class="p">)</span>
+	<span class="n">tx_dict</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">tx_list2</span><span class="p">:</span>
+		<span class="n">srcmixdepth</span> <span class="o">=</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">]</span>
+		<span class="n">tx</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">srcmixdepth</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tx_dict</span><span class="p">:</span>
+			<span class="n">tx_dict</span><span class="p">[</span><span class="n">srcmixdepth</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">tx_dict</span><span class="p">[</span><span class="n">srcmixdepth</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+	<span class="n">dbg_tx_list</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">srcmixdepth</span><span class="p">,</span> <span class="n">txlist</span> <span class="ow">in</span> <span class="n">tx_dict</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+		<span class="n">dbg_tx_list</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s">&#39;srcmixdepth&#39;</span><span class="p">:</span> <span class="n">srcmixdepth</span><span class="p">,</span> <span class="s">&#39;tx&#39;</span><span class="p">:</span> <span class="n">txlist</span><span class="p">})</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;tumbler transaction list&#39;</span><span class="p">)</span>
+	<span class="n">pprint</span><span class="p">(</span><span class="n">dbg_tx_list</span><span class="p">)</span>
+
+	<span class="n">total_wait</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;wait&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">tx_list</span><span class="p">])</span>
+	<span class="k">print</span> <span class="s">&#39;creates &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tx_list</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39; transactions in total&#39;</span>
+	<span class="k">print</span> <span class="s">&#39;waits in total for &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tx_list</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39; blocks and &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_wait</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; minutes&#39;</span>
+	<span class="n">total_block_and_wait</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tx_list</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span> <span class="o">+</span> <span class="n">total_wait</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;estimated time taken &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_block_and_wait</span><span class="p">)</span> <span class="o">+</span>
+		<span class="s">&#39; minutes or &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">total_block_and_wait</span><span class="o">/</span><span class="mf">60.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39; hours&#39;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">addrcount</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;=&#39;</span><span class="o">*</span><span class="mi">50</span>
+		<span class="k">print</span> <span class="s">&#39;WARNING: You are only using one destination address&#39;</span>
+		<span class="k">print</span> <span class="s">&#39;this is very bad for privacy&#39;</span>
+		<span class="k">print</span> <span class="s">&#39;=&#39;</span><span class="o">*</span><span class="mi">50</span>
+
+	<span class="n">ret</span> <span class="o">=</span> <span class="nb">raw_input</span><span class="p">(</span><span class="s">&#39;tumble with these tx? (y/n):&#39;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">ret</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;y&#39;</span><span class="p">:</span>
+		<span class="k">return</span>
+
+	<span class="c">#NOTE: possibly out of date documentation</span>
+	<span class="c">#a couple of modes</span>
+	<span class="c">#im-running-from-the-nsa, takes about 80 hours, costs a lot</span>
+	<span class="c">#python tumbler.py -a 10 -N 10 5 -c 10 5 -l 50 -M 10 wallet_file 1xxx</span>
+	<span class="c">#</span>
+	<span class="c">#quick and cheap, takes about 90 minutes</span>
+	<span class="c">#python tumbler.py -N 2 1 -c 3 0.001 -l 10 -M 3 -a 1 wallet_file 1xxx</span>
+	<span class="c">#</span>
+	<span class="c">#default, good enough for most, takes about 5 hours</span>
+	<span class="c">#python tumbler.py wallet_file 1xxx</span>
+	<span class="c">#</span>
+	<span class="c">#for quick testing</span>
+	<span class="c">#python tumbler.py -N 2 1 -c 3 0.001 -l 0.1 -M 3 -a 0 wallet_file 1xxx 1yyy</span>
+	<span class="n">wallet</span> <span class="o">=</span> <span class="n">Wallet</span><span class="p">(</span><span class="n">wallet_file</span><span class="p">,</span> <span class="n">max_mix_depth</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthsrc</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepthcount</span><span class="p">)</span>
+	<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">sync_wallet</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+
+	<span class="n">common</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">random_nick</span><span class="p">()</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;starting tumbler&#39;</span><span class="p">)</span>
+	<span class="n">irc</span> <span class="o">=</span> <span class="n">IRCMessageChannel</span><span class="p">(</span><span class="n">common</span><span class="o">.</span><span class="n">nickname</span><span class="p">)</span>
+	<span class="n">tumbler</span> <span class="o">=</span> <span class="n">Tumbler</span><span class="p">(</span><span class="n">irc</span><span class="p">,</span> <span class="n">wallet</span><span class="p">,</span> <span class="n">tx_list</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;connecting to irc&#39;</span><span class="p">)</span>
+		<span class="n">irc</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+	<span class="k">except</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;CRASHING, DUMPING EVERYTHING&#39;</span><span class="p">)</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;addr_cache&#39;</span><span class="p">,</span> <span class="s">&#39;keys&#39;</span><span class="p">,</span> <span class="s">&#39;seed&#39;</span><span class="p">])</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">tumbler</span><span class="p">)</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">tumbler</span><span class="o">.</span><span class="n">cjtx</span><span class="p">)</span>
+		<span class="kn">import</span> <span class="nn">traceback</span>
+		<span class="n">debug</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span></div>
+	<span class="n">main</span><span class="p">()</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;done&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

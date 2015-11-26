@@ -1,0 +1,163 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tumbler module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-tumbler">
+<span id="tumbler-module"></span><h1>tumbler module<a class="headerlink" href="#module-tumbler" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="tumbler.Tumbler">
+<em class="property">class </em><tt class="descclassname">tumbler.</tt><tt class="descname">Tumbler</tt><big>(</big><em>msgchan</em>, <em>wallet</em>, <em>tx_list</em>, <em>options</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#Tumbler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.Tumbler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="taker.html#taker.Taker" title="taker.Taker"><tt class="xref py py-class docutils literal"><span class="pre">taker.Taker</span></tt></a></p>
+<dl class="method">
+<dt id="tumbler.Tumbler.on_welcome">
+<tt class="descname">on_welcome</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/tumbler.html#Tumbler.on_welcome"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.Tumbler.on_welcome" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tumbler.TumblerThread">
+<em class="property">class </em><tt class="descclassname">tumbler.</tt><tt class="descname">TumblerThread</tt><big>(</big><em>taker</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<dl class="method">
+<dt id="tumbler.TumblerThread.confirm_callback">
+<tt class="descname">confirm_callback</tt><big>(</big><em>txd</em>, <em>txid</em>, <em>confirmations</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.confirm_callback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.confirm_callback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tumbler.TumblerThread.create_tx">
+<tt class="descname">create_tx</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.create_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.create_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tumbler.TumblerThread.finishcallback">
+<tt class="descname">finishcallback</tt><big>(</big><em>coinjointx</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.finishcallback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.finishcallback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tumbler.TumblerThread.init_tx">
+<tt class="descname">init_tx</tt><big>(</big><em>tx</em>, <em>balance</em>, <em>sweep</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.init_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.init_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tumbler.TumblerThread.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tumbler.TumblerThread.tumbler_choose_orders">
+<tt class="descname">tumbler_choose_orders</tt><big>(</big><em>cj_amount</em>, <em>makercount</em>, <em>nonrespondants=</em>, <span class="optional">[</span><span class="optional">]</span><em>active_nicks=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.tumbler_choose_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.tumbler_choose_orders" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tumbler.TumblerThread.unconfirm_callback">
+<tt class="descname">unconfirm_callback</tt><big>(</big><em>txd</em>, <em>txid</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#TumblerThread.unconfirm_callback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.TumblerThread.unconfirm_callback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tumbler.generate_tumbler_tx">
+<tt class="descclassname">tumbler.</tt><tt class="descname">generate_tumbler_tx</tt><big>(</big><em>destaddrs</em>, <em>options</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#generate_tumbler_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.generate_tumbler_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tumbler.lower_bounded_int">
+<tt class="descclassname">tumbler.</tt><tt class="descname">lower_bounded_int</tt><big>(</big><em>thelist</em>, <em>lowerbound</em><big>)</big><a class="reference internal" href="_modules/tumbler.html#lower_bounded_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.lower_bounded_int" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tumbler.main">
+<tt class="descclassname">tumbler.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/tumbler.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tumbler.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/tumbler.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bitcoin.build &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bitcoin.build</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">cffi</span> <span class="kn">import</span> <span class="n">FFI</span><span class="p">,</span> <span class="n">ffiplatform</span>
+
+
+<span class="n">definitions</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    /* secp256k1.h*/</span>
+
+<span class="s">    typedef struct secp256k1_context_struct secp256k1_context;</span>
+
+<span class="s">    typedef struct {</span>
+<span class="s">        unsigned char data[64];</span>
+<span class="s">    } secp256k1_pubkey;</span>
+
+<span class="s">    typedef struct {</span>
+<span class="s">        unsigned char data[64];</span>
+<span class="s">    } secp256k1_ecdsa_signature;</span>
+
+<span class="s">    typedef int (*secp256k1_nonce_function)(</span>
+<span class="s">        unsigned char *nonce32,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const unsigned char *key32,</span>
+<span class="s">        const unsigned char *algo16,</span>
+<span class="s">        void *data,</span>
+<span class="s">        unsigned int attempt</span>
+<span class="s">    );</span>
+
+<span class="s">    #define SECP256K1_FLAGS_TYPE_MASK 255</span>
+<span class="s">    #define SECP256K1_FLAGS_TYPE_CONTEXT 1</span>
+<span class="s">    #define SECP256K1_FLAGS_TYPE_COMPRESSION 2</span>
+<span class="s">    #define SECP256K1_FLAGS_BIT_CONTEXT_VERIFY 256</span>
+<span class="s">    #define SECP256K1_FLAGS_BIT_CONTEXT_SIGN   512</span>
+<span class="s">    #define SECP256K1_FLAGS_BIT_COMPRESSION    256</span>
+
+<span class="s">    #define SECP256K1_CONTEXT_VERIFY  257</span>
+<span class="s">    #define SECP256K1_CONTEXT_SIGN    513</span>
+<span class="s">    #define SECP256K1_CONTEXT_NONE    1</span>
+
+<span class="s">    #define SECP256K1_EC_COMPRESSED   258</span>
+<span class="s">    #define SECP256K1_EC_UNCOMPRESSED 2</span>
+
+<span class="s">    secp256k1_context* secp256k1_context_create(</span>
+<span class="s">        int flags</span>
+<span class="s">    );</span>
+
+<span class="s">    secp256k1_context* secp256k1_context_clone(</span>
+<span class="s">        const secp256k1_context* ctx</span>
+<span class="s">    );</span>
+
+<span class="s">    void secp256k1_context_destroy(</span>
+<span class="s">       secp256k1_context* ctx</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_pubkey_parse(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey* pubkey,</span>
+<span class="s">        const unsigned char *input,</span>
+<span class="s">        size_t inputlen</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_pubkey_serialize(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *output,</span>
+<span class="s">        size_t *outputlen,</span>
+<span class="s">        const secp256k1_pubkey* pubkey,</span>
+<span class="s">        unsigned int flags</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_signature_parse_compact(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_signature* sig,</span>
+<span class="s">        const unsigned char *input64</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_signature_parse_der(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_signature* sig,</span>
+<span class="s">        const unsigned char *input,</span>
+<span class="s">        size_t inputlen</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_signature_serialize_der(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *output,</span>
+<span class="s">        size_t *outputlen,</span>
+<span class="s">        const secp256k1_ecdsa_signature* sig</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_signature_serialize_compact(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *output64,</span>
+<span class="s">        const secp256k1_ecdsa_signature* sig</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_verify(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        const secp256k1_ecdsa_signature *sig,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const secp256k1_pubkey *pubkey</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_signature_normalize(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_signature *sigout,</span>
+<span class="s">        const secp256k1_ecdsa_signature *sigin</span>
+<span class="s">    );</span>
+
+<span class="s">    extern const secp256k1_nonce_function secp256k1_nonce_function_rfc6979;</span>
+<span class="s">    extern const secp256k1_nonce_function secp256k1_nonce_function_default;</span>
+
+
+<span class="s">    int secp256k1_ecdsa_sign(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_signature *sig,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const unsigned char *seckey,</span>
+<span class="s">        secp256k1_nonce_function noncefp,</span>
+<span class="s">        const void *ndata</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_seckey_verify(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        const unsigned char *seckey</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_pubkey_create(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *pubkey,</span>
+<span class="s">        const unsigned char *seckey</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_privkey_tweak_add(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *seckey,</span>
+<span class="s">        const unsigned char *tweak</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_pubkey_tweak_add(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *pubkey,</span>
+<span class="s">        const unsigned char *tweak</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_privkey_tweak_mul(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *seckey,</span>
+<span class="s">        const unsigned char *tweak</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_pubkey_tweak_mul(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *pubkey,</span>
+<span class="s">        const unsigned char *tweak</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_context_randomize(</span>
+<span class="s">        secp256k1_context* ctx,</span>
+<span class="s">        const unsigned char *seed32</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ec_pubkey_combine(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *out,</span>
+<span class="s">        const secp256k1_pubkey * const * ins,</span>
+<span class="s">        int n</span>
+<span class="s">    );</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">definitions_recovery</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    /* secp256k1_recovery.h */</span>
+
+<span class="s">    typedef struct {</span>
+<span class="s">        unsigned char data[65];</span>
+<span class="s">    } secp256k1_ecdsa_recoverable_signature;</span>
+
+<span class="s">    int secp256k1_ecdsa_recoverable_signature_parse_compact(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_recoverable_signature* sig,</span>
+<span class="s">        const unsigned char *input64,</span>
+<span class="s">        int recid</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_recoverable_signature_convert(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_signature* sig,</span>
+<span class="s">        const secp256k1_ecdsa_recoverable_signature* sigin</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_recoverable_signature_serialize_compact(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *output64,</span>
+<span class="s">        int *recid,</span>
+<span class="s">        const secp256k1_ecdsa_recoverable_signature* sig</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_sign_recoverable(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_ecdsa_recoverable_signature *sig,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const unsigned char *seckey,</span>
+<span class="s">        secp256k1_nonce_function noncefp,</span>
+<span class="s">        const void *ndata</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_ecdsa_recover(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *pubkey,</span>
+<span class="s">        const secp256k1_ecdsa_recoverable_signature *sig,</span>
+<span class="s">        const unsigned char *msg32</span>
+<span class="s">    );</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">definitions_schnorr</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    /* secp256k1_schnorr.h */</span>
+
+<span class="s">    int secp256k1_schnorr_sign(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *sig64,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const unsigned char *seckey,</span>
+<span class="s">        secp256k1_nonce_function noncefp,</span>
+<span class="s">        const void *ndata</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_schnorr_verify(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        const unsigned char *sig64,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const secp256k1_pubkey *pubkey</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_schnorr_recover(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *pubkey,</span>
+<span class="s">        const unsigned char *sig64,</span>
+<span class="s">        const unsigned char *msg32</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_schnorr_generate_nonce_pair(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        secp256k1_pubkey *pubnonce,</span>
+<span class="s">        unsigned char *privnonce32,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const unsigned char *sec32,</span>
+<span class="s">        secp256k1_nonce_function noncefp,</span>
+<span class="s">        const void* noncedata</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_schnorr_partial_sign(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *sig64,</span>
+<span class="s">        const unsigned char *msg32,</span>
+<span class="s">        const unsigned char *sec32,</span>
+<span class="s">        const secp256k1_pubkey *pubnonce_others,</span>
+<span class="s">        const unsigned char *secnonce32</span>
+<span class="s">    );</span>
+
+<span class="s">    int secp256k1_schnorr_partial_combine(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *sig64,</span>
+<span class="s">        const unsigned char * const * sig64sin,</span>
+<span class="s">        int n</span>
+<span class="s">    );</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">definitions_ecdh</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    /* secp256k1_ecdh.h */</span>
+
+<span class="s">    int secp256k1_ecdh(</span>
+<span class="s">        const secp256k1_context* ctx,</span>
+<span class="s">        unsigned char *result,</span>
+<span class="s">        const secp256k1_pubkey *point,</span>
+<span class="s">        const unsigned char *scalar</span>
+<span class="s">    );</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="build_ffi"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.build.build_ffi">[docs]</a><span class="k">def</span> <span class="nf">build_ffi</span><span class="p">(</span><span class="n">include_recovery</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">include_schnorr</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">include_ecdh</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="n">ffi</span> <span class="o">=</span> <span class="n">FFI</span><span class="p">()</span>
+
+    <span class="n">source</span> <span class="o">=</span> <span class="s">&quot;#include &lt;secp256k1.h&gt;&quot;</span>
+    <span class="n">cdefs</span> <span class="o">=</span> <span class="n">definitions</span>
+    <span class="k">if</span> <span class="n">include_recovery</span><span class="p">:</span>
+        <span class="n">cdefs</span> <span class="o">+=</span> <span class="n">definitions_recovery</span>
+        <span class="n">source</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">#include &lt;secp256k1_recovery.h&gt;&quot;</span>
+    <span class="k">if</span> <span class="n">include_schnorr</span><span class="p">:</span>
+        <span class="n">cdefs</span> <span class="o">+=</span> <span class="n">definitions_schnorr</span>
+        <span class="n">source</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">#include &lt;secp256k1_schnorr.h&gt;&quot;</span>
+    <span class="k">if</span> <span class="n">include_ecdh</span><span class="p">:</span>
+        <span class="n">cdefs</span> <span class="o">+=</span> <span class="n">definitions_ecdh</span>
+        <span class="n">source</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">#include &lt;secp256k1_ecdh.h&gt;&quot;</span>
+
+    <span class="n">incpath</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&#39;INCLUDE_DIR&#39;</span><span class="p">]]</span> <span class="k">if</span> <span class="s">&#39;INCLUDE_DIR&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="k">else</span> <span class="bp">None</span>
+    <span class="n">libpath</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&#39;LIB_DIR&#39;</span><span class="p">]]</span> <span class="k">if</span> <span class="s">&#39;LIB_DIR&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="k">else</span> <span class="bp">None</span>
+
+    <span class="n">ffi</span><span class="o">.</span><span class="n">set_source</span><span class="p">(</span>
+        <span class="s">&quot;_libsecp256k1&quot;</span><span class="p">,</span>
+        <span class="n">source</span><span class="p">,</span>
+        <span class="n">libraries</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;secp256k1&quot;</span><span class="p">],</span>
+        <span class="n">library_dirs</span><span class="o">=</span><span class="n">libpath</span><span class="p">,</span>
+        <span class="n">include_dirs</span><span class="o">=</span><span class="n">incpath</span><span class="p">)</span>
+    <span class="n">ffi</span><span class="o">.</span><span class="n">cdef</span><span class="p">(</span><span class="n">cdefs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ffi</span>
+
+</div>
+<span class="n">_modules</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;secp256k1_recovery&#39;</span><span class="p">:</span> <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;include_recovery&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}],</span>
+    <span class="s">&#39;secp256k1_schnorr&#39;</span><span class="p">:</span> <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;include_schnorr&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}],</span>
+    <span class="s">&#39;secp256k1_ecdh&#39;</span><span class="p">:</span> <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;include_ecdh&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}]</span>
+<span class="p">}</span>
+
+<span class="c"># Check which modules are available.</span>
+<span class="k">for</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">_modules</span><span class="p">:</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">_modules</span><span class="p">[</span><span class="n">mod</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_ffi</span> <span class="o">=</span> <span class="n">build_ffi</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">_ffi</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
+        <span class="n">_modules</span><span class="p">[</span><span class="n">mod</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">except</span> <span class="n">ffiplatform</span><span class="o">.</span><span class="n">VerificationError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<span class="c"># Build interface with all active modules.</span>
+<span class="n">_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">_not_avail</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">mod</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">_modules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="n">_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_not_avail</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+
+<span class="n">ffi</span> <span class="o">=</span> <span class="n">build_ffi</span><span class="p">(</span><span class="o">**</span><span class="n">_kwargs</span><span class="p">)</span>
+<span class="n">ffi</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39;{} not supported&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">_not_avail</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

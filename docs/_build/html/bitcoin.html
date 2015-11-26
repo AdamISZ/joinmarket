@@ -1,0 +1,1060 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bitcoin package &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="bitcoin-package">
+<h1>bitcoin package<a class="headerlink" href="#bitcoin-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-bitcoin.bci">
+<span id="bitcoin-bci-module"></span><h2>bitcoin.bci module<a class="headerlink" href="#module-bitcoin.bci" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.bci.bci_fetchtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">bci_fetchtx</tt><big>(</big><em>txhash</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#bci_fetchtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.bci_fetchtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.bci_pushtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">bci_pushtx</tt><big>(</big><em>tx</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#bci_pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.bci_pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.bci_unspent">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">bci_unspent</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#bci_unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.bci_unspent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.blockr_fetchtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">blockr_fetchtx</tt><big>(</big><em>txhash</em>, <em>network='btc'</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#blockr_fetchtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.blockr_fetchtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.blockr_pushtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">blockr_pushtx</tt><big>(</big><em>tx</em>, <em>network='btc'</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#blockr_pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.blockr_pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.blockr_unspent">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">blockr_unspent</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#blockr_unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.blockr_unspent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.eligius_pushtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">eligius_pushtx</tt><big>(</big><em>tx</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#eligius_pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.eligius_pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.fetchtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">fetchtx</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#fetchtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.fetchtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.firstbits">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">firstbits</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#firstbits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.firstbits" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.get_block_at_height">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">get_block_at_height</tt><big>(</big><em>height</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#get_block_at_height"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.get_block_at_height" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.get_block_header_data">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">get_block_header_data</tt><big>(</big><em>inp</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#get_block_header_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.get_block_header_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.get_block_height">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">get_block_height</tt><big>(</big><em>txhash</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#get_block_height"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.get_block_height" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.get_txs_in_block">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">get_txs_in_block</tt><big>(</big><em>inp</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#get_txs_in_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.get_txs_in_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.helloblock_fetchtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">helloblock_fetchtx</tt><big>(</big><em>txhash</em>, <em>network='btc'</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#helloblock_fetchtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.helloblock_fetchtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.helloblock_pushtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">helloblock_pushtx</tt><big>(</big><em>tx</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#helloblock_pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.helloblock_pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.helloblock_unspent">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">helloblock_unspent</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#helloblock_unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.helloblock_unspent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.history">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">history</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#history"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.history" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.last_block_height">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">last_block_height</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#last_block_height"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.last_block_height" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.make_request">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">make_request</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#make_request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.make_request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.parse_addr_args">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">parse_addr_args</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#parse_addr_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.parse_addr_args" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.pushtx">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">pushtx</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.bci.unspent">
+<tt class="descclassname">bitcoin.bci.</tt><tt class="descname">unspent</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/bci.html#unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.bci.unspent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.build">
+<span id="bitcoin-build-module"></span><h2>bitcoin.build module<a class="headerlink" href="#module-bitcoin.build" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.build.build_ffi">
+<tt class="descclassname">bitcoin.build.</tt><tt class="descname">build_ffi</tt><big>(</big><em>include_recovery=False</em>, <em>include_schnorr=False</em>, <em>include_ecdh=False</em><big>)</big><a class="reference internal" href="_modules/bitcoin/build.html#build_ffi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.build.build_ffi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.deterministic">
+<span id="bitcoin-deterministic-module"></span><h2>bitcoin.deterministic module<a class="headerlink" href="#module-bitcoin.deterministic" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_bin_extract_key">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_bin_extract_key</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_bin_extract_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_bin_extract_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_ckd">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_ckd</tt><big>(</big><em>data</em>, <em>i</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_ckd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_ckd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_descend">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_descend</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_descend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_descend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_deserialize">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_deserialize</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_deserialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_extract_key">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_extract_key</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_extract_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_extract_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_master_key">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_master_key</tt><big>(</big><em>seed</em>, <em>vbytes='\x04\x88\xad\xe4'</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_master_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_master_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_privtopub">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_privtopub</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_privtopub"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_privtopub" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.bip32_serialize">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">bip32_serialize</tt><big>(</big><em>rawtuple</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#bip32_serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.bip32_serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.coinvault_priv_to_bip32">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">coinvault_priv_to_bip32</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#coinvault_priv_to_bip32"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.coinvault_priv_to_bip32" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.coinvault_pub_to_bip32">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">coinvault_pub_to_bip32</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#coinvault_pub_to_bip32"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.coinvault_pub_to_bip32" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.electrum_address">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">electrum_address</tt><big>(</big><em>masterkey</em>, <em>n</em>, <em>for_change=0</em>, <em>version=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#electrum_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.electrum_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.electrum_mpk">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">electrum_mpk</tt><big>(</big><em>seed</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#electrum_mpk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.electrum_mpk" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.electrum_privkey">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">electrum_privkey</tt><big>(</big><em>seed</em>, <em>n</em>, <em>for_change=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#electrum_privkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.electrum_privkey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.electrum_pubkey">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">electrum_pubkey</tt><big>(</big><em>masterkey</em>, <em>n</em>, <em>for_change=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#electrum_pubkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.electrum_pubkey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.electrum_stretch">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">electrum_stretch</tt><big>(</big><em>seed</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#electrum_stretch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.electrum_stretch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.raw_bip32_ckd">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">raw_bip32_ckd</tt><big>(</big><em>rawtuple</em>, <em>i</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#raw_bip32_ckd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.raw_bip32_ckd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.raw_bip32_privtopub">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">raw_bip32_privtopub</tt><big>(</big><em>rawtuple</em><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#raw_bip32_privtopub"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.raw_bip32_privtopub" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.deterministic.test">
+<tt class="descclassname">bitcoin.deterministic.</tt><tt class="descname">test</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/deterministic.html#test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.deterministic.test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.main">
+<span id="bitcoin-main-module"></span><h2>bitcoin.main module<a class="headerlink" href="#module-bitcoin.main" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.main.add_privkeys">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">add_privkeys</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#add_privkeys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.add_privkeys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.add_pubkeys">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">add_pubkeys</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#add_pubkeys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.add_pubkeys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.b58check_to_bin">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">b58check_to_bin</tt><big>(</big><em>inp</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#b58check_to_bin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.b58check_to_bin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.b58check_to_hex">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">b58check_to_hex</tt><big>(</big><em>inp</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#b58check_to_hex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.b58check_to_hex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.bin_dbl_sha256">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">bin_dbl_sha256</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#bin_dbl_sha256"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.bin_dbl_sha256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.bin_hash160">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">bin_hash160</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#bin_hash160"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.bin_hash160" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.bin_ripemd160">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">bin_ripemd160</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#bin_ripemd160"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.bin_ripemd160" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.bin_sha256">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">bin_sha256</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#bin_sha256"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.bin_sha256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.bin_slowsha">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">bin_slowsha</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#bin_slowsha"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.bin_slowsha" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.dbl_sha256">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">dbl_sha256</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#dbl_sha256"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.dbl_sha256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.ecdsa_raw_sign">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">ecdsa_raw_sign</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#ecdsa_raw_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.ecdsa_raw_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.ecdsa_raw_verify">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">ecdsa_raw_verify</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#ecdsa_raw_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.ecdsa_raw_verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.ecdsa_sign">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">ecdsa_sign</tt><big>(</big><em>msg</em>, <em>priv</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#ecdsa_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.ecdsa_sign" title="Permalink to this definition">¶</a></dt>
+<dd><p>The private key priv must be supplied in binary, not hex.
+Note: Compatibility issue: old bots will be confused
+by adifferent msg hashing algo; need to keep electrum_sig_hash, for now.
+A base64 encoded signature is returned.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.ecdsa_verify">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">ecdsa_verify</tt><big>(</big><em>msg</em>, <em>sig</em>, <em>pub</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#ecdsa_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.ecdsa_verify" title="Permalink to this definition">¶</a></dt>
+<dd><p>The pubkey must be supplied in binary, not hex.
+The messages should not be pre-hashed. See the compatibility
+note to ecdsa_sign.
+True or False is returned.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.electrum_sig_hash">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">electrum_sig_hash</tt><big>(</big><em>message</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#electrum_sig_hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.electrum_sig_hash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.get_version_byte">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">get_version_byte</tt><big>(</big><em>inp</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#get_version_byte"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.get_version_byte" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.hash160">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">hash160</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#hash160"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.hash160" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.hash_to_int">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">hash_to_int</tt><big>(</big><em>x</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#hash_to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.hash_to_int" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.hex_to_b58check">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">hex_to_b58check</tt><big>(</big><em>inp</em>, <em>magicbyte=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#hex_to_b58check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.hex_to_b58check" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.hexbin">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">hexbin</tt><big>(</big><em>func</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#hexbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.hexbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>To enable each function to &#8216;speak&#8217; either hex or binary,
+requires that the decorated function&#8217;s final positional argument
+is a boolean flag, True for hex and False for binary.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.legacy_ecdsa_sign_convert">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">legacy_ecdsa_sign_convert</tt><big>(</big><em>dersig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#legacy_ecdsa_sign_convert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.legacy_ecdsa_sign_convert" title="Permalink to this definition">¶</a></dt>
+<dd><p>A sadly necessary hack until all joinmarket bots are running secp256k1 code.
+pybitcointools <em>message</em> signatures (not transaction signatures) used an old signature
+format, basically: [27+y%2] || 32 byte r || 32 byte s,
+instead of DER. These two functions translate the new version into the old so that 
+counterparty bots can verify successfully.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.legacy_ecdsa_verify_convert">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">legacy_ecdsa_verify_convert</tt><big>(</big><em>sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#legacy_ecdsa_verify_convert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.legacy_ecdsa_verify_convert" title="Permalink to this definition">¶</a></dt>
+<dd><p>See the documentation of legacy_ecdsa_sign_convert.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.multiply">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">multiply</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#multiply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.multiply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.num_to_var_int">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">num_to_var_int</tt><big>(</big><em>x</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#num_to_var_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.num_to_var_int" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.privkey_to_address">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">privkey_to_address</tt><big>(</big><em>priv</em>, <em>from_hex=True</em>, <em>magicbyte=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#privkey_to_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.privkey_to_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.privkey_to_pubkey">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">privkey_to_pubkey</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#privkey_to_pubkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.privkey_to_pubkey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.privtoaddr">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">privtoaddr</tt><big>(</big><em>priv</em>, <em>from_hex=True</em>, <em>magicbyte=0</em><big>)</big><a class="headerlink" href="#bitcoin.main.privtoaddr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.privtopub">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">privtopub</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#bitcoin.main.privtopub" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.pubkey_to_address">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">pubkey_to_address</tt><big>(</big><em>pubkey</em>, <em>magicbyte=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#pubkey_to_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.pubkey_to_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.pubtoaddr">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">pubtoaddr</tt><big>(</big><em>pubkey</em>, <em>magicbyte=0</em><big>)</big><a class="headerlink" href="#bitcoin.main.pubtoaddr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.random_electrum_seed">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">random_electrum_seed</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#random_electrum_seed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.random_electrum_seed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.random_key">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">random_key</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#random_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.random_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.read_privkey">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">read_privkey</tt><big>(</big><em>priv</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#read_privkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.read_privkey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.ripemd160">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">ripemd160</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#ripemd160"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.ripemd160" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.sha256">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">sha256</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#sha256"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.sha256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.slowsha">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">slowsha</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#slowsha"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.slowsha" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.main.wif_compressed_privkey">
+<tt class="descclassname">bitcoin.main.</tt><tt class="descname">wif_compressed_privkey</tt><big>(</big><em>priv</em>, <em>vbyte=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/main.html#wif_compressed_privkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.main.wif_compressed_privkey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a private key in binary, returns
+the WIF compressed format, used for privkey dumps.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.noncefunc_build">
+<span id="bitcoin-noncefunc-build-module"></span><h2>bitcoin.noncefunc_build module<a class="headerlink" href="#module-bitcoin.noncefunc_build" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-bitcoin.py2specials">
+<span id="bitcoin-py2specials-module"></span><h2>bitcoin.py2specials module<a class="headerlink" href="#module-bitcoin.py2specials" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.py2specials.bin_dbl_sha256">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">bin_dbl_sha256</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#bin_dbl_sha256"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.bin_dbl_sha256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.bin_to_b58check">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">bin_to_b58check</tt><big>(</big><em>inp</em>, <em>magicbyte=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#bin_to_b58check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.bin_to_b58check" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.bytes_to_hex_string">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">bytes_to_hex_string</tt><big>(</big><em>b</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#bytes_to_hex_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.bytes_to_hex_string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.changebase">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">changebase</tt><big>(</big><em>string</em>, <em>frm</em>, <em>to</em>, <em>minlen=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#changebase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.changebase" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.decode">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">decode</tt><big>(</big><em>string</em>, <em>base</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#decode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.decode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.encode">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">encode</tt><big>(</big><em>val</em>, <em>base</em>, <em>minlen=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.encode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.from_byte_to_int">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">from_byte_to_int</tt><big>(</big><em>a</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#from_byte_to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.from_byte_to_int" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.from_bytes_to_string">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">from_bytes_to_string</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#from_bytes_to_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.from_bytes_to_string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.from_int_representation_to_bytes">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">from_int_representation_to_bytes</tt><big>(</big><em>a</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#from_int_representation_to_bytes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.from_int_representation_to_bytes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.from_int_to_byte">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">from_int_to_byte</tt><big>(</big><em>a</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#from_int_to_byte"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.from_int_to_byte" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.from_string_to_bytes">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">from_string_to_bytes</tt><big>(</big><em>a</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#from_string_to_bytes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.from_string_to_bytes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.get_code_string">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">get_code_string</tt><big>(</big><em>base</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#get_code_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.get_code_string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.lpad">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">lpad</tt><big>(</big><em>msg</em>, <em>symbol</em>, <em>length</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#lpad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.lpad" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.random_string">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">random_string</tt><big>(</big><em>x</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#random_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.random_string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.safe_from_hex">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">safe_from_hex</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#safe_from_hex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.safe_from_hex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.py2specials.safe_hexlify">
+<tt class="descclassname">bitcoin.py2specials.</tt><tt class="descname">safe_hexlify</tt><big>(</big><em>a</em><big>)</big><a class="reference internal" href="_modules/bitcoin/py2specials.html#safe_hexlify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.py2specials.safe_hexlify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.py3specials">
+<span id="bitcoin-py3specials-module"></span><h2>bitcoin.py3specials module<a class="headerlink" href="#module-bitcoin.py3specials" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-bitcoin.ripemd">
+<span id="bitcoin-ripemd-module"></span><h2>bitcoin.ripemd module<a class="headerlink" href="#module-bitcoin.ripemd" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.ripemd.F0">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">F0</tt><big>(</big><em>x</em>, <em>y</em>, <em>z</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#F0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.F0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.F1">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">F1</tt><big>(</big><em>x</em>, <em>y</em>, <em>z</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#F1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.F1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.F2">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">F2</tt><big>(</big><em>x</em>, <em>y</em>, <em>z</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#F2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.F2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.F3">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">F3</tt><big>(</big><em>x</em>, <em>y</em>, <em>z</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#F3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.F3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.F4">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">F4</tt><big>(</big><em>x</em>, <em>y</em>, <em>z</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#F4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.F4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.R">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">R</tt><big>(</big><em>a</em>, <em>b</em>, <em>c</em>, <em>d</em>, <em>e</em>, <em>Fj</em>, <em>Kj</em>, <em>sj</em>, <em>rj</em>, <em>X</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#R"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.R" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="bitcoin.ripemd.RIPEMD160">
+<em class="property">class </em><tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">RIPEMD160</tt><big>(</big><em>arg=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RIPEMD160"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RIPEMD160" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new RIPEMD160 object. An optional string argument
+may be provided; if present, this string will be automatically
+hashed.</p>
+<dl class="method">
+<dt id="bitcoin.ripemd.RIPEMD160.copy">
+<tt class="descname">copy</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RIPEMD160.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RIPEMD160.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.ripemd.RIPEMD160.digest">
+<tt class="descname">digest</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RIPEMD160.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RIPEMD160.digest" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.ripemd.RIPEMD160.hexdigest">
+<tt class="descname">hexdigest</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RIPEMD160.hexdigest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RIPEMD160.hexdigest" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.ripemd.RIPEMD160.update">
+<tt class="descname">update</tt><big>(</big><em>arg</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RIPEMD160.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RIPEMD160.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.RMD160Final">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">RMD160Final</tt><big>(</big><em>ctx</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RMD160Final"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RMD160Final" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.RMD160Transform">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">RMD160Transform</tt><big>(</big><em>state</em>, <em>block</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RMD160Transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RMD160Transform" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.RMD160Update">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">RMD160Update</tt><big>(</big><em>ctx</em>, <em>inp</em>, <em>inplen</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RMD160Update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RMD160Update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="bitcoin.ripemd.RMDContext">
+<em class="property">class </em><tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">RMDContext</tt><a class="reference internal" href="_modules/bitcoin/ripemd.html#RMDContext"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RMDContext" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="bitcoin.ripemd.RMDContext.copy">
+<tt class="descname">copy</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#RMDContext.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.RMDContext.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.ROL">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">ROL</tt><big>(</big><em>n</em>, <em>x</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#ROL"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.ROL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.ripemd.new">
+<tt class="descclassname">bitcoin.ripemd.</tt><tt class="descname">new</tt><big>(</big><em>arg=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/ripemd.html#new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.ripemd.new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new RIPEMD160 object. An optional string argument
+may be provided; if present, this string will be automatically
+hashed.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.secp256k1">
+<span id="bitcoin-secp256k1-module"></span><h2>bitcoin.secp256k1 module<a class="headerlink" href="#module-bitcoin.secp256k1" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="bitcoin.secp256k1.Base">
+<em class="property">class </em><tt class="descclassname">bitcoin.secp256k1.</tt><tt class="descname">Base</tt><big>(</big><em>ctx</em>, <em>flags</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#Base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.Base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="bitcoin.secp256k1.ECDSA">
+<em class="property">class </em><tt class="descclassname">bitcoin.secp256k1.</tt><tt class="descname">ECDSA</tt><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_deserialize">
+<tt class="descname">ecdsa_deserialize</tt><big>(</big><em>ser_sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_deserialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_deserialize_compact">
+<tt class="descname">ecdsa_deserialize_compact</tt><big>(</big><em>ser_sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_deserialize_compact"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_deserialize_compact" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_recover">
+<tt class="descname">ecdsa_recover</tt><big>(</big><em>msg</em>, <em>recover_sig</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_recover"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_recover" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_recoverable_convert">
+<tt class="descname">ecdsa_recoverable_convert</tt><big>(</big><em>recover_sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_recoverable_convert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_recoverable_convert" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_recoverable_deserialize">
+<tt class="descname">ecdsa_recoverable_deserialize</tt><big>(</big><em>ser_sig</em>, <em>rec_id</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_recoverable_deserialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_recoverable_deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_recoverable_serialize">
+<tt class="descname">ecdsa_recoverable_serialize</tt><big>(</big><em>recover_sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_recoverable_serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_recoverable_serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_serialize">
+<tt class="descname">ecdsa_serialize</tt><big>(</big><em>raw_sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_serialize_compact">
+<tt class="descname">ecdsa_serialize_compact</tt><big>(</big><em>raw_sig</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_serialize_compact"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_serialize_compact" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.ECDSA.ecdsa_signature_normalize">
+<tt class="descname">ecdsa_signature_normalize</tt><big>(</big><em>raw_sig</em>, <em>check_only=False</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#ECDSA.ecdsa_signature_normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.ECDSA.ecdsa_signature_normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check and optionally convert a signature to a normalized lower-S form.
+If check_only is True then the normalized signature is not returned.</p>
+<p>This function always return a tuple containing a boolean (True if
+not previously normalized or False if signature was already
+normalized), and the normalized signature. When check_only is True,
+the normalized signature returned is always None.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="bitcoin.secp256k1.PrivateKey">
+<em class="property">class </em><tt class="descclassname">bitcoin.secp256k1.</tt><tt class="descname">PrivateKey</tt><big>(</big><em>privkey=None</em>, <em>raw=True</em>, <em>flags=769</em>, <em>ctx=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#bitcoin.secp256k1.Base" title="bitcoin.secp256k1.Base"><tt class="xref py py-class docutils literal"><span class="pre">bitcoin.secp256k1.Base</span></tt></a>, <a class="reference internal" href="#bitcoin.secp256k1.ECDSA" title="bitcoin.secp256k1.ECDSA"><tt class="xref py py-class docutils literal"><span class="pre">bitcoin.secp256k1.ECDSA</span></tt></a>, <a class="reference internal" href="#bitcoin.secp256k1.Schnorr" title="bitcoin.secp256k1.Schnorr"><tt class="xref py py-class docutils literal"><span class="pre">bitcoin.secp256k1.Schnorr</span></tt></a></p>
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.deserialize">
+<tt class="descname">deserialize</tt><big>(</big><em>privkey_ser</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.deserialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.ecdsa_sign">
+<tt class="descname">ecdsa_sign</tt><big>(</big><em>msg</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em>, <em>randnonce=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.ecdsa_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.ecdsa_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.ecdsa_sign_recoverable">
+<tt class="descname">ecdsa_sign_recoverable</tt><big>(</big><em>msg</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.ecdsa_sign_recoverable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.ecdsa_sign_recoverable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.schnorr_generate_nonce_pair">
+<tt class="descname">schnorr_generate_nonce_pair</tt><big>(</big><em>msg</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.schnorr_generate_nonce_pair"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.schnorr_generate_nonce_pair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a nonce pair deterministically for use with
+schnorr_partial_sign.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.schnorr_partial_sign">
+<tt class="descname">schnorr_partial_sign</tt><big>(</big><em>msg</em>, <em>privnonce</em>, <em>pubnonce_others</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.schnorr_partial_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.schnorr_partial_sign" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produce a partial Schnorr signature, which can be combined using
+schnorr_partial_combine to end up with a full signature that is
+verifiable using PublicKey.schnorr_verify.</p>
+<p>To combine pubnonces, use PublicKey.combine.</p>
+<p>Do not pass the pubnonce produced for the respective privnonce;
+combine the pubnonces from other signers and pass that instead.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.schnorr_sign">
+<tt class="descname">schnorr_sign</tt><big>(</big><em>msg</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.schnorr_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.schnorr_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>compressed=True</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.set_raw_privkey">
+<tt class="descname">set_raw_privkey</tt><big>(</big><em>privkey</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.set_raw_privkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.set_raw_privkey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PrivateKey.tweak_add">
+<tt class="descname">tweak_add</tt><big>(</big><em>scalar</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PrivateKey.tweak_add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PrivateKey.tweak_add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a 32 byte scalar to this private key and return the
+result, ensuring that the result is a valid private key also.
+Result is returned as 32 byte raw/scalar.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="bitcoin.secp256k1.PublicKey">
+<em class="property">class </em><tt class="descclassname">bitcoin.secp256k1.</tt><tt class="descname">PublicKey</tt><big>(</big><em>pubkey=None</em>, <em>raw=False</em>, <em>flags=257</em>, <em>ctx=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#bitcoin.secp256k1.Base" title="bitcoin.secp256k1.Base"><tt class="xref py py-class docutils literal"><span class="pre">bitcoin.secp256k1.Base</span></tt></a>, <a class="reference internal" href="#bitcoin.secp256k1.ECDSA" title="bitcoin.secp256k1.ECDSA"><tt class="xref py py-class docutils literal"><span class="pre">bitcoin.secp256k1.ECDSA</span></tt></a>, <a class="reference internal" href="#bitcoin.secp256k1.Schnorr" title="bitcoin.secp256k1.Schnorr"><tt class="xref py py-class docutils literal"><span class="pre">bitcoin.secp256k1.Schnorr</span></tt></a></p>
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.combine">
+<tt class="descname">combine</tt><big>(</big><em>pubkeys</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.combine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.combine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a number of public keys together.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.deserialize">
+<tt class="descname">deserialize</tt><big>(</big><em>pubkey_ser</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.deserialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.ecdh">
+<tt class="descname">ecdh</tt><big>(</big><em>scalar</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.ecdh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.ecdh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.ecdsa_verify">
+<tt class="descname">ecdsa_verify</tt><big>(</big><em>msg</em>, <em>raw_sig</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.ecdsa_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.ecdsa_verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.schnorr_verify">
+<tt class="descname">schnorr_verify</tt><big>(</big><em>msg</em>, <em>schnorr_sig</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.schnorr_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.schnorr_verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>compressed=True</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.PublicKey.tweak_mul">
+<tt class="descname">tweak_mul</tt><big>(</big><em>scalar</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#PublicKey.tweak_mul"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.PublicKey.tweak_mul" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply pubkey by 32 byte scalar.
+Return new public key object.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="bitcoin.secp256k1.Schnorr">
+<em class="property">class </em><tt class="descclassname">bitcoin.secp256k1.</tt><tt class="descname">Schnorr</tt><a class="reference internal" href="_modules/bitcoin/secp256k1.html#Schnorr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.Schnorr" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="bitcoin.secp256k1.Schnorr.schnorr_partial_combine">
+<tt class="descname">schnorr_partial_combine</tt><big>(</big><em>schnorr_sigs</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#Schnorr.schnorr_partial_combine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.Schnorr.schnorr_partial_combine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Combine multiple Schnorr partial signatures.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bitcoin.secp256k1.Schnorr.schnorr_recover">
+<tt class="descname">schnorr_recover</tt><big>(</big><em>msg</em>, <em>schnorr_sig</em>, <em>raw=False</em>, <em>digest=&lt;built-in function openssl_sha256&gt;</em><big>)</big><a class="reference internal" href="_modules/bitcoin/secp256k1.html#Schnorr.schnorr_recover"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.secp256k1.Schnorr.schnorr_recover" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin.transaction">
+<span id="bitcoin-transaction-module"></span><h2>bitcoin.transaction module<a class="headerlink" href="#module-bitcoin.transaction" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="bitcoin.transaction.address_to_script">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">address_to_script</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#address_to_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.address_to_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.apply_multisignatures">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">apply_multisignatures</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#apply_multisignatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.apply_multisignatures" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.bin_txhash">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">bin_txhash</tt><big>(</big><em>tx</em>, <em>hashcode=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#bin_txhash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.bin_txhash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.deserialize">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">deserialize</tt><big>(</big><em>tx</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#deserialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.deserialize_script">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">deserialize_script</tt><big>(</big><em>script</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#deserialize_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.deserialize_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.ecdsa_tx_sign">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">ecdsa_tx_sign</tt><big>(</big><em>tx</em>, <em>priv</em>, <em>hashcode=1</em>, <em>usenonce=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#ecdsa_tx_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.ecdsa_tx_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.ecdsa_tx_verify">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">ecdsa_tx_verify</tt><big>(</big><em>tx</em>, <em>sig</em>, <em>pub</em>, <em>hashcode=1</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#ecdsa_tx_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.ecdsa_tx_verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.is_inp">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">is_inp</tt><big>(</big><em>arg</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#is_inp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.is_inp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.json_changebase">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">json_changebase</tt><big>(</big><em>obj</em>, <em>changer</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#json_changebase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.json_changebase" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.json_is_base">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">json_is_base</tt><big>(</big><em>obj</em>, <em>base</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#json_is_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.json_is_base" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.mk_multisig_script">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">mk_multisig_script</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#mk_multisig_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.mk_multisig_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.mk_pubkey_script">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">mk_pubkey_script</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#mk_pubkey_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.mk_pubkey_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.mk_scripthash_script">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">mk_scripthash_script</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#mk_scripthash_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.mk_scripthash_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.mksend">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">mksend</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#mksend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.mksend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.mktx">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">mktx</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#mktx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.mktx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.multisign">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">multisign</tt><big>(</big><em>tx</em>, <em>i</em>, <em>script</em>, <em>pk</em>, <em>hashcode=1</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#multisign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.multisign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.p2sh_scriptaddr">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">p2sh_scriptaddr</tt><big>(</big><em>script</em>, <em>magicbyte=5</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#p2sh_scriptaddr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.p2sh_scriptaddr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.script_to_address">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">script_to_address</tt><big>(</big><em>script</em>, <em>vbyte=0</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#script_to_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.script_to_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.scriptaddr">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">scriptaddr</tt><big>(</big><em>script</em>, <em>magicbyte=5</em><big>)</big><a class="headerlink" href="#bitcoin.transaction.scriptaddr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.select">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">select</tt><big>(</big><em>unspent</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.select" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.serialize">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">serialize</tt><big>(</big><em>txobj</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.serialize_script">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">serialize_script</tt><big>(</big><em>script</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#serialize_script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.serialize_script" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.serialize_script_unit">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">serialize_script_unit</tt><big>(</big><em>unit</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#serialize_script_unit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.serialize_script_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.sign">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">sign</tt><big>(</big><em>tx</em>, <em>i</em>, <em>priv</em>, <em>hashcode=1</em>, <em>usenonce=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.signall">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">signall</tt><big>(</big><em>tx</em>, <em>priv</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#signall"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.signall" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.signature_form">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">signature_form</tt><big>(</big><em>tx</em>, <em>i</em>, <em>script</em>, <em>hashcode=1</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#signature_form"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.signature_form" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.txhash">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">txhash</tt><big>(</big><em>tx</em>, <em>hashcode=None</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#txhash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.txhash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="bitcoin.transaction.verify_tx_input">
+<tt class="descclassname">bitcoin.transaction.</tt><tt class="descname">verify_tx_input</tt><big>(</big><em>tx</em>, <em>i</em>, <em>script</em>, <em>sig</em>, <em>pub</em><big>)</big><a class="reference internal" href="_modules/bitcoin/transaction.html#verify_tx_input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bitcoin.transaction.verify_tx_input" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-bitcoin">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-bitcoin" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">bitcoin package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-bitcoin.bci">bitcoin.bci module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.build">bitcoin.build module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.deterministic">bitcoin.deterministic module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.main">bitcoin.main module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.noncefunc_build">bitcoin.noncefunc_build module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.py2specials">bitcoin.py2specials module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.py3specials">bitcoin.py3specials module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.ripemd">bitcoin.ripemd module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.secp256k1">bitcoin.secp256k1 module</a></li>
+<li><a class="reference internal" href="#module-bitcoin.transaction">bitcoin.transaction module</a></li>
+<li><a class="reference internal" href="#module-bitcoin">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/bitcoin.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

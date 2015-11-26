@@ -1,0 +1,543 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bitcoin.transaction &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bitcoin.transaction</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/python</span>
+<span class="kn">import</span> <span class="nn">binascii</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">copy</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">bitcoin.main</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">_functools</span> <span class="kn">import</span> <span class="nb">reduce</span>
+<span class="kn">import</span> <span class="nn">secp256k1</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<div class="viewcode-block" id="json_is_base"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.json_is_base">[docs]</a><span class="k">def</span> <span class="nf">json_is_base</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">base</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_python2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">get_code_string</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">alpha</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">int_types</span><span class="p">)</span> <span class="ow">or</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">json_is_base</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">base</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">json_is_base</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">base</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="json_changebase"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.json_changebase">[docs]</a><span class="k">def</span> <span class="nf">json_changebase</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">changer</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">string_or_bytes_types</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">changer</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">int_types</span><span class="p">)</span> <span class="ow">or</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">obj</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">json_changebase</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">changer</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">json_changebase</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">changer</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+
+<span class="c"># Transaction serialization and deserialization</span>
+
+</div>
+<div class="viewcode-block" id="deserialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.deserialize">[docs]</a><span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="c">#tx = bytes(bytearray.fromhex(tx))</span>
+        <span class="k">return</span> <span class="n">json_changebase</span><span class="p">(</span><span class="n">deserialize</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">tx</span><span class="p">)),</span>
+                              <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="c"># http://stackoverflow.com/questions/4851463/python-closure-write-to-variable-in-parent-scope</span>
+    <span class="c"># Python&#39;s scoping rules are demented, requiring me to make pos an object</span>
+    <span class="c"># so that it is call-by-reference</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">read_as_int</span><span class="p">(</span><span class="n">bytez</span><span class="p">):</span>
+        <span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">bytez</span>
+        <span class="k">return</span> <span class="n">decode</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">bytez</span><span class="p">:</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]][::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">256</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">read_var_int</span><span class="p">():</span>
+        <span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="n">val</span> <span class="o">=</span> <span class="n">from_byte_to_int</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">253</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">val</span>
+        <span class="k">return</span> <span class="n">read_as_int</span><span class="p">(</span><span class="nb">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">val</span> <span class="o">-</span> <span class="mi">252</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">read_bytes</span><span class="p">(</span><span class="n">bytez</span><span class="p">):</span>
+        <span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">bytez</span>
+        <span class="k">return</span> <span class="n">tx</span><span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">bytez</span><span class="p">:</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+    <span class="k">def</span> <span class="nf">read_var_string</span><span class="p">():</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">read_var_int</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">read_bytes</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="n">obj</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;ins&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&quot;outs&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="n">obj</span><span class="p">[</span><span class="s">&quot;version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read_as_int</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">ins</span> <span class="o">=</span> <span class="n">read_var_int</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ins</span><span class="p">):</span>
+        <span class="n">obj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s">&quot;outpoint&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;hash&quot;</span><span class="p">:</span> <span class="n">read_bytes</span><span class="p">(</span><span class="mi">32</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s">&quot;index&quot;</span><span class="p">:</span> <span class="n">read_as_int</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            <span class="p">},</span>
+            <span class="s">&quot;script&quot;</span><span class="p">:</span> <span class="n">read_var_string</span><span class="p">(),</span>
+            <span class="s">&quot;sequence&quot;</span><span class="p">:</span> <span class="n">read_as_int</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="p">})</span>
+    <span class="n">outs</span> <span class="o">=</span> <span class="n">read_var_int</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">outs</span><span class="p">):</span>
+        <span class="n">obj</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="n">read_as_int</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span>
+            <span class="s">&quot;script&quot;</span><span class="p">:</span> <span class="n">read_var_string</span><span class="p">()</span>
+        <span class="p">})</span>
+    <span class="n">obj</span><span class="p">[</span><span class="s">&quot;locktime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read_as_int</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">obj</span>
+</div>
+<div class="viewcode-block" id="serialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.serialize">[docs]</a><span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="n">txobj</span><span class="p">):</span>
+    <span class="c">#if isinstance(txobj, bytes):</span>
+    <span class="c">#    txobj = bytes_to_hex_string(txobj)</span>
+    <span class="n">o</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">json_is_base</span><span class="p">(</span><span class="n">txobj</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+        <span class="n">json_changedbase</span> <span class="o">=</span> <span class="n">json_changebase</span><span class="p">(</span><span class="n">txobj</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">hexlified</span> <span class="o">=</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">serialize</span><span class="p">(</span><span class="n">json_changedbase</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">hexlified</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">encode</span><span class="p">(</span><span class="n">txobj</span><span class="p">[</span><span class="s">&quot;version&quot;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">num_to_var_int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">txobj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">])))</span>
+    <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]:</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;outpoint&quot;</span><span class="p">][</span><span class="s">&quot;hash&quot;</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">encode</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;outpoint&quot;</span><span class="p">][</span><span class="s">&quot;index&quot;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">num_to_var_int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]))</span><span class="o">+</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">inp</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">is_python2</span> <span class="k">else</span> <span class="nb">bytes</span><span class="p">()))</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">encode</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="s">&quot;sequence&quot;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">num_to_var_int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">txobj</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">])))</span>
+    <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">]:</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">encode</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">8</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">num_to_var_int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]))</span><span class="o">+</span><span class="n">out</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">])</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">encode</span><span class="p">(</span><span class="n">txobj</span><span class="p">[</span><span class="s">&quot;locktime&quot;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_python2</span> <span class="k">else</span> <span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">,</span> <span class="n">o</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">())</span>
+
+<span class="c"># Hashing transactions for signing</span>
+</div>
+<span class="n">SIGHASH_ALL</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">SIGHASH_NONE</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">SIGHASH_SINGLE</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="c"># this works like SIGHASH_ANYONECANPAY | SIGHASH_ALL, might as well make it explicit while</span>
+<span class="c"># we fix the constant</span>
+<span class="n">SIGHASH_ANYONECANPAY</span> <span class="o">=</span> <span class="mh">0x81</span>
+
+
+<div class="viewcode-block" id="signature_form"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.signature_form">[docs]</a><span class="k">def</span> <span class="nf">signature_form</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="n">SIGHASH_ALL</span><span class="p">):</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">hashcode</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashcode</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">string_or_bytes_types</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">serialize</span><span class="p">(</span><span class="n">signature_form</span><span class="p">(</span><span class="n">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">),</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">))</span>
+    <span class="n">newtx</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="n">newtx</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]:</span>
+        <span class="n">inp</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="n">newtx</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">script</span>
+    <span class="k">if</span> <span class="n">hashcode</span> <span class="o">==</span> <span class="n">SIGHASH_NONE</span><span class="p">:</span>
+        <span class="n">newtx</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">elif</span> <span class="n">hashcode</span> <span class="o">==</span> <span class="n">SIGHASH_SINGLE</span><span class="p">:</span>
+        <span class="n">newtx</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">newtx</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">][:</span><span class="nb">len</span><span class="p">(</span><span class="n">newtx</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">])]</span>
+        <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">newtx</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">64</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">script</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="k">elif</span> <span class="n">hashcode</span> <span class="o">==</span> <span class="n">SIGHASH_ANYONECANPAY</span><span class="p">:</span>
+        <span class="n">newtx</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">newtx</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">]]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">newtx</span>
+</div>
+<div class="viewcode-block" id="txhash"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.txhash">[docs]</a><span class="k">def</span> <span class="nf">txhash</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">changebase</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">hashcode</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">dbl_sha256</span><span class="p">(</span><span class="n">from_string_to_bytes</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span> <span class="o">+</span> <span class="n">encode</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">hashcode</span><span class="p">),</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">bin_dbl_sha256</span><span class="p">(</span><span class="n">tx</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="bin_txhash"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.bin_txhash">[docs]</a><span class="k">def</span> <span class="nf">bin_txhash</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">txhash</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="ecdsa_tx_sign"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.ecdsa_tx_sign">[docs]</a><span class="k">def</span> <span class="nf">ecdsa_tx_sign</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">priv</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="n">SIGHASH_ALL</span><span class="p">,</span> <span class="n">usenonce</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">ecdsa_raw_sign</span><span class="p">(</span><span class="n">txhash</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">),</span> <span class="n">priv</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">rawmsg</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">usenonce</span><span class="o">=</span><span class="n">usenonce</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sig</span><span class="o">+</span><span class="n">encode</span><span class="p">(</span><span class="n">hashcode</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ecdsa_tx_verify"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.ecdsa_tx_verify">[docs]</a><span class="k">def</span> <span class="nf">ecdsa_tx_verify</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">pub</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="n">SIGHASH_ALL</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">ecdsa_raw_verify</span><span class="p">(</span><span class="n">txhash</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">),</span> <span class="n">pub</span><span class="p">,</span> <span class="n">sig</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="bp">True</span><span class="p">,</span> <span class="n">rawmsg</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c"># Scripts</span>
+</div>
+<div class="viewcode-block" id="mk_pubkey_script"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.mk_pubkey_script">[docs]</a><span class="k">def</span> <span class="nf">mk_pubkey_script</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
+    <span class="c"># Keep the auxiliary functions around for altcoins&#39; sake</span>
+    <span class="k">return</span> <span class="s">&#39;76a914&#39;</span> <span class="o">+</span> <span class="n">b58check_to_hex</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;88ac&#39;</span>
+
+</div>
+<div class="viewcode-block" id="mk_scripthash_script"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.mk_scripthash_script">[docs]</a><span class="k">def</span> <span class="nf">mk_scripthash_script</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;a914&#39;</span> <span class="o">+</span> <span class="n">b58check_to_hex</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;87&#39;</span>
+
+<span class="c"># Address representation to output script</span>
+
+</div>
+<div class="viewcode-block" id="address_to_script"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.address_to_script">[docs]</a><span class="k">def</span> <span class="nf">address_to_script</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">addr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;3&#39;</span> <span class="ow">or</span> <span class="n">addr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;2&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mk_scripthash_script</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mk_pubkey_script</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+
+<span class="c"># Output script to address representation</span>
+
+</div>
+<div class="viewcode-block" id="script_to_address"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.script_to_address">[docs]</a><span class="k">def</span> <span class="nf">script_to_address</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">vbyte</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">script</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x76\xa9\x14</span><span class="s">&#39;</span> <span class="ow">and</span> <span class="n">script</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span> <span class="o">==</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x88\xac</span><span class="s">&#39;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">script</span><span class="p">)</span> <span class="o">==</span> <span class="mi">25</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">bin_to_b58check</span><span class="p">(</span><span class="n">script</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">vbyte</span><span class="p">)</span>  <span class="c"># pubkey hash addresses</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">vbyte</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">111</span><span class="p">,</span> <span class="mi">196</span><span class="p">]:</span>
+            <span class="c"># Testnet</span>
+            <span class="n">scripthash_byte</span> <span class="o">=</span> <span class="mi">196</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scripthash_byte</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="c"># BIP0016 scripthash addresses</span>
+        <span class="k">return</span> <span class="n">bin_to_b58check</span><span class="p">(</span><span class="n">script</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">scripthash_byte</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="p2sh_scriptaddr"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.p2sh_scriptaddr">[docs]</a><span class="k">def</span> <span class="nf">p2sh_scriptaddr</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">magicbyte</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">hex_to_b58check</span><span class="p">(</span><span class="n">hash160</span><span class="p">(</span><span class="n">script</span><span class="p">),</span> <span class="n">magicbyte</span><span class="p">)</span></div>
+<span class="n">scriptaddr</span> <span class="o">=</span> <span class="n">p2sh_scriptaddr</span>
+
+
+<div class="viewcode-block" id="deserialize_script"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.deserialize_script">[docs]</a><span class="k">def</span> <span class="nf">deserialize_script</span><span class="p">(</span><span class="n">script</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+       <span class="k">return</span> <span class="n">json_changebase</span><span class="p">(</span><span class="n">deserialize_script</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">script</span><span class="p">)),</span>
+                              <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="n">out</span><span class="p">,</span> <span class="n">pos</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">pos</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">script</span><span class="p">):</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="n">from_byte_to_int</span><span class="p">(</span><span class="n">script</span><span class="p">[</span><span class="n">pos</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">code</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+            <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">code</span> <span class="o">&lt;=</span> <span class="mi">75</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">script</span><span class="p">[</span><span class="n">pos</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">pos</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="n">code</span><span class="p">])</span>
+            <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">code</span>
+        <span class="k">elif</span> <span class="n">code</span> <span class="o">&lt;=</span> <span class="mi">78</span><span class="p">:</span>
+            <span class="n">szsz</span> <span class="o">=</span> <span class="nb">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">code</span> <span class="o">-</span> <span class="mi">76</span><span class="p">)</span>
+            <span class="n">sz</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">script</span><span class="p">[</span><span class="n">pos</span><span class="o">+</span><span class="n">szsz</span><span class="p">:</span> <span class="n">pos</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">256</span><span class="p">)</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">script</span><span class="p">[</span><span class="n">pos</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">szsz</span><span class="p">:</span><span class="n">pos</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">szsz</span> <span class="o">+</span> <span class="n">sz</span><span class="p">])</span>
+            <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">szsz</span> <span class="o">+</span> <span class="n">sz</span>
+        <span class="k">elif</span> <span class="n">code</span> <span class="o">&lt;=</span> <span class="mi">96</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">code</span> <span class="o">-</span> <span class="mi">80</span><span class="p">)</span>
+            <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+            <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+</div>
+<div class="viewcode-block" id="serialize_script_unit"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.serialize_script_unit">[docs]</a><span class="k">def</span> <span class="nf">serialize_script_unit</span><span class="p">(</span><span class="n">unit</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">&lt;</span> <span class="mi">16</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">from_int_to_byte</span><span class="p">(</span><span class="n">unit</span> <span class="o">+</span> <span class="mi">80</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">bytes</span><span class="p">([</span><span class="n">unit</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">unit</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">75</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">from_int_to_byte</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span><span class="o">+</span><span class="n">unit</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">256</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">from_int_to_byte</span><span class="p">(</span><span class="mi">76</span><span class="p">)</span><span class="o">+</span><span class="n">from_int_to_byte</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span><span class="o">+</span><span class="n">unit</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">65536</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">from_int_to_byte</span><span class="p">(</span><span class="mi">77</span><span class="p">)</span><span class="o">+</span><span class="n">encode</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">),</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">2</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">unit</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">from_int_to_byte</span><span class="p">(</span><span class="mi">78</span><span class="p">)</span><span class="o">+</span><span class="n">encode</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unit</span><span class="p">),</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">unit</span>
+
+</div>
+<span class="k">if</span> <span class="n">is_python2</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">serialize_script</span><span class="p">(</span><span class="n">script</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">json_is_base</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">serialize_script</span><span class="p">(</span><span class="n">json_changebase</span><span class="p">(</span><span class="n">script</span><span class="p">,</span>
+                                    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">x</span><span class="p">))))</span>
+        <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">serialize_script_unit</span><span class="p">,</span> <span class="n">script</span><span class="p">))</span>
+<span class="k">else</span><span class="p">:</span>
+<div class="viewcode-block" id="serialize_script"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.serialize_script">[docs]</a>    <span class="k">def</span> <span class="nf">serialize_script</span><span class="p">(</span><span class="n">script</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">json_is_base</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">serialize_script</span><span class="p">(</span><span class="n">json_changebase</span><span class="p">(</span><span class="n">script</span><span class="p">,</span>
+                                    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">x</span><span class="p">))))</span>
+        
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="n">serialize_script_unit</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">+=</span> <span class="n">b</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+</div>
+<div class="viewcode-block" id="mk_multisig_script"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.mk_multisig_script">[docs]</a><span class="k">def</span> <span class="nf">mk_multisig_script</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>  <span class="c"># [pubs],k or pub1,pub2...pub[n],k</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">pubs</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pubs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">args</span><span class="p">))</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">pubs</span><span class="p">)])</span>
+    <span class="k">return</span> <span class="n">serialize_script</span><span class="p">([</span><span class="n">k</span><span class="p">]</span><span class="o">+</span><span class="n">pubs</span><span class="o">+</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">pubs</span><span class="p">)])</span> <span class="o">+</span> <span class="s">&#39;ae&#39;</span>
+
+<span class="c"># Signing and verifying</span>
+
+</div>
+<div class="viewcode-block" id="verify_tx_input"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.verify_tx_input">[docs]</a><span class="k">def</span> <span class="nf">verify_tx_input</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">pub</span><span class="p">):</span>
+    <span class="k">print</span> <span class="s">&#39;using script: &#39;</span><span class="o">+</span><span class="n">script</span>
+    <span class="k">print</span> <span class="s">&#39;using sig: &#39;</span><span class="o">+</span><span class="n">sig</span>
+    <span class="k">print</span> <span class="s">&#39;using pub: &#39;</span><span class="o">+</span><span class="n">pub</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">pub</span><span class="p">):</span>
+        <span class="n">pub</span> <span class="o">=</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">pub</span><span class="p">)</span>
+    <span class="n">hashcode</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">sig</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="n">modtx</span> <span class="o">=</span> <span class="n">signature_form</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">script</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ecdsa_tx_verify</span><span class="p">(</span><span class="n">modtx</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">pub</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="sign"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.sign">[docs]</a><span class="k">def</span> <span class="nf">sign</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">priv</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="n">SIGHASH_ALL</span><span class="p">,</span> <span class="n">usenonce</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">is_python2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">re</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">))</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">sign</span><span class="p">(</span><span class="n">safe_hexlify</span><span class="p">(</span><span class="n">tx</span><span class="p">),</span> <span class="n">i</span><span class="p">,</span> <span class="n">priv</span><span class="p">))</span>
+    <span class="n">pub</span> <span class="o">=</span> <span class="n">privkey_to_pubkey</span><span class="p">(</span><span class="n">priv</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+    <span class="n">address</span> <span class="o">=</span> <span class="n">pubkey_to_address</span><span class="p">(</span><span class="n">pub</span><span class="p">)</span>
+    <span class="n">signing_tx</span> <span class="o">=</span> <span class="n">signature_form</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">mk_pubkey_script</span><span class="p">(</span><span class="n">address</span><span class="p">),</span> <span class="n">hashcode</span><span class="p">)</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">ecdsa_tx_sign</span><span class="p">(</span><span class="n">signing_tx</span><span class="p">,</span> <span class="n">priv</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">,</span> <span class="n">usenonce</span><span class="o">=</span><span class="n">usenonce</span><span class="p">)</span>
+    <span class="n">txobj</span> <span class="o">=</span> <span class="n">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+    <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">serialize_script</span><span class="p">([</span><span class="n">sig</span><span class="p">,</span> <span class="n">pub</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">serialize</span><span class="p">(</span><span class="n">txobj</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="signall"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.signall">[docs]</a><span class="k">def</span> <span class="nf">signall</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">priv</span><span class="p">):</span>
+    <span class="c"># if priv is a dictionary, assume format is</span>
+    <span class="c"># { &#39;txinhash:txinidx&#39; : privkey }</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">priv</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">e</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">)[</span><span class="s">&quot;ins&quot;</span><span class="p">]):</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">priv</span><span class="p">[</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">:</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s">&quot;outpoint&quot;</span><span class="p">][</span><span class="s">&quot;hash&quot;</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="s">&quot;outpoint&quot;</span><span class="p">][</span><span class="s">&quot;index&quot;</span><span class="p">])]</span>
+            <span class="n">tx</span> <span class="o">=</span> <span class="n">sign</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">)[</span><span class="s">&quot;ins&quot;</span><span class="p">])):</span>
+            <span class="n">tx</span> <span class="o">=</span> <span class="n">sign</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">priv</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tx</span>
+
+</div>
+<div class="viewcode-block" id="multisign"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.multisign">[docs]</a><span class="k">def</span> <span class="nf">multisign</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">pk</span><span class="p">,</span> <span class="n">hashcode</span><span class="o">=</span><span class="n">SIGHASH_ALL</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+    <span class="n">modtx</span> <span class="o">=</span> <span class="n">signature_form</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ecdsa_tx_sign</span><span class="p">(</span><span class="n">modtx</span><span class="p">,</span> <span class="n">pk</span><span class="p">,</span> <span class="n">hashcode</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="apply_multisignatures"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.apply_multisignatures">[docs]</a><span class="k">def</span> <span class="nf">apply_multisignatures</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c"># tx,i,script,sigs OR tx,i,script,sig1,sig2...,sig[n]</span>
+    <span class="n">tx</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">sigs</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">3</span><span class="p">:])</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">):</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+    <span class="n">sigs</span> <span class="o">=</span> <span class="p">[</span><span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;30&#39;</span> <span class="k">else</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">sigs</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">apply_multisignatures</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">tx</span><span class="p">),</span> <span class="n">i</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">sigs</span><span class="p">))</span>
+
+    <span class="n">txobj</span> <span class="o">=</span> <span class="n">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+    <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">serialize_script</span><span class="p">([</span><span class="bp">None</span><span class="p">]</span><span class="o">+</span><span class="n">sigs</span><span class="o">+</span><span class="p">[</span><span class="n">script</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">serialize</span><span class="p">(</span><span class="n">txobj</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="is_inp"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.is_inp">[docs]</a><span class="k">def</span> <span class="nf">is_inp</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">64</span> <span class="ow">or</span> <span class="s">&quot;output&quot;</span> <span class="ow">in</span> <span class="n">arg</span> <span class="ow">or</span> <span class="s">&quot;outpoint&quot;</span> <span class="ow">in</span> <span class="n">arg</span>
+
+</div>
+<div class="viewcode-block" id="mktx"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.mktx">[docs]</a><span class="k">def</span> <span class="nf">mktx</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c"># [in0, in1...],[out0, out1...] or in0, in1 ... out0 out1 ...</span>
+    <span class="n">ins</span><span class="p">,</span> <span class="n">outs</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">:</span> <span class="p">(</span><span class="n">ins</span> <span class="k">if</span> <span class="n">is_inp</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">else</span> <span class="n">outs</span><span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">ins</span> <span class="k">if</span> <span class="n">is_inp</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">else</span> <span class="n">outs</span><span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+
+    <span class="n">txobj</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;locktime&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&quot;version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;ins&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&quot;outs&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ins</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s">&quot;outpoint&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+            <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s">&quot;output&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="s">&quot;output&quot;</span><span class="p">]</span>
+            <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;ins&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s">&quot;outpoint&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;hash&quot;</span><span class="p">:</span> <span class="n">i</span><span class="p">[:</span><span class="mi">64</span><span class="p">],</span> <span class="s">&quot;index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">65</span><span class="p">:])},</span>
+                <span class="s">&quot;script&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span>
+                <span class="s">&quot;sequence&quot;</span><span class="p">:</span> <span class="mi">4294967295</span>
+            <span class="p">})</span>
+    <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">string_or_bytes_types</span><span class="p">):</span>
+            <span class="n">addr</span> <span class="o">=</span> <span class="n">o</span><span class="p">[:</span><span class="n">o</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)]</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="n">o</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+                <span class="n">o</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">addr</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">o</span><span class="p">[</span><span class="s">&quot;address&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">addr</span>
+            <span class="n">o</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+        <span class="n">outobj</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="s">&quot;address&quot;</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+            <span class="n">outobj</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">address_to_script</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s">&quot;address&quot;</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="s">&quot;script&quot;</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+            <span class="n">outobj</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span><span class="p">[</span><span class="s">&quot;script&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Could not find &#39;address&#39; or &#39;script&#39; in output.&quot;</span><span class="p">)</span>
+        <span class="n">outobj</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span>
+        <span class="n">txobj</span><span class="p">[</span><span class="s">&quot;outs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">outobj</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">serialize</span><span class="p">(</span><span class="n">txobj</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="select"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.select">[docs]</a><span class="k">def</span> <span class="nf">select</span><span class="p">(</span><span class="n">unspent</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">high</span> <span class="o">=</span> <span class="p">[</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent</span> <span class="k">if</span> <span class="n">u</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">value</span><span class="p">]</span>
+    <span class="n">high</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">u</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">])</span>
+    <span class="n">low</span> <span class="o">=</span> <span class="p">[</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent</span> <span class="k">if</span> <span class="n">u</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">value</span><span class="p">]</span>
+    <span class="n">low</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">u</span><span class="p">:</span> <span class="o">-</span><span class="n">u</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">high</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">high</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">tv</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">tv</span> <span class="o">&lt;</span> <span class="n">value</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">low</span><span class="p">):</span>
+        <span class="n">tv</span> <span class="o">+=</span> <span class="n">low</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s">&quot;value&quot;</span><span class="p">]</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">tv</span> <span class="o">&lt;</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Not enough funds&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">low</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span>
+
+<span class="c"># Only takes inputs of the form { &quot;output&quot;: blah, &quot;value&quot;: foo }</span>
+
+</div>
+<div class="viewcode-block" id="mksend"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.transaction.mksend">[docs]</a><span class="k">def</span> <span class="nf">mksend</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">argz</span><span class="p">,</span> <span class="n">change</span><span class="p">,</span> <span class="n">fee</span> <span class="o">=</span> <span class="n">args</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ins</span><span class="p">,</span> <span class="n">outs</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">argz</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">:</span>
+                <span class="p">(</span><span class="n">ins</span> <span class="k">if</span> <span class="n">is_inp</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">else</span> <span class="n">outs</span><span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">ins</span> <span class="k">if</span> <span class="n">is_inp</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">else</span> <span class="n">outs</span><span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+
+    <span class="n">isum</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ins</span><span class="p">])</span>
+    <span class="n">osum</span><span class="p">,</span> <span class="n">outputs2</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+            <span class="n">o2</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s">&quot;address&quot;</span><span class="p">:</span> <span class="n">o</span><span class="p">[:</span><span class="n">o</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)],</span>
+                <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">o2</span> <span class="o">=</span> <span class="n">o</span>
+        <span class="n">outputs2</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">o2</span><span class="p">)</span>
+        <span class="n">osum</span> <span class="o">+=</span> <span class="n">o2</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">isum</span> <span class="o">&lt;</span> <span class="n">osum</span><span class="o">+</span><span class="n">fee</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Not enough money&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">isum</span> <span class="o">&gt;</span> <span class="n">osum</span><span class="o">+</span><span class="n">fee</span><span class="o">+</span><span class="mi">5430</span><span class="p">:</span>
+        <span class="n">outputs2</span> <span class="o">+=</span> <span class="p">[{</span><span class="s">&quot;address&quot;</span><span class="p">:</span> <span class="n">change</span><span class="p">,</span> <span class="s">&quot;value&quot;</span><span class="p">:</span> <span class="n">isum</span><span class="o">-</span><span class="n">osum</span><span class="o">-</span><span class="n">fee</span><span class="p">}]</span>
+
+    <span class="k">return</span> <span class="n">mktx</span><span class="p">(</span><span class="n">ins</span><span class="p">,</span> <span class="n">outputs2</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

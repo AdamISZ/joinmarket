@@ -9,6 +9,7 @@ import enc_wrapper
 import binascii
 
 class CoinJoinOrder(object):
+	"""An encapsulation of a Coinjoin transaction from maker side."""
 	def __init__(self, maker, nick, oid, amount, taker_pk):
 		self.maker = maker
 		self.oid = oid
@@ -58,6 +59,10 @@ class CoinJoinOrder(object):
 		self.maker.msgchan.send_pubkey(nick, self.kp.hex_pk())
 		
 	def auth_counterparty(self, nick, i_utxo_pubkey, btc_sig):
+		"""On receiving btc pubkey i_utxo_pubkey and btc_sig
+		from taker, check that the signature verifies as being
+		of the message consisting of the taker's nacl pubkey.
+		(Note: this is likely to be modified soon)"""
 		self.i_utxo_pubkey = i_utxo_pubkey
 		
 		if not btc.ecdsa_verify(self.taker_pk, btc_sig, binascii.unhexlify(self.i_utxo_pubkey)):
@@ -74,6 +79,8 @@ class CoinJoinOrder(object):
 		return True
 	
 	def recv_tx(self, nick, txhex):
+		"""On receiving an incomplete transaction txhex
+		from taker, sign our inputs and send the signatures back."""
 		try:
 			self.tx = btc.deserialize(txhex)
 		except IndexError as e:
@@ -101,6 +108,9 @@ class CoinJoinOrder(object):
 		self.maker.active_orders[nick] = None
 
 	def unconfirm_callback(self, txd, txid):
+		"""On being notified of the unconfirmed
+		transaction on the blockchain, modify the
+		maker's orders appropriately."""
 		self.maker.wallet_unspent_lock.acquire()
 		try:
 			removed_utxos = self.maker.wallet.remove_old_utxos(self.tx)
@@ -111,6 +121,9 @@ class CoinJoinOrder(object):
 		self.maker.modify_orders(to_cancel, to_announce)
 
 	def confirm_callback(self, txd, txid, confirmations):
+		"""On being notified of the confirmation of the
+		transaction on the blockchain, update the maker's
+		orders appropriately."""
 		self.maker.wallet_unspent_lock.acquire()
 		try:
 			common.bc_interface.sync_unspent(self.maker.wallet)
@@ -123,6 +136,11 @@ class CoinJoinOrder(object):
 		self.maker.modify_orders(to_cancel, to_announce)
 
 	def verify_unsigned_tx(self, txd):
+		"""First, verify that the earlier provided btc signature
+		of the taker's nacl pubkey corresponds to one of the inputs.
+		Then, check that our utxos are in the transaction, and that
+		our expected coinjoin output and change output is contained.
+		Return True,None if all checks met, or False,errmsg if not."""
 		tx_utxo_set = set([ins['outpoint']['hash'] + ':' \
 		                   + str(ins['outpoint']['index']) for ins in txd['ins']])
 		#complete authentication: check the tx input uses the authing pubkey
@@ -165,6 +183,8 @@ class CJMakerOrderError(StandardError):
 	pass
 
 class Maker(CoinJoinerPeer):
+	"""A Joinmarket entity which provides liquidity
+	by publishing orders in the orderbook. ('Liquidity maker')."""
 	def __init__(self, msgchan, wallet):
 		CoinJoinerPeer.__init__(self, msgchan)
 		self.msgchan.register_channel_callbacks(self.on_welcome, self.on_set_topic,
@@ -180,6 +200,8 @@ class Maker(CoinJoinerPeer):
 		self.wallet_unspent_lock = threading.Lock()
 
 	def get_crypto_box_from_nick(self, nick):
+		"""Return the nacl crypto Box encapsulating
+		encrypted messaging with the counterparty 'nick'. """		
 		if nick not in self.active_orders:
 			debug('wrong ordering of protocol events, no crypto object, nick=' + nick)
 			return None
@@ -187,9 +209,13 @@ class Maker(CoinJoinerPeer):
 			return self.active_orders[nick].crypto_box
 
 	def on_orderbook_requested(self, nick):
+		"""Send our orders to any requesting
+		counterparty in a direct (private) message."""
 		self.msgchan.announce_orders(self.orderlist, nick)
 
 	def on_order_fill(self, nick, oid, amount, taker_pubkey):
+		"""On reception of a !fill message from a counterparty,
+		instantiate a CoinJoinOrder object to start a new transaction."""
 		if nick in self.active_orders and self.active_orders[nick] != None:
 			self.active_orders[nick] = None
 			debug('had a partially filled order but starting over now')
@@ -200,6 +226,9 @@ class Maker(CoinJoinerPeer):
 			self.wallet_unspent_lock.release()
 
 	def on_seen_auth(self, nick, pubkey, sig):
+		"""On reception of an !auth message from a taker,
+		check that the signature sig is valid w.r.t. the message
+		nacl pubkey and the bitcoin pubkey 'pubkey'."""
 		if nick not in self.active_orders or self.active_orders[nick] == None:
 			self.msgchan.send_error(nick, 'No open order from this nick')
 		self.active_orders[nick].auth_counterparty(nick, pubkey, sig)
@@ -207,6 +236,8 @@ class Maker(CoinJoinerPeer):
 		# and send an error
 
 	def on_seen_tx(self, nick, txhex):
+		"""Receive a transaction txhex from the maker
+		and pass it to the current CoinJoinOrder.recv_tx()"""
 		if nick not in self.active_orders or self.active_orders[nick] == None:
 			self.msgchan.send_error(nick, 'No open order from this nick')
 		self.wallet_unspent_lock.acquire()
@@ -232,6 +263,9 @@ class Maker(CoinJoinerPeer):
                         del self.active_orders[nick]
 
 	def modify_orders(self, to_cancel, to_announce):
+		"""Take two lists of orders to be cancelled and
+		to be announced and pass the appropriate messages
+		to be broadcast to the messagechannel object."""
 		debug('modifying orders. to_cancel=' + str(to_cancel) + '\nto_announce=' + str(to_announce))
 		for oid in to_cancel:
 			order = [o for o in self.orderlist if o['oid'] == oid]
@@ -258,15 +292,15 @@ class Maker(CoinJoinerPeer):
 	def create_my_orders(self):
 
 		'''
-		#tells the highest value possible made by combining all utxos
-		#fee is 0.2% of the cj amount
+		Tells the highest value possible made by combining all utxos.
+		fee is 0.2% of the cj amount
 		total_value = 0
 		for utxo, addrvalue in self.wallet.unspent.iteritems():
 			total_value += addrvalue['value']
 
 		order = {'oid': 0, 'ordertype': 'relorder', 'minsize': 0,
 			'maxsize': total_value, 'txfee': 10000, 'cjfee': '0.002'}
-		return [order]
+		Returns [order]
 		'''
 
 		#each utxo is a single absolute-fee order
@@ -303,9 +337,10 @@ class Maker(CoinJoinerPeer):
 		self.nextoid += 1
 		return self.nextoid
 
-	#gets called when the tx is seen on the network
-	#must return which orders to cancel or recreate
 	def on_tx_unconfirmed(self, cjorder, txid, removed_utxos):
+		"""Called when the tx is seen on the network
+		must return which orders to cancel or recreate
+		"""
 		return ([cjorder.oid], [])
 
 	#gets called when the tx is included in a block

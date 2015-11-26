@@ -1,0 +1,419 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>common module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-common">
+<span id="common-module"></span><h1>common module<a class="headerlink" href="#module-common" title="Permalink to this headline">¶</a></h1>
+<p>This module contains widely used functions
+including the Joinmarket Wallet classes.</p>
+<dl class="class">
+<dt id="common.AbstractWallet">
+<em class="property">class </em><tt class="descclassname">common.</tt><tt class="descname">AbstractWallet</tt><a class="reference internal" href="_modules/common.html#AbstractWallet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Abstract wallet for use with JoinMarket
+Mostly written with class Wallet in mind, 
+the default JoinMarket HD wallet.</p>
+<dl class="method">
+<dt id="common.AbstractWallet.add_new_utxos">
+<tt class="descname">add_new_utxos</tt><big>(</big><em>tx</em>, <em>txid</em><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.add_new_utxos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.add_new_utxos" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.get_balance_by_mixdepth">
+<tt class="descname">get_balance_by_mixdepth</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.get_balance_by_mixdepth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.get_balance_by_mixdepth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.get_change_addr">
+<tt class="descname">get_change_addr</tt><big>(</big><em>mixing_depth</em><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.get_change_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.get_change_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.get_key_from_addr">
+<tt class="descname">get_key_from_addr</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.get_key_from_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.get_key_from_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.get_utxos_by_mixdepth">
+<tt class="descname">get_utxos_by_mixdepth</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.get_utxos_by_mixdepth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.get_utxos_by_mixdepth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.remove_old_utxos">
+<tt class="descname">remove_old_utxos</tt><big>(</big><em>tx</em><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.remove_old_utxos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.remove_old_utxos" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.select_utxos">
+<tt class="descname">select_utxos</tt><big>(</big><em>mixdepth</em>, <em>amount</em><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.select_utxos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.select_utxos" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.AbstractWallet.update_cache_index">
+<tt class="descname">update_cache_index</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#AbstractWallet.update_cache_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.AbstractWallet.update_cache_index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="common.BitcoinCoreWallet">
+<em class="property">class </em><tt class="descclassname">common.</tt><tt class="descname">BitcoinCoreWallet</tt><big>(</big><em>fromaccount</em><big>)</big><a class="reference internal" href="_modules/common.html#BitcoinCoreWallet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.BitcoinCoreWallet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#common.AbstractWallet" title="common.AbstractWallet"><tt class="xref py py-class docutils literal"><span class="pre">common.AbstractWallet</span></tt></a></p>
+<p>An implementation of Wallet which uses coins in Bitcoin Core&#8217;s own wallet,
+rather than JoinMarket&#8217;s HD wallet. &#8216;</p>
+<dl class="method">
+<dt id="common.BitcoinCoreWallet.ensure_wallet_unlocked">
+<tt class="descname">ensure_wallet_unlocked</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#BitcoinCoreWallet.ensure_wallet_unlocked"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.BitcoinCoreWallet.ensure_wallet_unlocked" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allows user to unlock wallet by entering decryption
+password on the command line.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.BitcoinCoreWallet.get_change_addr">
+<tt class="descname">get_change_addr</tt><big>(</big><em>mixing_depth</em><big>)</big><a class="reference internal" href="_modules/common.html#BitcoinCoreWallet.get_change_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.BitcoinCoreWallet.get_change_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.BitcoinCoreWallet.get_key_from_addr">
+<tt class="descname">get_key_from_addr</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/common.html#BitcoinCoreWallet.get_key_from_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.BitcoinCoreWallet.get_key_from_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.BitcoinCoreWallet.get_utxos_by_mixdepth">
+<tt class="descname">get_utxos_by_mixdepth</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#BitcoinCoreWallet.get_utxos_by_mixdepth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.BitcoinCoreWallet.get_utxos_by_mixdepth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="common.Wallet">
+<em class="property">class </em><tt class="descclassname">common.</tt><tt class="descname">Wallet</tt><big>(</big><em>seedarg</em>, <em>max_mix_depth=2</em>, <em>gaplimit=6</em>, <em>extend_mixdepth=False</em>, <em>storepassword=False</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#common.AbstractWallet" title="common.AbstractWallet"><tt class="xref py py-class docutils literal"><span class="pre">common.AbstractWallet</span></tt></a></p>
+<dl class="method">
+<dt id="common.Wallet.add_new_utxos">
+<tt class="descname">add_new_utxos</tt><big>(</big><em>tx</em>, <em>txid</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.add_new_utxos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.add_new_utxos" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_addr">
+<tt class="descname">get_addr</tt><big>(</big><em>mixing_depth</em>, <em>forchange</em>, <em>i</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_change_addr">
+<tt class="descname">get_change_addr</tt><big>(</big><em>mixing_depth</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_change_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_change_addr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the next address on the &#8220;change&#8221; branch
+for this mixing depth.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_key">
+<tt class="descname">get_key</tt><big>(</big><em>mixing_depth</em>, <em>forchange</em>, <em>i</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_key_from_addr">
+<tt class="descname">get_key_from_addr</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_key_from_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_key_from_addr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the private key for the address addr.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_new_addr">
+<tt class="descname">get_new_addr</tt><big>(</big><em>mixing_depth</em>, <em>forchange</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_new_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_new_addr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the next unused address at the mixdepth
+mixing_depth and the change branch (1/0) forchange.
+The index pointer is moved forward by 1.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_receive_addr">
+<tt class="descname">get_receive_addr</tt><big>(</big><em>mixing_depth</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_receive_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_receive_addr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the next address on the &#8220;receive&#8221; branch
+for this mixing depth.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.get_utxos_by_mixdepth">
+<tt class="descname">get_utxos_by_mixdepth</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.get_utxos_by_mixdepth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.get_utxos_by_mixdepth" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns a list of utxos sorted by different mix levels</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.read_wallet_file_data">
+<tt class="descname">read_wallet_file_data</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.read_wallet_file_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.read_wallet_file_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.remove_old_utxos">
+<tt class="descname">remove_old_utxos</tt><big>(</big><em>tx</em><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.remove_old_utxos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.remove_old_utxos" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove utxos in the transaction tx
+from the wallet internal utxo list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="common.Wallet.update_cache_index">
+<tt class="descname">update_cache_index</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#Wallet.update_cache_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.Wallet.update_cache_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value of the index pointer
+at each mixdepth in the wallet file, so 
+it can be picked up correctly on restart.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="common.calc_cj_fee">
+<tt class="descclassname">common.</tt><tt class="descname">calc_cj_fee</tt><big>(</big><em>ordertype</em>, <em>cjfee</em>, <em>cj_amount</em><big>)</big><a class="reference internal" href="_modules/common.html#calc_cj_fee"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.calc_cj_fee" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the actual coinjoin fee in satoshis
+given the ordertype (currently relorder or absorder),
+the cjfee parameter (which in some cases is a decimal ratio),
+and the actual coinjoin amount in satoshis.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.cheapest_order_choose">
+<tt class="descclassname">common.</tt><tt class="descname">cheapest_order_choose</tt><big>(</big><em>orders</em>, <em>n</em>, <em>feekey</em><big>)</big><a class="reference internal" href="_modules/common.html#cheapest_order_choose"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.cheapest_order_choose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the cheapest order from the orders.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.choose_orders">
+<tt class="descclassname">common.</tt><tt class="descname">choose_orders</tt><big>(</big><em>db</em>, <em>cj_amount</em>, <em>n</em>, <em>chooseOrdersBy</em>, <em>ignored_makers=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/common.html#choose_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.choose_orders" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given the database of current orders db, the coinjoin amount cj_amount,
+an order choice algorithm function chooseOrdersBy and optionally a list of 
+counterparties to ignore in ignore_makers, return a dict of chosen orders
+and the total coinjoin fee that would be applied in case this selection
+is accepted.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.choose_sweep_orders">
+<tt class="descclassname">common.</tt><tt class="descname">choose_sweep_orders</tt><big>(</big><em>db</em>, <em>total_input_value</em>, <em>total_txfee</em>, <em>n</em>, <em>chooseOrdersBy</em>, <em>ignored_makers=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/common.html#choose_sweep_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.choose_sweep_orders" title="Permalink to this definition">¶</a></dt>
+<dd><p>choose an order given that we want to be left with no change
+i.e. sweep an entire group of utxos</p>
+<p>solve for cjamount when mychange = 0
+for an order with many makers, a mixture of absorder and relorder
+mychange = totalin - cjamount - total_txfee - sum(absfee) - sum(relfee*cjamount)
+=&gt; 0 = totalin - mytxfee - sum(absfee) - cjamount*(1 + sum(relfee))
+=&gt; cjamount = (totalin - mytxfee - sum(absfee)) / (1 + sum(relfee))</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.chunks">
+<tt class="descclassname">common.</tt><tt class="descname">chunks</tt><big>(</big><em>d</em>, <em>n</em><big>)</big><a class="reference internal" href="_modules/common.html#chunks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.chunks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility function to split the list d into n chunks.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.debug">
+<tt class="descclassname">common.</tt><tt class="descname">debug</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/common.html#debug"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.debug" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="common.debug_dump_object">
+<tt class="descclassname">common.</tt><tt class="descname">debug_dump_object</tt><big>(</big><em>obj</em>, <em>skip_fields=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/common.html#debug_dump_object"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.debug_dump_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print out the contents of a Python object.
+Useful for debugging.
+If sensitive info is contained, add it to the
+skip_fields argument to prevent printout.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.get_config_irc_channel">
+<tt class="descclassname">common.</tt><tt class="descname">get_config_irc_channel</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#get_config_irc_channel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.get_config_irc_channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="common.get_network">
+<tt class="descclassname">common.</tt><tt class="descname">get_network</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#get_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.get_network" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns network name</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.get_p2pk_vbyte">
+<tt class="descclassname">common.</tt><tt class="descname">get_p2pk_vbyte</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#get_p2pk_vbyte"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.get_p2pk_vbyte" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the correct magic byte for a 
+pay to public key hash address.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.get_p2sh_vbyte">
+<tt class="descclassname">common.</tt><tt class="descname">get_p2sh_vbyte</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#get_p2sh_vbyte"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.get_p2sh_vbyte" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the correct magic byte for a 
+pay to script hash address.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.load_program_config">
+<tt class="descclassname">common.</tt><tt class="descname">load_program_config</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/common.html#load_program_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.load_program_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the configuration from the file joinmarket.cfg
+in the base directory (hardcoded). Check for required sections.
+If file is not present, create a default version.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.pick_order">
+<tt class="descclassname">common.</tt><tt class="descname">pick_order</tt><big>(</big><em>orders</em>, <em>n</em>, <em>feekey</em><big>)</big><a class="reference internal" href="_modules/common.html#pick_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.pick_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Manually choose an order from the list
+orders.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.rand_exp_array">
+<tt class="descclassname">common.</tt><tt class="descname">rand_exp_array</tt><big>(</big><em>lamda</em>, <em>n</em><big>)</big><a class="reference internal" href="_modules/common.html#rand_exp_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.rand_exp_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="common.rand_norm_array">
+<tt class="descclassname">common.</tt><tt class="descname">rand_norm_array</tt><big>(</big><em>mu</em>, <em>sigma</em>, <em>n</em><big>)</big><a class="reference internal" href="_modules/common.html#rand_norm_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.rand_norm_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="common.rand_pow_array">
+<tt class="descclassname">common.</tt><tt class="descname">rand_pow_array</tt><big>(</big><em>power</em>, <em>n</em><big>)</big><a class="reference internal" href="_modules/common.html#rand_pow_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.rand_pow_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="common.rand_weighted_choice">
+<tt class="descclassname">common.</tt><tt class="descname">rand_weighted_choice</tt><big>(</big><em>n</em>, <em>p_arr</em><big>)</big><a class="reference internal" href="_modules/common.html#rand_weighted_choice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.rand_weighted_choice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Choose a value in 0..n-1
+with the choice weighted by the probabilities
+in the list p_arr. Note that there will be some
+floating point rounding errors, but see the note
+at the top of this section.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.select_gradual">
+<tt class="descclassname">common.</tt><tt class="descname">select_gradual</tt><big>(</big><em>unspent</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/common.html#select_gradual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.select_gradual" title="Permalink to this definition">¶</a></dt>
+<dd><p>UTXO selection algorithm for gradual dust reduction
+If possible, combines outputs, picking as few as possible of the largest
+utxos less than the target value; if the target value is larger than the
+sum of all smaller utxos, uses the smallest utxo larger than the value.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.select_greediest">
+<tt class="descclassname">common.</tt><tt class="descname">select_greediest</tt><big>(</big><em>unspent</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/common.html#select_greediest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.select_greediest" title="Permalink to this definition">¶</a></dt>
+<dd><p>UTXO selection algorithm for speediest dust reduction
+Combines the shortest run of utxos (sorted by size, from smallest) which
+exceeds the target value; if the target value is larger than the sum of
+all smaller utxos, uses the smallest utxo larger than the target value.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.select_greedy">
+<tt class="descclassname">common.</tt><tt class="descname">select_greedy</tt><big>(</big><em>unspent</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/common.html#select_greedy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.select_greedy" title="Permalink to this definition">¶</a></dt>
+<dd><p>UTXO selection algorithm for greedy dust reduction, but leaves out
+extraneous utxos, preferring to keep multiple small ones.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="common.validate_address">
+<tt class="descclassname">common.</tt><tt class="descname">validate_address</tt><big>(</big><em>addr</em><big>)</big><a class="reference internal" href="_modules/common.html#validate_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.validate_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="common.weighted_order_choose">
+<tt class="descclassname">common.</tt><tt class="descname">weighted_order_choose</tt><big>(</big><em>orders</em>, <em>n</em>, <em>feekey</em><big>)</big><a class="reference internal" href="_modules/common.html#weighted_order_choose"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#common.weighted_order_choose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Algorithm for choosing the weighting function
+it is an exponential
+P(f) = exp(-(f - fmin) / phi)
+P(f) - probability of order being chosen
+f - order fee
+fmin - minimum fee in the order book
+phi - scaling parameter, 63% of the distribution is within</p>
+<p>define number M, related to the number of counterparties in this coinjoin
+phi has a value such that it contains up to the Mth order
+unless M &lt; orderbook size, then phi goes up to the last order</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/common.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

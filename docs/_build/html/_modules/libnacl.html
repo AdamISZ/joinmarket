@@ -1,0 +1,674 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>libnacl &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for libnacl</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Wrap libsodium routines</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="c"># pylint: disable=C0103</span>
+<span class="c"># Import libnacl libs</span>
+<span class="kn">from</span> <span class="nn">libnacl.version</span> <span class="kn">import</span> <span class="n">__version__</span>
+<span class="c"># Import python libs</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">__SONAMES</span> <span class="o">=</span> <span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_get_nacl</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Locate the nacl c libs to use</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Import libsodium</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;win&#39;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;libsodium&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">for</span> <span class="n">soname_ver</span> <span class="ow">in</span> <span class="n">__SONAMES</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span>
+                    <span class="s">&#39;libsodium-{0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">soname_ver</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;tweetnacl&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;Could not locate nacl lib, searched for libsodium, &#39;</span>
+                   <span class="s">&#39;tweetnacl&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;darwin&#39;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;libsodium.dylib&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;tweetnacl.dylib&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;Could not locate nacl lib, searched for libsodium, &#39;</span>
+                   <span class="s">&#39;tweetnacl&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;libsodium.so&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;/usr/local/lib/libsodium.so&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">for</span> <span class="n">soname_ver</span> <span class="ow">in</span> <span class="n">__SONAMES</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span>
+                    <span class="s">&#39;libsodium.so.{0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">soname_ver</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="s">&#39;tweetnacl.so&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;Could not locate nacl lib, searched for libsodium.so, &#39;</span>
+            <span class="k">for</span> <span class="n">soname_ver</span> <span class="ow">in</span> <span class="n">__SONAMES</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;libsodium.so.{0}, &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">soname_ver</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39; and tweetnacl.so&#39;</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+<span class="n">nacl</span> <span class="o">=</span> <span class="n">_get_nacl</span><span class="p">()</span>
+
+<span class="c"># Define constants</span>
+<span class="n">crypto_box_SECRETKEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_secretkeybytes</span><span class="p">()</span>
+<span class="n">crypto_box_PUBLICKEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_publickeybytes</span><span class="p">()</span>
+<span class="n">crypto_box_NONCEBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_noncebytes</span><span class="p">()</span>
+<span class="n">crypto_box_ZEROBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_zerobytes</span><span class="p">()</span>
+<span class="n">crypto_box_BOXZEROBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_boxzerobytes</span><span class="p">()</span>
+<span class="n">crypto_box_BEFORENMBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_beforenmbytes</span><span class="p">()</span>
+<span class="n">crypto_scalarmult_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_scalarmult_bytes</span><span class="p">()</span>
+<span class="n">crypto_scalarmult_SCALARBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_scalarmult_scalarbytes</span><span class="p">()</span>
+<span class="n">crypto_sign_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_bytes</span><span class="p">()</span>
+<span class="n">crypto_sign_SEEDBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_secretkeybytes</span><span class="p">()</span> <span class="o">//</span> <span class="mi">2</span>
+<span class="n">crypto_sign_PUBLICKEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_publickeybytes</span><span class="p">()</span>
+<span class="n">crypto_sign_SECRETKEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_secretkeybytes</span><span class="p">()</span>
+<span class="n">crypto_box_MACBYTES</span> <span class="o">=</span> <span class="n">crypto_box_ZEROBYTES</span> <span class="o">-</span> <span class="n">crypto_box_BOXZEROBYTES</span>
+<span class="n">crypto_secretbox_KEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_secretbox_keybytes</span><span class="p">()</span>
+<span class="n">crypto_secretbox_NONCEBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_secretbox_noncebytes</span><span class="p">()</span>
+<span class="n">crypto_secretbox_ZEROBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_secretbox_zerobytes</span><span class="p">()</span>
+<span class="n">crypto_secretbox_BOXZEROBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_secretbox_boxzerobytes</span><span class="p">()</span>
+<span class="n">crypto_secretbox_MACBYTES</span> <span class="o">=</span> <span class="n">crypto_secretbox_ZEROBYTES</span> <span class="o">-</span> <span class="n">crypto_secretbox_BOXZEROBYTES</span>
+<span class="n">crypto_stream_KEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_stream_keybytes</span><span class="p">()</span>
+<span class="n">crypto_stream_NONCEBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_stream_noncebytes</span><span class="p">()</span>
+<span class="n">crypto_auth_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_auth_bytes</span><span class="p">()</span>
+<span class="n">crypto_auth_KEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_auth_keybytes</span><span class="p">()</span>
+<span class="n">crypto_onetimeauth_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_onetimeauth_bytes</span><span class="p">()</span>
+<span class="n">crypto_onetimeauth_KEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_onetimeauth_keybytes</span><span class="p">()</span>
+<span class="n">crypto_generichash_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash_bytes</span><span class="p">()</span>
+<span class="n">crypto_generichash_BYTES_MIN</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash_bytes_min</span><span class="p">()</span>
+<span class="n">crypto_generichash_BYTES_MAX</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash_bytes_max</span><span class="p">()</span>
+<span class="n">crypto_generichash_KEYBYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash_keybytes</span><span class="p">()</span>
+<span class="n">crypto_generichash_KEYBYTES_MIN</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash_keybytes_min</span><span class="p">()</span>
+<span class="n">crypto_generichash_KEYBYTES_MAX</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash_keybytes_max</span><span class="p">()</span>
+<span class="n">crypto_scalarmult_curve25519_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_scalarmult_curve25519_bytes</span><span class="p">()</span>
+<span class="n">crypto_hash_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_hash_sha512_bytes</span><span class="p">()</span>
+<span class="n">crypto_hash_sha256_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_hash_sha256_bytes</span><span class="p">()</span>
+<span class="n">crypto_hash_sha512_BYTES</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_hash_sha512_bytes</span><span class="p">()</span>
+<span class="c"># pylint: enable=C0103</span>
+
+
+<span class="c"># Define exceptions</span>
+<div class="viewcode-block" id="CryptError"><a class="viewcode-back" href="../libnacl.html#libnacl.CryptError">[docs]</a><span class="k">class</span> <span class="nc">CryptError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Base Exception for cryptographic errors</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+<span class="c"># Pubkey defs</span>
+
+</div>
+<div class="viewcode-block" id="crypto_box_keypair"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_box_keypair">[docs]</a><span class="k">def</span> <span class="nf">crypto_box_keypair</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Generate and return a new keypair</span>
+
+<span class="sd">    pk, sk = nacl.crypto_box_keypair()</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pk</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_box_PUBLICKEYBYTES</span><span class="p">)</span>
+    <span class="n">sk</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_box_SECRETKEYBYTES</span><span class="p">)</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_keypair</span><span class="p">(</span><span class="n">pk</span><span class="p">,</span> <span class="n">sk</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pk</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="n">sk</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_box"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_box">[docs]</a><span class="k">def</span> <span class="nf">crypto_box</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">pk</span><span class="p">,</span> <span class="n">sk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Using a public key and a secret key encrypt the given message. A nonce</span>
+<span class="sd">    must also be passed in, never reuse the nonce</span>
+
+<span class="sd">    enc_msg = nacl.crypto_box(&#39;secret message&#39;, &lt;unique nonce&gt;, &lt;public key string&gt;, &lt;secret key string&gt;)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pk</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_PUBLICKEYBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid public key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sk</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_SECRETKEYBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid secret key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonce</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_NONCEBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid nonce&#39;</span><span class="p">)</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="n">crypto_box_ZEROBYTES</span> <span class="o">+</span> <span class="n">msg</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">)),</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">pk</span><span class="p">,</span> <span class="n">sk</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CryptError</span><span class="p">(</span><span class="s">&#39;Unable to encrypt message&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">c</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">crypto_box_BOXZEROBYTES</span><span class="p">:]</span>
+
+</div>
+<div class="viewcode-block" id="crypto_box_open"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_box_open">[docs]</a><span class="k">def</span> <span class="nf">crypto_box_open</span><span class="p">(</span><span class="n">ctxt</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">pk</span><span class="p">,</span> <span class="n">sk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Decrypts a message given the receivers private key, and senders public key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pk</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_PUBLICKEYBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid public key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sk</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_SECRETKEYBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid secret key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonce</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_NONCEBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid nonce&#39;</span><span class="p">)</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="n">crypto_box_BOXZEROBYTES</span> <span class="o">+</span> <span class="n">ctxt</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_open</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">pad</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">)),</span>
+            <span class="n">nonce</span><span class="p">,</span>
+            <span class="n">pk</span><span class="p">,</span>
+            <span class="n">sk</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CryptError</span><span class="p">(</span><span class="s">&#39;Unable to decrypt ciphertext&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">crypto_box_ZEROBYTES</span><span class="p">:]</span>
+
+</div>
+<div class="viewcode-block" id="crypto_box_beforenm"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_box_beforenm">[docs]</a><span class="k">def</span> <span class="nf">crypto_box_beforenm</span><span class="p">(</span><span class="n">pk</span><span class="p">,</span> <span class="n">sk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Partially performs the computation required for both encryption and decryption of data</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pk</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_PUBLICKEYBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid public key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sk</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_SECRETKEYBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid secret key&#39;</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_box_BEFORENMBYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_beforenm</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">pk</span><span class="p">,</span> <span class="n">sk</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CryptError</span><span class="p">(</span><span class="s">&#39;Unable to compute shared key&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">k</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_box_afternm"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_box_afternm">[docs]</a><span class="k">def</span> <span class="nf">crypto_box_afternm</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Encrypts a given a message, using partial computed data</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_BEFORENMBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid shared key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonce</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_NONCEBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid nonce&#39;</span><span class="p">)</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="n">crypto_box_ZEROBYTES</span> <span class="o">+</span> <span class="n">msg</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_afternm</span><span class="p">(</span><span class="n">ctxt</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">)),</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unable to encrypt messsage&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">crypto_box_BOXZEROBYTES</span><span class="p">:]</span>
+
+</div>
+<div class="viewcode-block" id="crypto_box_open_afternm"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_box_open_afternm">[docs]</a><span class="k">def</span> <span class="nf">crypto_box_open_afternm</span><span class="p">(</span><span class="n">ctxt</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Decrypts a ciphertext ctxt given k</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_BEFORENMBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid shared key&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonce</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_box_NONCEBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid nonce&#39;</span><span class="p">)</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="n">crypto_box_BOXZEROBYTES</span> <span class="o">+</span> <span class="n">ctxt</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_box_open_afternm</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">pad</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">)),</span>
+            <span class="n">nonce</span><span class="p">,</span>
+            <span class="n">k</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;unable to decrypt message&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">crypto_box_ZEROBYTES</span><span class="p">:]</span>
+
+<span class="c"># Signing functions</span>
+
+</div>
+<div class="viewcode-block" id="crypto_sign_keypair"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_sign_keypair">[docs]</a><span class="k">def</span> <span class="nf">crypto_sign_keypair</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Generates a signing/verification key pair</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">vk</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_sign_PUBLICKEYBYTES</span><span class="p">)</span>
+    <span class="n">sk</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_sign_SECRETKEYBYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_keypair</span><span class="p">(</span><span class="n">vk</span><span class="p">,</span> <span class="n">sk</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to generate keypair&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vk</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="n">sk</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_sign"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_sign">[docs]</a><span class="k">def</span> <span class="nf">crypto_sign</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">sk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Sign the given message witht he given signing key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">+</span> <span class="n">crypto_sign_BYTES</span><span class="p">)</span>
+    <span class="n">slen</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pointer</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">())</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign</span><span class="p">(</span>
+            <span class="n">sig</span><span class="p">,</span>
+            <span class="n">slen</span><span class="p">,</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span>
+            <span class="n">sk</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to sign message&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sig</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_sign_seed_keypair"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_sign_seed_keypair">[docs]</a><span class="k">def</span> <span class="nf">crypto_sign_seed_keypair</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Computes and returns the secret adn verify keys from the given seed</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="o">!=</span> <span class="n">crypto_sign_SEEDBYTES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid Seed&#39;</span><span class="p">)</span>
+    <span class="n">sk</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_sign_SECRETKEYBYTES</span><span class="p">)</span>
+    <span class="n">vk</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_sign_PUBLICKEYBYTES</span><span class="p">)</span>
+
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_seed_keypair</span><span class="p">(</span><span class="n">vk</span><span class="p">,</span> <span class="n">sk</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CryptError</span><span class="p">(</span><span class="s">&#39;Failed to generate keypair from seed&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">vk</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="n">sk</span><span class="o">.</span><span class="n">raw</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="crypto_sign_open"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_sign_open">[docs]</a><span class="k">def</span> <span class="nf">crypto_sign_open</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">vk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Verifies the signed message sig using the signer&#39;s verification key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="p">))</span>
+    <span class="n">msglen</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">()</span>
+    <span class="n">msglenp</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pointer</span><span class="p">(</span><span class="n">msglen</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_sign_open</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">msglenp</span><span class="p">,</span>
+            <span class="n">sig</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="p">)),</span>
+            <span class="n">vk</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to validate message&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">raw</span><span class="p">[:</span><span class="n">msglen</span><span class="o">.</span><span class="n">value</span><span class="p">]</span>  <span class="c"># pylint: disable=invalid-slice-index</span>
+
+<span class="c"># Authenticated Symmetric Encryption</span>
+
+</div>
+<div class="viewcode-block" id="crypto_secretbox"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_secretbox">[docs]</a><span class="k">def</span> <span class="nf">crypto_secretbox</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Encrypts and authenticates a message using the given secret key, and nonce</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="n">crypto_secretbox_ZEROBYTES</span> <span class="o">+</span> <span class="n">msg</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_secretbox</span><span class="p">(</span><span class="n">ctxt</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">)),</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to encrypt message&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">crypto_secretbox_BOXZEROBYTES</span><span class="p">:]</span>
+
+</div>
+<div class="viewcode-block" id="crypto_secretbox_open"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_secretbox_open">[docs]</a><span class="k">def</span> <span class="nf">crypto_secretbox_open</span><span class="p">(</span><span class="n">ctxt</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Decrypts a ciphertext ctxt given the receivers private key, and senders</span>
+<span class="sd">    public key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pad</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="n">crypto_secretbox_BOXZEROBYTES</span> <span class="o">+</span> <span class="n">ctxt</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_secretbox_open</span><span class="p">(</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">pad</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pad</span><span class="p">)),</span>
+            <span class="n">nonce</span><span class="p">,</span>
+            <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to decrypt message&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">crypto_secretbox_ZEROBYTES</span><span class="p">:]</span>
+
+<span class="c"># Symmetric Encryption</span>
+
+</div>
+<div class="viewcode-block" id="crypto_stream"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_stream">[docs]</a><span class="k">def</span> <span class="nf">crypto_stream</span><span class="p">(</span><span class="n">slen</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Generates a stream using the given secret key and nonce</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">slen</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="n">slen</span><span class="p">),</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to init stream&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stream</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_stream_xor"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_stream_xor">[docs]</a><span class="k">def</span> <span class="nf">crypto_stream_xor</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">nonce</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Encrypts the given message using the given secret key and nonce</span>
+
+<span class="sd">    The crypto_stream_xor function guarantees that the ciphertext is the</span>
+<span class="sd">    plaintext (xor) the output of crypto_stream. Consequently</span>
+<span class="sd">    crypto_stream_xor can also be used to decrypt</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_stream_xor</span><span class="p">(</span>
+            <span class="n">stream</span><span class="p">,</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span>
+            <span class="n">nonce</span><span class="p">,</span>
+            <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to init stream&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stream</span><span class="o">.</span><span class="n">raw</span>
+
+
+<span class="c"># Authentication</span>
+
+</div>
+<div class="viewcode-block" id="crypto_auth"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_auth">[docs]</a><span class="k">def</span> <span class="nf">crypto_auth</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Constructs a one time authentication token for the given message msg</span>
+<span class="sd">    using a given secret key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">tok</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_auth_BYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_auth</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to auth msg&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tok</span><span class="o">.</span><span class="n">raw</span><span class="p">[:</span><span class="n">crypto_auth_BYTES</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="crypto_auth_verify"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_auth_verify">[docs]</a><span class="k">def</span> <span class="nf">crypto_auth_verify</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Verifies that the given authentication token is correct for the given</span>
+<span class="sd">    message and key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">tok</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_auth_BYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_auth_verify</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to auth msg&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tok</span><span class="o">.</span><span class="n">raw</span><span class="p">[:</span><span class="n">crypto_auth_BYTES</span><span class="p">]</span>
+
+<span class="c"># One time authentication</span>
+
+</div>
+<div class="viewcode-block" id="crypto_onetimeauth"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_onetimeauth">[docs]</a><span class="k">def</span> <span class="nf">crypto_onetimeauth</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Constructs a one time authentication token for the given message msg using</span>
+<span class="sd">    a given secret key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">tok</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_onetimeauth_BYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_onetimeauth</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to auth msg&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tok</span><span class="o">.</span><span class="n">raw</span><span class="p">[:</span><span class="n">crypto_onetimeauth_BYTES</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="crypto_onetimeauth_verify"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_onetimeauth_verify">[docs]</a><span class="k">def</span> <span class="nf">crypto_onetimeauth_verify</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Verifies that the given authentication token is correct for the given</span>
+<span class="sd">    message and key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">tok</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_onetimeauth_BYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_onetimeauth</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Failed to auth msg&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tok</span><span class="o">.</span><span class="n">raw</span><span class="p">[:</span><span class="n">crypto_onetimeauth_BYTES</span><span class="p">]</span>
+
+<span class="c"># Hashing</span>
+
+</div>
+<div class="viewcode-block" id="crypto_hash"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_hash">[docs]</a><span class="k">def</span> <span class="nf">crypto_hash</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compute a hash of the given message</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hbuf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_hash_BYTES</span><span class="p">)</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_hash</span><span class="p">(</span><span class="n">hbuf</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">hbuf</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_hash_sha256"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_hash_sha256">[docs]</a><span class="k">def</span> <span class="nf">crypto_hash_sha256</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compute the sha256 hash of the given message</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hbuf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_hash_sha256_BYTES</span><span class="p">)</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_hash_sha256</span><span class="p">(</span><span class="n">hbuf</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">hbuf</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="crypto_hash_sha512"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_hash_sha512">[docs]</a><span class="k">def</span> <span class="nf">crypto_hash_sha512</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compute the sha512 hash of the given message</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hbuf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_hash_sha512_BYTES</span><span class="p">)</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_hash_sha512</span><span class="p">(</span><span class="n">hbuf</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">hbuf</span><span class="o">.</span><span class="n">raw</span>
+
+<span class="c"># Generic Hash</span>
+
+</div>
+<div class="viewcode-block" id="crypto_generichash"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_generichash">[docs]</a><span class="k">def</span> <span class="nf">crypto_generichash</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compute the blake2 hash of the given message with a given key</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hbuf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_generichash_BYTES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">key</span><span class="p">:</span>
+        <span class="n">key_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">key_len</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_generichash</span><span class="p">(</span>
+            <span class="n">hbuf</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hbuf</span><span class="p">)),</span>
+            <span class="n">msg</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span>
+            <span class="n">key</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="n">key_len</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">hbuf</span><span class="o">.</span><span class="n">raw</span>
+
+<span class="c"># scalarmult</span>
+
+</div>
+<div class="viewcode-block" id="crypto_scalarmult_base"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_scalarmult_base">[docs]</a><span class="k">def</span> <span class="nf">crypto_scalarmult_base</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Computes and returns the scalar product of a standard group element and an</span>
+<span class="sd">    integer &quot;n&quot;.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">crypto_scalarmult_BYTES</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_scalarmult_base</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CryptError</span><span class="p">(</span><span class="s">&#39;Failed to compute scalar product&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">buf</span><span class="o">.</span><span class="n">raw</span>
+
+<span class="c"># String cmp</span>
+
+</div>
+<div class="viewcode-block" id="crypto_verify_16"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_verify_16">[docs]</a><span class="k">def</span> <span class="nf">crypto_verify_16</span><span class="p">(</span><span class="n">string1</span><span class="p">,</span> <span class="n">string2</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compares the first crypto_verify_16_BYTES of the given strings</span>
+
+<span class="sd">    The time taken by the function is independent of the contents of string1</span>
+<span class="sd">    and string2. In contrast, the standard C comparison function</span>
+<span class="sd">    memcmp(string1,string2,16) takes time that is dependent on the longest</span>
+<span class="sd">    matching prefix of string1 and string2. This often allows for easy</span>
+<span class="sd">    timing attacks.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_verify_16</span><span class="p">(</span><span class="n">string1</span><span class="p">,</span> <span class="n">string2</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="crypto_verify_32"><a class="viewcode-back" href="../libnacl.html#libnacl.crypto_verify_32">[docs]</a><span class="k">def</span> <span class="nf">crypto_verify_32</span><span class="p">(</span><span class="n">string1</span><span class="p">,</span> <span class="n">string2</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compares the first crypto_verify_32_BYTES of the given strings</span>
+
+<span class="sd">    The time taken by the function is independent of the contents of string1</span>
+<span class="sd">    and string2. In contrast, the standard C comparison function</span>
+<span class="sd">    memcmp(string1,string2,16) takes time that is dependent on the longest</span>
+<span class="sd">    matching prefix of string1 and string2. This often allows for easy</span>
+<span class="sd">    timing attacks.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="n">nacl</span><span class="o">.</span><span class="n">crypto_verify_32</span><span class="p">(</span><span class="n">string1</span><span class="p">,</span> <span class="n">string2</span><span class="p">)</span>
+
+
+<span class="c"># Random byte generation</span>
+</div>
+<div class="viewcode-block" id="randombytes"><a class="viewcode-back" href="../libnacl.html#libnacl.randombytes">[docs]</a><span class="k">def</span> <span class="nf">randombytes</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return a string of random bytes of the given size</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">randombytes</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulonglong</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">buf</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="randombytes_buf"><a class="viewcode-back" href="../libnacl.html#libnacl.randombytes_buf">[docs]</a><span class="k">def</span> <span class="nf">randombytes_buf</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return a string of random bytes of the given size</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">randombytes_buf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">buf</span><span class="o">.</span><span class="n">raw</span>
+
+</div>
+<div class="viewcode-block" id="randombytes_close"><a class="viewcode-back" href="../libnacl.html#libnacl.randombytes_close">[docs]</a><span class="k">def</span> <span class="nf">randombytes_close</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Close the file descriptor or the handle for the cryptographic service</span>
+<span class="sd">    provider</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">randombytes_close</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="randombytes_random"><a class="viewcode-back" href="../libnacl.html#libnacl.randombytes_random">[docs]</a><span class="k">def</span> <span class="nf">randombytes_random</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return a random 32-bit unsigned value</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">nacl</span><span class="o">.</span><span class="n">randombytes_random</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="randombytes_stir"><a class="viewcode-back" href="../libnacl.html#libnacl.randombytes_stir">[docs]</a><span class="k">def</span> <span class="nf">randombytes_stir</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Generate a new key for the pseudorandom number generator</span>
+
+<span class="sd">    The file descriptor for the entropy source is kept open, so that the</span>
+<span class="sd">    generator can be reseeded even in a chroot() jail.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">nacl</span><span class="o">.</span><span class="n">randombytes_stir</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="randombytes_uniform"><a class="viewcode-back" href="../libnacl.html#libnacl.randombytes_uniform">[docs]</a><span class="k">def</span> <span class="nf">randombytes_uniform</span><span class="p">(</span><span class="n">upper_bound</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return a value between 0 and upper_bound using a uniform distribution</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">nacl</span><span class="o">.</span><span class="n">randombytes_uniform</span><span class="p">(</span><span class="n">upper_bound</span><span class="p">)</span>
+
+
+<span class="c"># Utility functions</span>
+</div>
+<div class="viewcode-block" id="sodium_library_version_major"><a class="viewcode-back" href="../libnacl.html#libnacl.sodium_library_version_major">[docs]</a><span class="k">def</span> <span class="nf">sodium_library_version_major</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return the major version number</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">nacl</span><span class="o">.</span><span class="n">sodium_library_version_major</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="sodium_library_version_minor"><a class="viewcode-back" href="../libnacl.html#libnacl.sodium_library_version_minor">[docs]</a><span class="k">def</span> <span class="nf">sodium_library_version_minor</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return the minor version number</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">nacl</span><span class="o">.</span><span class="n">sodium_library_version_minor</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="sodium_version_string"><a class="viewcode-back" href="../libnacl.html#libnacl.sodium_version_string">[docs]</a><span class="k">def</span> <span class="nf">sodium_version_string</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return the version string</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">nacl</span><span class="o">.</span><span class="n">sodium_version_string</span>
+    <span class="n">func</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_char_p</span>
+    <span class="k">return</span> <span class="n">func</span><span class="p">()</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

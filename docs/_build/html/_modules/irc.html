@@ -1,0 +1,613 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>irc &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for irc</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;An implementation of MessageChannel</span>
+<span class="sd">for IRC.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">common</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">message_channel</span> <span class="kn">import</span> <span class="n">MessageChannel</span>
+<span class="kn">from</span> <span class="nn">message_channel</span> <span class="kn">import</span> <span class="n">CJPeerError</span>
+
+<span class="kn">import</span> <span class="nn">string</span><span class="o">,</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">ssl</span><span class="o">,</span> <span class="nn">socks</span>
+<span class="kn">import</span> <span class="nn">base64</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">enc_wrapper</span>
+
+<span class="n">MAX_PRIVMSG_LEN</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">COMMAND_PREFIX</span> <span class="o">=</span> <span class="s">&#39;!&#39;</span>
+<span class="n">PING_INTERVAL</span> <span class="o">=</span> <span class="mi">180</span>
+<span class="n">PING_TIMEOUT</span> <span class="o">=</span> <span class="mi">30</span>
+<span class="n">encrypted_commands</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;auth&quot;</span><span class="p">,</span> <span class="s">&quot;ioauth&quot;</span><span class="p">,</span> <span class="s">&quot;tx&quot;</span><span class="p">,</span> <span class="s">&quot;sig&quot;</span><span class="p">]</span>
+<span class="n">plaintext_commands</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;fill&quot;</span><span class="p">,</span> <span class="s">&quot;error&quot;</span><span class="p">,</span> <span class="s">&quot;pubkey&quot;</span><span class="p">,</span> <span class="s">&quot;orderbook&quot;</span><span class="p">,</span> <span class="s">&quot;relorder&quot;</span><span class="p">,</span> <span class="s">&quot;absorder&quot;</span><span class="p">,</span> <span class="s">&quot;push&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="random_nick"><a class="viewcode-back" href="../irc.html#irc.random_nick">[docs]</a><span class="k">def</span> <span class="nf">random_nick</span><span class="p">(</span><span class="n">nick_len</span><span class="o">=</span><span class="mi">9</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Generates a random, but somewhat human-readable</span>
+<span class="sd">	pseudonym of length nick_len.&quot;&quot;&quot;</span>
+	<span class="n">vowels</span> <span class="o">=</span> <span class="s">&quot;aeiou&quot;</span>
+	<span class="n">consonants</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="p">),</span> <span class="nb">ord</span><span class="p">(</span><span class="s">&#39;z&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">vowels</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">chr</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+	<span class="k">assert</span> <span class="n">nick_len</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span>
+	<span class="n">N</span> <span class="o">=</span> <span class="p">(</span><span class="n">nick_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+	<span class="n">rnd_consonants</span> <span class="o">=</span> <span class="p">[</span><span class="n">consonants</span><span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">consonants</span><span class="p">))]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+	<span class="n">rnd_vowels</span> <span class="o">=</span> <span class="p">[</span><span class="n">vowels</span><span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vowels</span><span class="p">))]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)]</span> <span class="o">+</span> <span class="p">[</span><span class="s">&#39;&#39;</span><span class="p">]</span>
+	<span class="n">ircnick</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rnd_consonants</span><span class="p">,</span> <span class="n">rnd_vowels</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sl</span><span class="p">])</span>
+	<span class="n">ircnick</span> <span class="o">=</span> <span class="n">ircnick</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+	<span class="k">print</span> <span class="s">&#39;Generated random nickname: &#39;</span> <span class="o">+</span> <span class="n">ircnick</span> <span class="c">#not using debug because it might not know the logfile name at this point</span>
+	<span class="k">return</span> <span class="n">ircnick</span>
+	<span class="c">#Other ideas for random nickname generation:</span>
+	<span class="c"># - weight randomness by frequency of letter appearance</span>
+	<span class="c"># - u always follows q</span>
+	<span class="c"># - generate different length nicks</span>
+	<span class="c"># - append two or more of these words together</span>
+	<span class="c"># - randomly combine phonetic sounds instead consonants, which may be two consecutive consonants</span>
+	<span class="c">#  - e.g. th, dj, g, p, gr, ch, sh, kr, </span>
+	<span class="c"># - neutral network that generates nicks</span>
+</div>
+<div class="viewcode-block" id="get_irc_text"><a class="viewcode-back" href="../irc.html#irc.get_irc_text">[docs]</a><span class="k">def</span> <span class="nf">get_irc_text</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+	<span class="k">return</span> <span class="n">line</span><span class="p">[</span><span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span><span class="p">:]</span>
+	</div>
+<div class="viewcode-block" id="get_irc_nick"><a class="viewcode-back" href="../irc.html#irc.get_irc_nick">[docs]</a><span class="k">def</span> <span class="nf">get_irc_nick</span><span class="p">(</span><span class="n">source</span><span class="p">):</span>
+	<span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">source</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;!&#39;</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="PingThread"><a class="viewcode-back" href="../irc.html#irc.PingThread">[docs]</a><span class="k">class</span> <span class="nc">PingThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">irc</span><span class="p">):</span>
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">irc</span> <span class="o">=</span> <span class="n">irc</span>
+<div class="viewcode-block" id="PingThread.run"><a class="viewcode-back" href="../irc.html#irc.PingThread.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;starting ping thread&#39;</span><span class="p">)</span>
+		<span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">give_up</span><span class="p">:</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">PING_INTERVAL</span><span class="p">)</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">ping_reply</span> <span class="o">=</span> <span class="bp">False</span>
+				<span class="c">#maybe use this to calculate the lag one day</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;PING LAG&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">PING_TIMEOUT</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">ping_reply</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;irc ping timed out&#39;</span><span class="p">)</span>
+					<span class="k">try</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+					<span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+					<span class="k">try</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+					<span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+					<span class="k">try</span><span class="p">:</span> 
+						<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">SHUT_RDWR</span><span class="p">)</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">irc</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+					<span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+			<span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ping thread: &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ended ping thread&#39;</span><span class="p">)</span>
+
+<span class="c">#handle one channel at a time</span></div></div>
+<div class="viewcode-block" id="IRCMessageChannel"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel">[docs]</a><span class="k">class</span> <span class="nc">IRCMessageChannel</span><span class="p">(</span><span class="n">MessageChannel</span><span class="p">):</span>
+
+	<span class="c">#close implies it will attempt to reconnect			</span>
+<div class="viewcode-block" id="IRCMessageChannel.close"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.close">[docs]</a>	<span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&quot;QUIT&quot;</span><span class="p">)</span>
+		<span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;errored while trying to quit: &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.shutdown"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.shutdown">[docs]</a>	<span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">give_up</span> <span class="o">=</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.send_error"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_error">[docs]</a>	<span class="k">def</span> <span class="nf">send_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">errormsg</span><span class="p">):</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;error&lt;</span><span class="si">%s</span><span class="s">&gt; : </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">errormsg</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;error&#39;</span><span class="p">,</span> <span class="n">errormsg</span><span class="p">)</span>
+		<span class="k">raise</span> <span class="n">CJPeerError</span><span class="p">()</span>
+
+	<span class="c">#OrderbookWatch callback</span></div>
+<div class="viewcode-block" id="IRCMessageChannel.request_orderbook"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.request_orderbook">[docs]</a>	<span class="k">def</span> <span class="nf">request_orderbook</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__pubmsg</span><span class="p">(</span><span class="n">COMMAND_PREFIX</span> <span class="o">+</span> <span class="s">&#39;orderbook&#39;</span><span class="p">)</span>
+
+	<span class="c">#Taker callbacks</span></div>
+<div class="viewcode-block" id="IRCMessageChannel.fill_orders"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.fill_orders">[docs]</a>	<span class="k">def</span> <span class="nf">fill_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nickoid_dict</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">taker_pubkey</span><span class="p">):</span>
+		<span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">oid</span> <span class="ow">in</span> <span class="n">nickoid_dict</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="n">msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cj_amount</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">taker_pubkey</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s">&#39;fill&#39;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.send_auth"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_auth">[docs]</a>	<span class="k">def</span> <span class="nf">send_auth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+		<span class="n">message</span> <span class="o">=</span> <span class="n">pubkey</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">sig</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;auth&#39;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>	
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.send_tx"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_tx">[docs]</a>	<span class="k">def</span> <span class="nf">send_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick_list</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="n">txb64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">txhex</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">))</span>
+		<span class="k">for</span> <span class="n">nick</span> <span class="ow">in</span> <span class="n">nick_list</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;tx&#39;</span><span class="p">,</span> <span class="n">txb64</span><span class="p">)</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c">#HACK! really there should be rate limiting, see issue#31</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.push_tx"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.push_tx">[docs]</a>	<span class="k">def</span> <span class="nf">push_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="n">txb64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">txhex</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;push&#39;</span><span class="p">,</span> <span class="n">txb64</span><span class="p">)</span>
+
+	<span class="c">#Maker callbacks</span></div>
+<div class="viewcode-block" id="IRCMessageChannel.announce_orders"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.announce_orders">[docs]</a>	<span class="k">def</span> <span class="nf">announce_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orderlist</span><span class="p">,</span> <span class="n">nick</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="c">#nick=None means announce publicly</span>
+		<span class="n">order_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">,</span> <span class="s">&#39;maxsize&#39;</span><span class="p">,</span> <span class="s">&#39;txfee&#39;</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">]</span>
+		<span class="n">header</span> <span class="o">=</span> <span class="s">&#39;PRIVMSG &#39;</span> <span class="o">+</span> <span class="p">(</span><span class="n">nick</span> <span class="k">if</span> <span class="n">nick</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; :&#39;</span>
+		<span class="n">orderlines</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">order</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">orderlist</span><span class="p">):</span>
+			<span class="n">orderparams</span> <span class="o">=</span> <span class="n">COMMAND_PREFIX</span> <span class="o">+</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;ordertype&#39;</span><span class="p">]</span> <span class="o">+</span>\
+				<span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">order_keys</span><span class="p">])</span>
+			<span class="n">orderlines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">orderparams</span><span class="p">)</span>
+			<span class="n">line</span> <span class="o">=</span> <span class="n">header</span> <span class="o">+</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">orderlines</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; ~&#39;</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_PRIVMSG_LEN</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">orderlist</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">orderlist</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+					<span class="n">line</span> <span class="o">=</span> <span class="n">header</span> <span class="o">+</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">orderlines</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="s">&#39; ~&#39;</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+				<span class="n">orderlines</span> <span class="o">=</span> <span class="p">[</span><span class="n">orderlines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.cancel_orders"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.cancel_orders">[docs]</a>	<span class="k">def</span> <span class="nf">cancel_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oid_list</span><span class="p">):</span>
+		<span class="n">clines</span> <span class="o">=</span> <span class="p">[</span><span class="n">COMMAND_PREFIX</span> <span class="o">+</span> <span class="s">&#39;cancel &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span> <span class="k">for</span> <span class="n">oid</span> <span class="ow">in</span> <span class="n">oid_list</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__pubmsg</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">clines</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.send_pubkey"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_pubkey">[docs]</a>	<span class="k">def</span> <span class="nf">send_pubkey</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;pubkey&#39;</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.send_ioauth"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_ioauth">[docs]</a>	<span class="k">def</span> <span class="nf">send_ioauth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">utxo_list</span><span class="p">,</span> <span class="n">cj_pubkey</span><span class="p">,</span> <span class="n">change_addr</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+		<span class="n">authmsg</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">utxo_list</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> 
+	                <span class="n">cj_pubkey</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">change_addr</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">sig</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;ioauth&#39;</span><span class="p">,</span> <span class="n">authmsg</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.send_sigs"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_sigs">[docs]</a>	<span class="k">def</span> <span class="nf">send_sigs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">sig_list</span><span class="p">):</span>
+		<span class="c">#TODO make it send the sigs on one line if there&#39;s space</span>
+		<span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sig_list</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">__privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;sig&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+			<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span> <span class="c">#HACK! really there should be rate limiting, see issue#31</span>
+</div>
+	<span class="k">def</span> <span class="nf">__pubmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;&gt;&gt;pubmsg &#39;</span> <span class="o">+</span> <span class="n">message</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&quot;PRIVMSG &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">+</span> <span class="s">&quot; :&quot;</span> <span class="o">+</span> <span class="n">message</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">__privmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;&gt;&gt;privmsg &#39;</span> <span class="o">+</span> <span class="s">&#39;nick=&#39;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&#39; cmd=&#39;</span> <span class="o">+</span> <span class="n">cmd</span> <span class="o">+</span> <span class="s">&#39; msg=&#39;</span> <span class="o">+</span> <span class="n">message</span><span class="p">)</span>
+		<span class="c">#should we encrypt?</span>
+		<span class="n">box</span><span class="p">,</span> <span class="n">encrypt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_encryption_box</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">nick</span><span class="p">)</span>
+		<span class="c">#encrypt before chunking</span>
+		<span class="k">if</span> <span class="n">encrypt</span><span class="p">:</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">box</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;error, dont have encryption box object for &#39;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&#39;, dropping message&#39;</span><span class="p">)</span>
+				<span class="k">return</span>
+			<span class="n">message</span> <span class="o">=</span> <span class="n">enc_wrapper</span><span class="o">.</span><span class="n">encrypt_encode</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">box</span><span class="p">)</span>
+
+		<span class="n">header</span> <span class="o">=</span> <span class="s">&quot;PRIVMSG &quot;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&quot; :&quot;</span>
+		<span class="n">max_chunk_len</span> <span class="o">=</span> <span class="n">MAX_PRIVMSG_LEN</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span> <span class="o">-</span> <span class="mi">4</span>
+		<span class="c">#1 for command prefix 1 for space 2 for trailer</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">message</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_chunk_len</span><span class="p">:</span>
+			<span class="n">message_chunks</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">max_chunk_len</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span> 
+			<span class="n">message_chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span><span class="p">]</span>
+		<span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">message_chunks</span><span class="p">:</span>
+			<span class="n">trailer</span> <span class="o">=</span> <span class="s">&#39; ~&#39;</span> <span class="k">if</span> <span class="n">m</span><span class="o">==</span><span class="n">message_chunks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">else</span> <span class="s">&#39; ;&#39;</span>
+			<span class="k">if</span> <span class="n">m</span><span class="o">==</span><span class="n">message_chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+				<span class="n">m</span> <span class="o">=</span> <span class="n">COMMAND_PREFIX</span> <span class="o">+</span> <span class="n">cmd</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">m</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="n">header</span> <span class="o">+</span> <span class="n">m</span> <span class="o">+</span> <span class="n">trailer</span><span class="p">)</span>
+
+<div class="viewcode-block" id="IRCMessageChannel.send_raw"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.send_raw">[docs]</a>	<span class="k">def</span> <span class="nf">send_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+		<span class="c">#if not line.startswith(&#39;PING LAG&#39;):</span>
+		<span class="c">#	debug(&#39;sendraw &#39; + line)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="IRCMessageChannel.check_for_orders"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.check_for_orders">[docs]</a>	<span class="k">def</span> <span class="nf">check_for_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">chunks</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">ordername_list</span><span class="p">:</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="n">counterparty</span> <span class="o">=</span> <span class="n">nick</span>
+				<span class="n">oid</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+				<span class="n">ordertype</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+				<span class="n">minsize</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+				<span class="n">maxsize</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+				<span class="n">txfee</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+				<span class="n">cjfee</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_order_seen</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">on_order_seen</span><span class="p">(</span><span class="n">counterparty</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span>
+						<span class="n">ordertype</span><span class="p">,</span> <span class="n">minsize</span><span class="p">,</span> <span class="n">maxsize</span><span class="p">,</span> <span class="n">txfee</span><span class="p">,</span> <span class="n">cjfee</span><span class="p">)</span>
+			<span class="k">except</span> <span class="ne">IndexError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;index error parsing chunks&#39;</span><span class="p">)</span>
+				<span class="c">#TODO what now? just ignore iirc</span>
+			<span class="k">finally</span><span class="p">:</span>
+				<span class="k">return</span> <span class="bp">True</span>
+		<span class="k">return</span> <span class="bp">False</span>
+</div>
+	<span class="k">def</span> <span class="nf">__on_privmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;handles the case when a private message is received&#39;&#39;&#39;</span>
+		<span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">COMMAND_PREFIX</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">COMMAND_PREFIX</span><span class="p">):</span>
+			<span class="n">chunks</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="p">)</span>
+			<span class="c">#looks like a very similar pattern for all of these</span>
+			<span class="c"># check for a command name, parse arguments, call a function</span>
+			<span class="c"># maybe we need some eval() trickery to do it better</span>
+
+			<span class="k">try</span><span class="p">:</span>
+				<span class="c">#orderbook watch commands</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_for_orders</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">chunks</span><span class="p">):</span>
+					<span class="k">pass</span>
+
+				<span class="c">#taker commands</span>
+				<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;pubkey&#39;</span><span class="p">:</span>
+					<span class="n">maker_pk</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_pubkey</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_pubkey</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">maker_pk</span><span class="p">)</span>
+				<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;ioauth&#39;</span><span class="p">:</span>
+					<span class="n">utxo_list</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)</span>
+					<span class="n">cj_pub</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+					<span class="n">change_addr</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+					<span class="n">btc_sig</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_ioauth</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_ioauth</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">utxo_list</span><span class="p">,</span> <span class="n">cj_pub</span><span class="p">,</span> <span class="n">change_addr</span><span class="p">,</span> <span class="n">btc_sig</span><span class="p">)</span>
+				<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;sig&#39;</span><span class="p">:</span>
+					<span class="n">sig</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_sig</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_sig</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+
+				<span class="c">#maker commands</span>
+				<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;fill&#39;</span><span class="p">:</span>
+					<span class="k">try</span><span class="p">:</span>
+						<span class="n">oid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+						<span class="n">amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+						<span class="n">taker_pk</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+					<span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_order_fill</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_order_fill</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">taker_pk</span><span class="p">)</span>
+				<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;auth&#39;</span><span class="p">:</span>
+					<span class="k">try</span><span class="p">:</span>
+						<span class="n">i_utxo_pubkey</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+						<span class="n">btc_sig</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+					<span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_seen_auth</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_seen_auth</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">i_utxo_pubkey</span><span class="p">,</span> <span class="n">btc_sig</span><span class="p">)</span>
+				<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;tx&#39;</span><span class="p">:</span>
+					<span class="n">b64tx</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+					<span class="k">try</span><span class="p">:</span>
+						<span class="n">txhex</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">b64tx</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+					<span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;bad base64 tx. &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_seen_tx</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_seen_tx</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">)</span>
+				<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;push&#39;</span><span class="p">:</span>
+					<span class="n">b64tx</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+					<span class="k">try</span><span class="p">:</span>
+						<span class="n">txhex</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">b64tx</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+					<span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;bad base64 tx. &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_push_tx</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_push_tx</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">)</span>
+			<span class="k">except</span> <span class="n">CJPeerError</span><span class="p">:</span>
+				<span class="c">#TODO proper error handling</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;cj peer error TODO handle&#39;</span><span class="p">)</span>
+				<span class="k">continue</span>
+
+	<span class="k">def</span> <span class="nf">__on_pubmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">COMMAND_PREFIX</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">COMMAND_PREFIX</span><span class="p">):</span>
+			<span class="n">chunks</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_for_orders</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">chunks</span><span class="p">):</span>
+				<span class="k">pass</span>
+			<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;cancel&#39;</span><span class="p">:</span>
+				<span class="c">#!cancel [oid]</span>
+				<span class="k">try</span><span class="p">:</span>
+					<span class="n">oid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_order_cancel</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">on_order_cancel</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">oid</span><span class="p">)</span>
+				<span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&quot;!cancel &quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+					<span class="k">return</span>
+			<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;orderbook&#39;</span><span class="p">:</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_orderbook_requested</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">on_orderbook_requested</span><span class="p">(</span><span class="n">nick</span><span class="p">)</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="c">#TODO this is for testing/debugging, should be removed, see taker.py</span>
+				<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;debug_on_pubmsg_cmd&#39;</span><span class="p">):</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">debug_on_pubmsg_cmd</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">chunks</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">__get_encryption_box</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">nick</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Establish whether the message is to be</span>
+<span class="sd">		encrypted/decrypted based on the command string.</span>
+<span class="sd">		If so, retrieve the appropriate crypto_box object</span>
+<span class="sd">		and return. Sending/receiving flag enables us</span>
+<span class="sd">		to check which command strings correspond to which</span>
+<span class="sd">		type of object (maker/taker).&#39;&#39;&#39;</span> <span class="c">#old doc, dont trust</span>
+		<span class="k">if</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">plaintext_commands</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">False</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cjpeer</span><span class="o">.</span><span class="n">get_crypto_box_from_nick</span><span class="p">(</span><span class="n">nick</span><span class="p">),</span> <span class="bp">True</span>
+
+	<span class="k">def</span> <span class="nf">__handle_privmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+		<span class="n">nick</span> <span class="o">=</span> <span class="n">get_irc_nick</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">target</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">:</span>
+				<span class="n">endindex</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">endindex</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+					<span class="k">return</span>
+				<span class="n">ctcp</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">endindex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+				<span class="k">if</span> <span class="n">ctcp</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;VERSION&#39;</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;PRIVMSG &#39;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&#39; :</span><span class="se">\x01</span><span class="s">VERSION xchat 2.8.8 Ubuntu</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">)</span>
+					<span class="k">return</span>
+
+			<span class="k">if</span> <span class="n">nick</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">COMMAND_PREFIX</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;message not a cmd&#39;</span><span class="p">)</span>
+					<span class="k">return</span>
+				<span class="c">#new message starting</span>
+				<span class="n">cmd_string</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+				<span class="k">if</span> <span class="n">cmd_string</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">plaintext_commands</span> <span class="o">+</span> <span class="n">encrypted_commands</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;cmd not in cmd_list, line=&quot;&#39;</span> <span class="o">+</span> <span class="n">message</span> <span class="o">+</span> <span class="s">&#39;&quot;&#39;</span><span class="p">)</span>
+					<span class="k">return</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">cmd_string</span><span class="p">,</span> <span class="n">message</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]]</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">message</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+			<span class="n">box</span><span class="p">,</span> <span class="n">encrypt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_encryption_box</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">nick</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="s">&#39;;&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">waiting</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span><span class="o">=</span><span class="bp">True</span>
+			<span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="s">&#39;~&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">waiting</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span><span class="o">=</span><span class="bp">False</span>
+				<span class="k">if</span> <span class="n">encrypt</span><span class="p">:</span>
+					<span class="k">if</span> <span class="ow">not</span> <span class="n">box</span><span class="p">:</span>
+						<span class="n">debug</span><span class="p">(</span><span class="s">&#39;error, dont have encryption box object for &#39;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&#39;, dropping message&#39;</span><span class="p">)</span>
+						<span class="k">return</span>
+					<span class="c">#need to decrypt everything after the command string</span>
+					<span class="n">to_decrypt</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+					<span class="k">try</span><span class="p">:</span>
+						<span class="n">decrypted</span> <span class="o">=</span> <span class="n">enc_wrapper</span><span class="o">.</span><span class="n">decode_decrypt</span><span class="p">(</span><span class="n">to_decrypt</span><span class="p">,</span> <span class="n">box</span><span class="p">)</span>
+					<span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+						<span class="n">debug</span><span class="p">(</span><span class="s">&#39;valueerror when decrypting, skipping: &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+						<span class="k">return</span>
+					<span class="n">parsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">decrypted</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">parsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+				<span class="c">#wipe the message buffer waiting for the next one</span>
+				<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&quot;&lt;&lt;privmsg nick=</span><span class="si">%s</span><span class="s"> message=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">parsed</span><span class="p">))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">__on_privmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">parsed</span><span class="p">)</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="c">#drop the bad nick</span>
+				<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span>
+		<span class="k">elif</span> <span class="n">target</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&quot;&lt;&lt;pubmsg nick=</span><span class="si">%s</span><span class="s"> message=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">message</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">__on_pubmsg</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;what is this? privmsg src=</span><span class="si">%s</span><span class="s"> target=</span><span class="si">%s</span><span class="s"> message=</span><span class="si">%s</span><span class="s">;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">message</span><span class="p">))</span>
+		
+	<span class="k">def</span> <span class="nf">__handle_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+		<span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+		<span class="c">#debug(&#39;&lt;&lt; &#39; + line)</span>
+		<span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;PING &#39;</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;PING&#39;</span><span class="p">,</span> <span class="s">&#39;PONG&#39;</span><span class="p">))</span>
+			<span class="k">return</span>
+
+		<span class="n">chunks</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;QUIT&#39;</span><span class="p">:</span>
+			<span class="n">nick</span> <span class="o">=</span> <span class="n">get_irc_nick</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+			<span class="k">if</span> <span class="n">nick</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;we quit&#39;</span><span class="p">)</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">(</span><span class="n">nick</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;433&#39;</span><span class="p">:</span> <span class="c">#nick in use</span>
+			<span class="c">#self.nick = random_nick()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">+=</span> <span class="s">&#39;_&#39;</span> <span class="c">#helps keep identity constant if just _ added</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;NICK &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;CAP&#39;</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;ACK&#39;</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;server does not support SASL, quitting&#39;</span><span class="p">)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;AUTHENTICATE PLAIN&#39;</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;AUTHENTICATE&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;AUTHENTICATE &#39;</span> <span class="o">+</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">))</span>
+			<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;903&#39;</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;Successfully authenticated&#39;</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="bp">None</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;CAP END&#39;</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;904&#39;</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;Failed authentication, wrong password&#39;</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+			<span class="k">return</span>
+
+		<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;PRIVMSG&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">__handle_privmsg</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">get_irc_text</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;PONG&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">ping_reply</span> <span class="o">=</span> <span class="bp">True</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">notify</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;376&#39;</span><span class="p">:</span> <span class="c">#end of motd</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_connect</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">on_connect</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;JOIN &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;MODE &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">+</span> <span class="s">&#39; +B&#39;</span><span class="p">)</span> <span class="c">#marks as bots on unreal</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;MODE &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">+</span> <span class="s">&#39; -R&#39;</span><span class="p">)</span> <span class="c">#allows unreg&#39;d private messages</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;366&#39;</span><span class="p">:</span> <span class="c">#end of names list</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;Connected to IRC and joined channel&#39;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">()</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;332&#39;</span> <span class="ow">or</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;TOPIC&#39;</span><span class="p">:</span> <span class="c">#channel topic</span>
+			<span class="n">topic</span> <span class="o">=</span> <span class="n">get_irc_text</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">on_set_topic</span><span class="p">(</span><span class="n">topic</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;KICK&#39;</span><span class="p">:</span>
+			<span class="n">target</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+			<span class="n">nick</span> <span class="o">=</span> <span class="n">get_irc_nick</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+			<span class="k">if</span> <span class="n">target</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">give_up</span> <span class="o">=</span> <span class="bp">True</span>
+				<span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">get_irc_nick</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&#39; has kicked us from the irc channel! Reason=&#39;</span> <span class="o">+</span> <span class="n">get_irc_text</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;PART&#39;</span><span class="p">:</span>
+			<span class="n">nick</span> <span class="o">=</span> <span class="n">get_irc_nick</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">(</span><span class="n">nick</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;JOIN&#39;</span><span class="p">:</span>
+			<span class="n">channel</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span>
+			<span class="n">nick</span> <span class="o">=</span> <span class="n">get_irc_nick</span><span class="p">(</span><span class="n">chunks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		elif chunks[1] == &#39;005&#39;:</span>
+<span class="sd">			self.motd_fd = open(&quot;motd.txt&quot;, &quot;w&quot;)</span>
+<span class="sd">		elif chunks[1] == &#39;372&#39;:</span>
+<span class="sd">			self.motd_fd.write(get_irc_text(line) + &quot;\n&quot;)</span>
+<span class="sd">		elif chunks[1] == &#39;251&#39;:</span>
+<span class="sd">			self.motd_fd.close()</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">given_nick</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s">&#39;username&#39;</span><span class="p">,</span> <span class="n">realname</span><span class="o">=</span><span class="s">&#39;realname&#39;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="n">MessageChannel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cjpeer</span> <span class="o">=</span> <span class="bp">None</span> <span class="c">#subclasses have to set this to self</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">given_nick</span> <span class="o">=</span> <span class="n">given_nick</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">=</span> <span class="n">given_nick</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">serverport</span> <span class="o">=</span> <span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;host&quot;</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;port&quot;</span><span class="p">)))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">socks5_host</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;socks5_host&quot;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">socks5_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;socks5_port&quot;</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">get_config_irc_channel</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">userrealname</span> <span class="o">=</span> <span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">realname</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">password</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">password</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">password</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">given_password</span> <span class="o">=</span> <span class="n">password</span>
+
+<div class="viewcode-block" id="IRCMessageChannel.run"><a class="viewcode-back" href="../irc.html#irc.IRCMessageChannel.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">waiting</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">built_privmsg</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">give_up</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ping_reply</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lockcond</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Condition</span><span class="p">()</span>
+		<span class="n">PingThread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">give_up</span><span class="p">:</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;connecting&#39;</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;socks5&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;true&#39;</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&quot;Using socks5 proxy </span><span class="si">%s</span><span class="s">:</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socks5_host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">socks5_port</span><span class="p">))</span>
+					<span class="n">socks</span><span class="o">.</span><span class="n">setdefaultproxy</span><span class="p">(</span><span class="n">socks</span><span class="o">.</span><span class="n">PROXY_TYPE_SOCKS5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">socks5_host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">socks5_port</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">socks</span><span class="o">.</span><span class="n">socksocket</span><span class="p">()</span>	
+				<span class="k">else</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serverport</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;usessl&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;true&#39;</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">wrap_socket</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">fd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">makefile</span><span class="p">()</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="bp">None</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">given_password</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">given_password</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;CAP REQ :sasl&#39;</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;USER </span><span class="si">%s</span><span class="s"> b c :</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">userrealname</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">nick</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">given_nick</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&#39;NICK &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nick</span><span class="p">)</span>
+				<span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+					<span class="k">try</span><span class="p">:</span>
+						<span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fd</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+					<span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+						<span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+					<span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+						<span class="n">debug</span><span class="p">(</span><span class="s">&#39;line returned null&#39;</span><span class="p">)</span>
+						<span class="k">break</span>
+					<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+						<span class="n">debug</span><span class="p">(</span><span class="s">&#39;line was zero length&#39;</span><span class="p">)</span>
+						<span class="k">break</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">__handle_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+			<span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+			<span class="k">finally</span><span class="p">:</span>
+				<span class="k">try</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+				<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+					<span class="k">print</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_disconnect</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">on_disconnect</span><span class="p">()</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;disconnected irc&#39;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">give_up</span><span class="p">:</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ending irc&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">give_up</span> <span class="o">=</span> <span class="bp">True</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

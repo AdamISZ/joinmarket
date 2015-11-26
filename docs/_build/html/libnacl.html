@@ -1,0 +1,641 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>libnacl package &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="libnacl-package">
+<h1>libnacl package<a class="headerlink" href="#libnacl-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-libnacl.base">
+<span id="libnacl-base-module"></span><h2>libnacl.base module<a class="headerlink" href="#module-libnacl.base" title="Permalink to this headline">¶</a></h2>
+<p>Implement the base key object for other keys to inherit convenience functions</p>
+<dl class="class">
+<dt id="libnacl.base.BaseKey">
+<em class="property">class </em><tt class="descclassname">libnacl.base.</tt><tt class="descname">BaseKey</tt><a class="reference internal" href="_modules/libnacl/base.html#BaseKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.base.BaseKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Include methods for key management convenience</p>
+<dl class="method">
+<dt id="libnacl.base.BaseKey.hex_pk">
+<tt class="descname">hex_pk</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/base.html#BaseKey.hex_pk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.base.BaseKey.hex_pk" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="libnacl.base.BaseKey.hex_seed">
+<tt class="descname">hex_seed</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/base.html#BaseKey.hex_seed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.base.BaseKey.hex_seed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="libnacl.base.BaseKey.hex_sk">
+<tt class="descname">hex_sk</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/base.html#BaseKey.hex_sk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.base.BaseKey.hex_sk" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="libnacl.base.BaseKey.hex_vk">
+<tt class="descname">hex_vk</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/base.html#BaseKey.hex_vk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.base.BaseKey.hex_vk" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="libnacl.base.BaseKey.save">
+<tt class="descname">save</tt><big>(</big><em>path</em>, <em>serial='json'</em><big>)</big><a class="reference internal" href="_modules/libnacl/base.html#BaseKey.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.base.BaseKey.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Safely save keys with perms of 0400</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.blake">
+<span id="libnacl-blake-module"></span><h2>libnacl.blake module<a class="headerlink" href="#module-libnacl.blake" title="Permalink to this headline">¶</a></h2>
+<p>Mimic very closely the python hashlib classes for blake2b</p>
+<dl class="docutils">
+<dt>NOTE:</dt>
+<dd>This class does not yet implement streaming the msg into the
+hash function via the update method</dd>
+</dl>
+<dl class="class">
+<dt id="libnacl.blake.Blake2b">
+<em class="property">class </em><tt class="descclassname">libnacl.blake.</tt><tt class="descname">Blake2b</tt><big>(</big><em>msg</em>, <em>key=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/blake.html#Blake2b"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.blake.Blake2b" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Manage a Blake2b hash</p>
+<dl class="method">
+<dt id="libnacl.blake.Blake2b.digest">
+<tt class="descname">digest</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/blake.html#Blake2b.digest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.blake.Blake2b.digest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the digest of the string</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="libnacl.blake.Blake2b.hexdigest">
+<tt class="descname">hexdigest</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/blake.html#Blake2b.hexdigest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.blake.Blake2b.hexdigest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the hex digest of the string</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.blake.blake2b">
+<tt class="descclassname">libnacl.blake.</tt><tt class="descname">blake2b</tt><big>(</big><em>msg</em>, <em>key=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/blake.html#blake2b"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.blake.blake2b" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create and return a Blake2b object to mimic the behavior of the python
+hashlib functions</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.dual">
+<span id="libnacl-dual-module"></span><h2>libnacl.dual module<a class="headerlink" href="#module-libnacl.dual" title="Permalink to this headline">¶</a></h2>
+<p>The dual key system allows for the creation of keypairs that contain both
+cryptographic and signing keys</p>
+<dl class="class">
+<dt id="libnacl.dual.DualSecret">
+<em class="property">class </em><tt class="descclassname">libnacl.dual.</tt><tt class="descname">DualSecret</tt><big>(</big><em>crypt=None</em>, <em>sign=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/dual.html#DualSecret"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.dual.DualSecret" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#libnacl.base.BaseKey" title="libnacl.base.BaseKey"><tt class="xref py py-class docutils literal"><span class="pre">libnacl.base.BaseKey</span></tt></a></p>
+<p>Manage crypt and sign keys in one object</p>
+<dl class="method">
+<dt id="libnacl.dual.DualSecret.sign">
+<tt class="descname">sign</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl/dual.html#DualSecret.sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.dual.DualSecret.sign" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sign the given message</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="libnacl.dual.DualSecret.signature">
+<tt class="descname">signature</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl/dual.html#DualSecret.signature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.dual.DualSecret.signature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return just the signature for the message</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.encode">
+<span id="libnacl-encode-module"></span><h2>libnacl.encode module<a class="headerlink" href="#module-libnacl.encode" title="Permalink to this headline">¶</a></h2>
+<p>Build in routines and classes to simplify encoding routines</p>
+<dl class="function">
+<dt id="libnacl.encode.base16_decode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">base16_decode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#base16_decode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.base16_decode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base16 decode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.base16_encode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">base16_encode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#base16_encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.base16_encode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base32 encode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.base32_decode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">base32_decode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#base32_decode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.base32_decode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base32 decode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.base32_encode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">base32_encode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#base32_encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.base32_encode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base16 encode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.base64_decode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">base64_decode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#base64_decode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.base64_decode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base32 decode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.base64_encode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">base64_encode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#base64_encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.base64_encode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base16 encode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.hex_decode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">hex_decode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#hex_decode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.hex_decode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hex decode data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.encode.hex_encode">
+<tt class="descclassname">libnacl.encode.</tt><tt class="descname">hex_encode</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/libnacl/encode.html#hex_encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.encode.hex_encode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hex encode data</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.public">
+<span id="libnacl-public-module"></span><h2>libnacl.public module<a class="headerlink" href="#module-libnacl.public" title="Permalink to this headline">¶</a></h2>
+<p>High level classes and routines around public key encryption and decryption</p>
+<dl class="class">
+<dt id="libnacl.public.Box">
+<em class="property">class </em><tt class="descclassname">libnacl.public.</tt><tt class="descname">Box</tt><big>(</big><em>sk</em>, <em>pk</em><big>)</big><a class="reference internal" href="_modules/libnacl/public.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.public.Box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>TheBox class is used to create cryptographic boxes and unpack
+cryptographic boxes</p>
+<dl class="method">
+<dt id="libnacl.public.Box.decrypt">
+<tt class="descname">decrypt</tt><big>(</big><em>ctxt</em>, <em>nonce=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/public.html#Box.decrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.public.Box.decrypt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrypt the given message, if a nonce is passed in attempt to decrypt
+it with the given nonce, otherwise assum that the nonce is attached
+to the message</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="libnacl.public.Box.encrypt">
+<tt class="descname">encrypt</tt><big>(</big><em>msg</em>, <em>nonce=None</em>, <em>pack_nonce=True</em><big>)</big><a class="reference internal" href="_modules/libnacl/public.html#Box.encrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.public.Box.encrypt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encrypt the given message with the given nonce, if the nonce is not
+provided it will be generated from the libnacl.utils.rand_nonce
+function</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="libnacl.public.PublicKey">
+<em class="property">class </em><tt class="descclassname">libnacl.public.</tt><tt class="descname">PublicKey</tt><big>(</big><em>pk</em><big>)</big><a class="reference internal" href="_modules/libnacl/public.html#PublicKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.public.PublicKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#libnacl.base.BaseKey" title="libnacl.base.BaseKey"><tt class="xref py py-class docutils literal"><span class="pre">libnacl.base.BaseKey</span></tt></a></p>
+<p>This class is used to manage public keys</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="libnacl.public.SecretKey">
+<em class="property">class </em><tt class="descclassname">libnacl.public.</tt><tt class="descname">SecretKey</tt><big>(</big><em>sk=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/public.html#SecretKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.public.SecretKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#libnacl.base.BaseKey" title="libnacl.base.BaseKey"><tt class="xref py py-class docutils literal"><span class="pre">libnacl.base.BaseKey</span></tt></a></p>
+<p>This class is used to manage keypairs</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.secret">
+<span id="libnacl-secret-module"></span><h2>libnacl.secret module<a class="headerlink" href="#module-libnacl.secret" title="Permalink to this headline">¶</a></h2>
+<p>Utilities to make secret box encryption simple</p>
+<dl class="class">
+<dt id="libnacl.secret.SecretBox">
+<em class="property">class </em><tt class="descclassname">libnacl.secret.</tt><tt class="descname">SecretBox</tt><big>(</big><em>key=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/secret.html#SecretBox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.secret.SecretBox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#libnacl.base.BaseKey" title="libnacl.base.BaseKey"><tt class="xref py py-class docutils literal"><span class="pre">libnacl.base.BaseKey</span></tt></a></p>
+<p>Manage symetric encryption using the salsa20 algorithm</p>
+<dl class="method">
+<dt id="libnacl.secret.SecretBox.decrypt">
+<tt class="descname">decrypt</tt><big>(</big><em>ctxt</em>, <em>nonce=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/secret.html#SecretBox.decrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.secret.SecretBox.decrypt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrypt the given message, if no nonce is given the nonce will be
+extracted from the message</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="libnacl.secret.SecretBox.encrypt">
+<tt class="descname">encrypt</tt><big>(</big><em>msg</em>, <em>nonce=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/secret.html#SecretBox.encrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.secret.SecretBox.encrypt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encrypt the given message. If a nonce is not given it will be
+generated via the rand_nonce function</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.sign">
+<span id="libnacl-sign-module"></span><h2>libnacl.sign module<a class="headerlink" href="#module-libnacl.sign" title="Permalink to this headline">¶</a></h2>
+<p>High level routines to maintain signing keys and to sign and verify messages</p>
+<dl class="class">
+<dt id="libnacl.sign.Signer">
+<em class="property">class </em><tt class="descclassname">libnacl.sign.</tt><tt class="descname">Signer</tt><big>(</big><em>seed=None</em><big>)</big><a class="reference internal" href="_modules/libnacl/sign.html#Signer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sign.Signer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#libnacl.base.BaseKey" title="libnacl.base.BaseKey"><tt class="xref py py-class docutils literal"><span class="pre">libnacl.base.BaseKey</span></tt></a></p>
+<p>The tools needed to sign messages</p>
+<dl class="method">
+<dt id="libnacl.sign.Signer.sign">
+<tt class="descname">sign</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl/sign.html#Signer.sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sign.Signer.sign" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sign the given message with this key</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="libnacl.sign.Signer.signature">
+<tt class="descname">signature</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl/sign.html#Signer.signature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sign.Signer.signature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return just the signature for the message</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="libnacl.sign.Verifier">
+<em class="property">class </em><tt class="descclassname">libnacl.sign.</tt><tt class="descname">Verifier</tt><big>(</big><em>vk_hex</em><big>)</big><a class="reference internal" href="_modules/libnacl/sign.html#Verifier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sign.Verifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#libnacl.base.BaseKey" title="libnacl.base.BaseKey"><tt class="xref py py-class docutils literal"><span class="pre">libnacl.base.BaseKey</span></tt></a></p>
+<p>Verify signed messages</p>
+<dl class="method">
+<dt id="libnacl.sign.Verifier.verify">
+<tt class="descname">verify</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl/sign.html#Verifier.verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sign.Verifier.verify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verify the message with tis key</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.utils">
+<span id="libnacl-utils-module"></span><h2>libnacl.utils module<a class="headerlink" href="#module-libnacl.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="libnacl.utils.load_key">
+<tt class="descclassname">libnacl.utils.</tt><tt class="descname">load_key</tt><big>(</big><em>path</em>, <em>serial='json'</em><big>)</big><a class="reference internal" href="_modules/libnacl/utils.html#load_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.utils.load_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read in a key from a file and return the applicable key object based on
+the contents of the file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.utils.rand_nonce">
+<tt class="descclassname">libnacl.utils.</tt><tt class="descname">rand_nonce</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/utils.html#rand_nonce"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.utils.rand_nonce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates and returns a random bytestring of the size defined in libsodium
+as crypto_box_NONCEBYTES</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.utils.salsa_key">
+<tt class="descclassname">libnacl.utils.</tt><tt class="descname">salsa_key</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/utils.html#salsa_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.utils.salsa_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a salsa2020 key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.utils.time_nonce">
+<tt class="descclassname">libnacl.utils.</tt><tt class="descname">time_nonce</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl/utils.html#time_nonce"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.utils.time_nonce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates and returns a nonce as in rand_nonce() but using a timestamp for the first 8 bytes.</p>
+<p>This function now exists mostly for backwards compatibility, as rand_nonce() is usually preferred.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-libnacl.version">
+<span id="libnacl-version-module"></span><h2>libnacl.version module<a class="headerlink" href="#module-libnacl.version" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-libnacl">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-libnacl" title="Permalink to this headline">¶</a></h2>
+<p>Wrap libsodium routines</p>
+<dl class="exception">
+<dt id="libnacl.CryptError">
+<em class="property">exception </em><tt class="descclassname">libnacl.</tt><tt class="descname">CryptError</tt><a class="reference internal" href="_modules/libnacl.html#CryptError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.CryptError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>Base Exception for cryptographic errors</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_auth">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_auth</tt><big>(</big><em>msg</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_auth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_auth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs a one time authentication token for the given message msg
+using a given secret key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_auth_verify">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_auth_verify</tt><big>(</big><em>msg</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_auth_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_auth_verify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verifies that the given authentication token is correct for the given
+message and key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_box">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_box</tt><big>(</big><em>msg</em>, <em>nonce</em>, <em>pk</em>, <em>sk</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Using a public key and a secret key encrypt the given message. A nonce
+must also be passed in, never reuse the nonce</p>
+<p>enc_msg = nacl.crypto_box(&#8216;secret message&#8217;, &lt;unique nonce&gt;, &lt;public key string&gt;, &lt;secret key string&gt;)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_box_afternm">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_box_afternm</tt><big>(</big><em>msg</em>, <em>nonce</em>, <em>k</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_box_afternm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_box_afternm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encrypts a given a message, using partial computed data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_box_beforenm">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_box_beforenm</tt><big>(</big><em>pk</em>, <em>sk</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_box_beforenm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_box_beforenm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Partially performs the computation required for both encryption and decryption of data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_box_keypair">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_box_keypair</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_box_keypair"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_box_keypair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate and return a new keypair</p>
+<p>pk, sk = nacl.crypto_box_keypair()</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_box_open">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_box_open</tt><big>(</big><em>ctxt</em>, <em>nonce</em>, <em>pk</em>, <em>sk</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_box_open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_box_open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrypts a message given the receivers private key, and senders public key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_box_open_afternm">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_box_open_afternm</tt><big>(</big><em>ctxt</em>, <em>nonce</em>, <em>k</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_box_open_afternm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_box_open_afternm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrypts a ciphertext ctxt given k</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_generichash">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_generichash</tt><big>(</big><em>msg</em>, <em>key=None</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_generichash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_generichash" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the blake2 hash of the given message with a given key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_hash">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_hash</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_hash" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a hash of the given message</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_hash_sha256">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_hash_sha256</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_hash_sha256"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_hash_sha256" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the sha256 hash of the given message</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_hash_sha512">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_hash_sha512</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_hash_sha512"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_hash_sha512" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the sha512 hash of the given message</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_onetimeauth">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_onetimeauth</tt><big>(</big><em>msg</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_onetimeauth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_onetimeauth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs a one time authentication token for the given message msg using
+a given secret key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_onetimeauth_verify">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_onetimeauth_verify</tt><big>(</big><em>msg</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_onetimeauth_verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_onetimeauth_verify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verifies that the given authentication token is correct for the given
+message and key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_scalarmult_base">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_scalarmult_base</tt><big>(</big><em>n</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_scalarmult_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_scalarmult_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes and returns the scalar product of a standard group element and an
+integer &#8220;n&#8221;.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_secretbox">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_secretbox</tt><big>(</big><em>msg</em>, <em>nonce</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_secretbox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_secretbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encrypts and authenticates a message using the given secret key, and nonce</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_secretbox_open">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_secretbox_open</tt><big>(</big><em>ctxt</em>, <em>nonce</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_secretbox_open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_secretbox_open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrypts a ciphertext ctxt given the receivers private key, and senders
+public key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_sign">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_sign</tt><big>(</big><em>msg</em>, <em>sk</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_sign" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sign the given message witht he given signing key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_sign_keypair">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_sign_keypair</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_sign_keypair"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_sign_keypair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a signing/verification key pair</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_sign_open">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_sign_open</tt><big>(</big><em>sig</em>, <em>vk</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_sign_open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_sign_open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verifies the signed message sig using the signer&#8217;s verification key</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_sign_seed_keypair">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_sign_seed_keypair</tt><big>(</big><em>seed</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_sign_seed_keypair"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_sign_seed_keypair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes and returns the secret adn verify keys from the given seed</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_stream">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_stream</tt><big>(</big><em>slen</em>, <em>nonce</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a stream using the given secret key and nonce</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_stream_xor">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_stream_xor</tt><big>(</big><em>msg</em>, <em>nonce</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_stream_xor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_stream_xor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encrypts the given message using the given secret key and nonce</p>
+<p>The crypto_stream_xor function guarantees that the ciphertext is the
+plaintext (xor) the output of crypto_stream. Consequently
+crypto_stream_xor can also be used to decrypt</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_verify_16">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_verify_16</tt><big>(</big><em>string1</em>, <em>string2</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_verify_16"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_verify_16" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compares the first crypto_verify_16_BYTES of the given strings</p>
+<p>The time taken by the function is independent of the contents of string1
+and string2. In contrast, the standard C comparison function
+memcmp(string1,string2,16) takes time that is dependent on the longest
+matching prefix of string1 and string2. This often allows for easy
+timing attacks.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.crypto_verify_32">
+<tt class="descclassname">libnacl.</tt><tt class="descname">crypto_verify_32</tt><big>(</big><em>string1</em>, <em>string2</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#crypto_verify_32"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.crypto_verify_32" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compares the first crypto_verify_32_BYTES of the given strings</p>
+<p>The time taken by the function is independent of the contents of string1
+and string2. In contrast, the standard C comparison function
+memcmp(string1,string2,16) takes time that is dependent on the longest
+matching prefix of string1 and string2. This often allows for easy
+timing attacks.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.randombytes">
+<tt class="descclassname">libnacl.</tt><tt class="descname">randombytes</tt><big>(</big><em>size</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#randombytes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.randombytes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a string of random bytes of the given size</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.randombytes_buf">
+<tt class="descclassname">libnacl.</tt><tt class="descname">randombytes_buf</tt><big>(</big><em>size</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#randombytes_buf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.randombytes_buf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a string of random bytes of the given size</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.randombytes_close">
+<tt class="descclassname">libnacl.</tt><tt class="descname">randombytes_close</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#randombytes_close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.randombytes_close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the file descriptor or the handle for the cryptographic service
+provider</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.randombytes_random">
+<tt class="descclassname">libnacl.</tt><tt class="descname">randombytes_random</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#randombytes_random"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.randombytes_random" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a random 32-bit unsigned value</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.randombytes_stir">
+<tt class="descclassname">libnacl.</tt><tt class="descname">randombytes_stir</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#randombytes_stir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.randombytes_stir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a new key for the pseudorandom number generator</p>
+<p>The file descriptor for the entropy source is kept open, so that the
+generator can be reseeded even in a chroot() jail.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.randombytes_uniform">
+<tt class="descclassname">libnacl.</tt><tt class="descname">randombytes_uniform</tt><big>(</big><em>upper_bound</em><big>)</big><a class="reference internal" href="_modules/libnacl.html#randombytes_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.randombytes_uniform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a value between 0 and upper_bound using a uniform distribution</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.sodium_library_version_major">
+<tt class="descclassname">libnacl.</tt><tt class="descname">sodium_library_version_major</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#sodium_library_version_major"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sodium_library_version_major" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the major version number</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.sodium_library_version_minor">
+<tt class="descclassname">libnacl.</tt><tt class="descname">sodium_library_version_minor</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#sodium_library_version_minor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sodium_library_version_minor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the minor version number</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="libnacl.sodium_version_string">
+<tt class="descclassname">libnacl.</tt><tt class="descname">sodium_version_string</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/libnacl.html#sodium_version_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#libnacl.sodium_version_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the version string</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">libnacl package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-libnacl.base">libnacl.base module</a></li>
+<li><a class="reference internal" href="#module-libnacl.blake">libnacl.blake module</a></li>
+<li><a class="reference internal" href="#module-libnacl.dual">libnacl.dual module</a></li>
+<li><a class="reference internal" href="#module-libnacl.encode">libnacl.encode module</a></li>
+<li><a class="reference internal" href="#module-libnacl.public">libnacl.public module</a></li>
+<li><a class="reference internal" href="#module-libnacl.secret">libnacl.secret module</a></li>
+<li><a class="reference internal" href="#module-libnacl.sign">libnacl.sign module</a></li>
+<li><a class="reference internal" href="#module-libnacl.utils">libnacl.utils module</a></li>
+<li><a class="reference internal" href="#module-libnacl.version">libnacl.version module</a></li>
+<li><a class="reference internal" href="#module-libnacl">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/libnacl.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

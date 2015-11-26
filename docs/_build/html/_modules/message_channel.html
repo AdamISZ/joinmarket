@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>message_channel &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for message_channel</h1><div class="highlight"><pre>
+<span class="k">class</span> <span class="nc">CJPeerError</span><span class="p">(</span><span class="ne">StandardError</span><span class="p">):</span>
+<div class="viewcode-block" id="CJPeerError"><a class="viewcode-back" href="../message_channel.html#message_channel.CJPeerError">[docs]</a>	<span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">MessageChannel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></div>
+<div class="viewcode-block" id="MessageChannel"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel">[docs]</a>	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	Abstract class which implements a way for bots to communicate</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c">#all</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_welcome</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_set_topic</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_connect</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_disconnect</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_change</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="c">#orderbook watch functions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_order_seen</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_order_cancel</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="c">#taker functions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_error</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_pubkey</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_ioauth</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_sig</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="c">#maker functions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_orderbook_requested</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_order_fill</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_seen_auth</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_seen_tx</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_push_tx</span> <span class="o">=</span> <span class="bp">None</span>
+
+	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">pass</span>
+<div class="viewcode-block" id="MessageChannel.run"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.run">[docs]</a>	<span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.shutdown"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.shutdown">[docs]</a>	<span class="k">def</span> <span class="nf">send_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">errormsg</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.send_error"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.send_error">[docs]</a>
+	<span class="c">#callbacks for everyone</span>
+	<span class="c">#some of these many not have meaning in a future channel, like bitmessage</span>
+	<span class="k">def</span> <span class="nf">register_channel_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">on_welcome</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_set_topic</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span></div>
+<div class="viewcode-block" id="MessageChannel.register_channel_callbacks"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.register_channel_callbacks">[docs]</a>		<span class="n">on_connect</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_disconnect</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_nick_leave</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_nick_change</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_welcome</span> <span class="o">=</span> <span class="n">on_welcome</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_set_topic</span> <span class="o">=</span> <span class="n">on_set_topic</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_connect</span> <span class="o">=</span> <span class="n">on_connect</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_disconnect</span> <span class="o">=</span> <span class="n">on_disconnect</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span> <span class="o">=</span> <span class="n">on_nick_leave</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_nick_change</span> <span class="o">=</span> <span class="n">on_nick_change</span>
+
+	<span class="c">#orderbook watcher commands</span>
+	<span class="k">def</span> <span class="nf">register_orderbookwatch_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">on_order_seen</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span></div>
+<div class="viewcode-block" id="MessageChannel.register_orderbookwatch_callbacks"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.register_orderbookwatch_callbacks">[docs]</a>		<span class="n">on_order_cancel</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_order_seen</span> <span class="o">=</span> <span class="n">on_order_seen</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_order_cancel</span> <span class="o">=</span> <span class="n">on_order_cancel</span>
+	<span class="k">def</span> <span class="nf">request_orderbook</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.request_orderbook"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.request_orderbook">[docs]</a>
+	<span class="c">#taker commands</span>
+	<span class="k">def</span> <span class="nf">register_taker_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">on_error</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_pubkey</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_ioauth</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span></div>
+<div class="viewcode-block" id="MessageChannel.register_taker_callbacks"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.register_taker_callbacks">[docs]</a>		<span class="n">on_sig</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_error</span> <span class="o">=</span> <span class="n">on_error</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_pubkey</span> <span class="o">=</span> <span class="n">on_pubkey</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_ioauth</span> <span class="o">=</span> <span class="n">on_ioauth</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_sig</span> <span class="o">=</span> <span class="n">on_sig</span>
+	<span class="k">def</span> <span class="nf">fill_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nickoid_dict</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">taker_pubkey</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.fill_orders"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.fill_orders">[docs]</a>	<span class="k">def</span> <span class="nf">send_auth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.send_auth"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.send_auth">[docs]</a>	<span class="k">def</span> <span class="nf">send_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick_list</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.send_tx"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.send_tx">[docs]</a>	<span class="k">def</span> <span class="nf">push_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.push_tx"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.push_tx">[docs]</a>
+	<span class="c">#maker commands</span>
+	<span class="k">def</span> <span class="nf">register_maker_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">on_orderbook_requested</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_order_fill</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span></div>
+<div class="viewcode-block" id="MessageChannel.register_maker_callbacks"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.register_maker_callbacks">[docs]</a>		<span class="n">on_seen_auth</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_seen_tx</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">on_push_tx</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_orderbook_requested</span> <span class="o">=</span> <span class="n">on_orderbook_requested</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_order_fill</span> <span class="o">=</span> <span class="n">on_order_fill</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_seen_auth</span> <span class="o">=</span> <span class="n">on_seen_auth</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_seen_tx</span> <span class="o">=</span> <span class="n">on_seen_tx</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">on_push_tx</span> <span class="o">=</span> <span class="n">on_push_tx</span>
+	<span class="k">def</span> <span class="nf">announce_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orderlist</span><span class="p">,</span> <span class="n">nick</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span> <span class="k">pass</span> <span class="c">#nick=None means announce publicly</span></div>
+<div class="viewcode-block" id="MessageChannel.announce_orders"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.announce_orders">[docs]</a>	<span class="k">def</span> <span class="nf">cancel_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oid_list</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.cancel_orders"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.cancel_orders">[docs]</a>	<span class="k">def</span> <span class="nf">send_pubkey</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.send_pubkey"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.send_pubkey">[docs]</a>	<span class="k">def</span> <span class="nf">send_ioauth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">utxo_list</span><span class="p">,</span> <span class="n">cj_pubkey</span><span class="p">,</span> <span class="n">change_addr</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.send_ioauth"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.send_ioauth">[docs]</a>	<span class="k">def</span> <span class="nf">send_sigs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">sig_list</span><span class="p">):</span> <span class="k">pass</span></div>
+<div class="viewcode-block" id="MessageChannel.send_sigs"><a class="viewcode-back" href="../message_channel.html#message_channel.MessageChannel.send_sigs">[docs]</a></pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

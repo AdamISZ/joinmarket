@@ -126,12 +126,17 @@ def pubkey_to_address(pubkey, magicbyte=0):
 pubtoaddr = pubkey_to_address
 
 def wif_compressed_privkey(priv,vbyte=0):
+    """Given a private key in binary, returns
+    the WIF compressed format, used for privkey dumps."""
     return bin_to_b58check(binascii.unhexlify(priv), 128+int(vbyte))
 
-#Note: these 2 functions require priv/pubkeys in binary not hex
+
 def ecdsa_sign(msg, priv):
-    #Compatibility issue: old bots will be confused
-    #by different msg hashing algo; need to keep electrum_sig_hash, temporarily.
+    """The private key priv must be supplied in binary, not hex.
+    Note: Compatibility issue: old bots will be confused
+    by adifferent msg hashing algo; need to keep electrum_sig_hash, for now.
+    A base64 encoded signature is returned.
+    """    
     hashed_msg = electrum_sig_hash(msg)
     dersig = ecdsa_raw_sign(hashed_msg, priv, False, rawmsg=True)
     #see comments to legacy* functions
@@ -139,7 +144,10 @@ def ecdsa_sign(msg, priv):
     return base64.b64encode(sig)
 
 def ecdsa_verify(msg, sig, pub):
-    #See note to ecdsa_sign
+    """The pubkey must be supplied in binary, not hex.
+    The messages should not be pre-hashed. See the compatibility
+    note to ecdsa_sign.
+    True or False is returned."""
     hashed_msg = electrum_sig_hash(msg)
     sig = base64.b64decode(sig)
     #see comments to legacy* functions
@@ -149,12 +157,14 @@ def ecdsa_verify(msg, sig, pub):
         return False
     return ecdsa_raw_verify(hashed_msg, pub, sig, False,rawmsg=True)
 
-#A sadly necessary hack until all joinmarket bots are running secp256k1 code.
-#pybitcointools *message* signatures (not transaction signatures) used an old signature
-#format, basically: [27+y%2] || 32 byte r || 32 byte s,
-#instead of DER. These two functions translate the new version into the old so that 
-#counterparty bots can verify successfully.
+
 def legacy_ecdsa_sign_convert(dersig):
+    """A sadly necessary hack until all joinmarket bots are running secp256k1 code.
+    pybitcointools *message* signatures (not transaction signatures) used an old signature
+    format, basically: [27+y%2] || 32 byte r || 32 byte s,
+    instead of DER. These two functions translate the new version into the old so that 
+    counterparty bots can verify successfully.    
+    """
     #note there is no sanity checking of DER format (e.g. leading length byte)
     dersig = dersig[2:] #e.g. 3045
     rlen = ord(dersig[1]) #ignore leading 02
@@ -188,6 +198,7 @@ def legacy_ecdsa_sign_convert(dersig):
     return chr(27)+r+s
 
 def legacy_ecdsa_verify_convert(sig):
+    """See the documentation of legacy_ecdsa_sign_convert."""
     sig = sig[1:] #ignore parity byte
     try:
         r, s = sig[:32],sig[32:]

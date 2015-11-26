@@ -1,0 +1,820 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>common &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for common</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;This module contains widely used functions</span>
+<span class="sd">including the Joinmarket Wallet classes.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">bitcoin</span> <span class="kn">as</span> <span class="nn">btc</span>
+<span class="kn">from</span> <span class="nn">decimal</span> <span class="kn">import</span> <span class="n">Decimal</span><span class="p">,</span> <span class="n">InvalidOperation</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">factorial</span><span class="p">,</span> <span class="n">exp</span>
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">datetime</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">pprint</span><span class="o">,</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">blockchaininterface</span><span class="o">,</span> <span class="nn">jsonrpc</span><span class="o">,</span> <span class="nn">slowaes</span>
+<span class="kn">from</span> <span class="nn">ConfigParser</span> <span class="kn">import</span> <span class="n">SafeConfigParser</span><span class="p">,</span> <span class="n">NoSectionError</span><span class="p">,</span> <span class="n">NoOptionError</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">io</span><span class="o">,</span> <span class="nn">itertools</span>
+
+<span class="n">JM_VERSION</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">nickname</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="n">DUST_THRESHOLD</span> <span class="o">=</span> <span class="mi">2730</span>
+<span class="n">bc_interface</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="n">ordername_list</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;absorder&quot;</span><span class="p">,</span> <span class="s">&quot;relorder&quot;</span><span class="p">]</span>
+<span class="n">maker_timeout_sec</span> <span class="o">=</span> <span class="mi">30</span>
+
+<span class="n">debug_file_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+<span class="n">debug_file_handle</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="n">core_alert</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="n">joinmarket_alert</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="n">debug_silence</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">SafeConfigParser</span><span class="p">()</span>
+<span class="n">config_location</span> <span class="o">=</span> <span class="s">&#39;joinmarket.cfg&#39;</span>
+<span class="c"># FIXME: Add rpc_* options here in the future!</span>
+<span class="n">required_options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;BLOCKCHAIN&#39;</span><span class="p">:[</span><span class="s">&#39;blockchain_source&#39;</span><span class="p">,</span> <span class="s">&#39;network&#39;</span><span class="p">],</span>
+                    <span class="s">&#39;MESSAGING&#39;</span><span class="p">:[</span><span class="s">&#39;host&#39;</span><span class="p">,</span><span class="s">&#39;channel&#39;</span><span class="p">,</span><span class="s">&#39;port&#39;</span><span class="p">]}</span>
+
+<span class="n">defaultconfig</span> <span class="o">=</span>\
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">[BLOCKCHAIN]</span>
+<span class="sd">blockchain_source = blockr </span>
+<span class="sd">#options: blockr, bitcoin-rpc, json-rpc, regtest</span>
+<span class="sd">#for instructions on bitcoin-rpc read https://github.com/chris-belcher/joinmarket/wiki/Running-JoinMarket-with-Bitcoin-Core-full-node </span>
+<span class="sd">network = mainnet</span>
+<span class="sd">rpc_host = localhost</span>
+<span class="sd">rpc_port = 8332</span>
+<span class="sd">rpc_user = bitcoin</span>
+<span class="sd">rpc_password = password</span>
+
+<span class="sd">[MESSAGING]</span>
+<span class="sd">host = irc.cyberguerrilla.org</span>
+<span class="sd">channel = joinmarket-pit</span>
+<span class="sd">port = 6697</span>
+<span class="sd">usessl = true</span>
+<span class="sd">socks5 = false</span>
+<span class="sd">socks5_host = localhost</span>
+<span class="sd">socks5_port = 9050</span>
+<span class="sd">#for tor</span>
+<span class="sd">#host = 6dvj6v5imhny3anf.onion</span>
+<span class="sd">#port = 6697</span>
+<span class="sd">#usessl = true</span>
+<span class="sd">#socks5 = true</span>
+<span class="sd">maker_timeout_sec = 30</span>
+
+<span class="sd">[POLICY]</span>
+<span class="sd"># for dust sweeping, try merge_algorithm = gradual</span>
+<span class="sd"># for more rapid dust sweeping, try merge_algorithm = greedy</span>
+<span class="sd"># for most rapid dust sweeping, try merge_algorithm = greediest</span>
+<span class="sd"># but don&#39;t forget to bump your miner fees!</span>
+<span class="sd">merge_algorithm = default</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="load_program_config"><a class="viewcode-back" href="../common.html#common.load_program_config">[docs]</a><span class="k">def</span> <span class="nf">load_program_config</span><span class="p">():</span>
+	<span class="sd">&#39;&#39;&#39;Load the configuration from the file joinmarket.cfg</span>
+<span class="sd">	in the base directory (hardcoded). Check for required sections.</span>
+<span class="sd">	If file is not present, create a default version.&#39;&#39;&#39;</span>
+	<span class="n">loadedFiles</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">read</span><span class="p">([</span><span class="n">config_location</span><span class="p">])</span>
+	<span class="c">#Create default config file if not found</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">loadedFiles</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+		<span class="n">config</span><span class="o">.</span><span class="n">readfp</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">defaultconfig</span><span class="p">))</span>
+		<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_location</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+			<span class="n">configfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">defaultconfig</span><span class="p">)</span>
+
+	<span class="c">#check for sections</span>
+	<span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">required_options</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">s</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">():</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Config file does not contain the required section: &quot;</span><span class="o">+</span><span class="n">s</span><span class="p">)</span>
+	<span class="c">#then check for specific options</span>
+	<span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">required_options</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+		<span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">o</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+				<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Config file does not contain the required option: &quot;</span><span class="o">+</span><span class="n">o</span><span class="p">)</span>
+
+	<span class="k">try</span><span class="p">:</span>
+		<span class="k">global</span> <span class="n">maker_timeout_sec</span>
+		<span class="n">maker_timeout_sec</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s">&#39;MESSAGING&#39;</span><span class="p">,</span> <span class="s">&#39;maker_timeout_sec&#39;</span><span class="p">)</span>
+	<span class="k">except</span> <span class="n">NoOptionError</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;maker_timeout_sec not found in .cfg file, using default value&#39;</span><span class="p">)</span>
+	
+	<span class="c">#configure the interface to the blockchain on startup</span>
+	<span class="k">global</span> <span class="n">bc_interface</span>
+	<span class="n">bc_interface</span> <span class="o">=</span> <span class="n">blockchaininterface</span><span class="o">.</span><span class="n">get_blockchain_interface_instance</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="get_config_irc_channel"><a class="viewcode-back" href="../common.html#common.get_config_irc_channel">[docs]</a><span class="k">def</span> <span class="nf">get_config_irc_channel</span><span class="p">():</span>
+	<span class="n">channel</span> <span class="o">=</span> <span class="s">&#39;#&#39;</span><span class="o">+</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;MESSAGING&quot;</span><span class="p">,</span><span class="s">&quot;channel&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">get_network</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+		<span class="n">channel</span> <span class="o">+=</span> <span class="s">&#39;-test&#39;</span>
+	<span class="k">return</span> <span class="n">channel</span>
+</div>
+<div class="viewcode-block" id="debug"><a class="viewcode-back" href="../common.html#common.debug">[docs]</a><span class="k">def</span> <span class="nf">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+	<span class="k">global</span> <span class="n">debug_file_handle</span>
+	<span class="k">with</span> <span class="n">debug_file_lock</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">nickname</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">debug_file_handle</span><span class="p">:</span> 
+			<span class="n">debug_file_handle</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39;logs&#39;</span><span class="p">,</span> <span class="n">nickname</span><span class="o">+</span><span class="s">&#39;.log&#39;</span><span class="p">),</span><span class="s">&#39;ab&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+		<span class="n">outmsg</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;[%Y/%m/</span><span class="si">%d</span><span class="s"> %H:%M:%S] &quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">msg</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">debug_silence</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">core_alert</span><span class="p">:</span>
+				<span class="k">print</span> <span class="s">&#39;Core Alert Message: &#39;</span> <span class="o">+</span> <span class="n">core_alert</span>
+			<span class="k">if</span> <span class="n">joinmarket_alert</span><span class="p">:</span>
+				<span class="k">print</span> <span class="s">&#39;JoinMarket Alert Message: &#39;</span> <span class="o">+</span> <span class="n">joinmarket_alert</span>
+			<span class="k">print</span> <span class="n">outmsg</span>
+		<span class="k">if</span> <span class="n">nickname</span><span class="p">:</span> <span class="c">#debugs before creating bot nick won&#39;t be handled like this</span>
+			<span class="n">debug_file_handle</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outmsg</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span><span class="p">)</span>
+			
+
+<span class="c">#Random functions - replacing some NumPy features</span>
+<span class="c">#NOTE THESE ARE NEITHER CRYPTOGRAPHICALLY SECURE </span>
+<span class="c">#NOR PERFORMANT NOR HIGH PRECISION!</span>
+<span class="c">#Only for sampling purposes</span></div>
+<div class="viewcode-block" id="rand_norm_array"><a class="viewcode-back" href="../common.html#common.rand_norm_array">[docs]</a><span class="k">def</span> <span class="nf">rand_norm_array</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+	<span class="c">#use normalvariate instead of gauss for thread safety</span>
+	<span class="k">return</span> <span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">normalvariate</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="rand_exp_array"><a class="viewcode-back" href="../common.html#common.rand_exp_array">[docs]</a><span class="k">def</span> <span class="nf">rand_exp_array</span><span class="p">(</span><span class="n">lamda</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+	<span class="c">#&#39;lambda&#39; is reserved (in case you are triggered by spelling errors)</span>
+	<span class="k">return</span> <span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">expovariate</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">lamda</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="rand_pow_array"><a class="viewcode-back" href="../common.html#common.rand_pow_array">[docs]</a><span class="k">def</span> <span class="nf">rand_pow_array</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+	<span class="c">#rather crude in that uses a uniform sample which is a multiple of 1e-4</span>
+	<span class="c">#for basis of formula, see: http://mathworld.wolfram.com/RandomNumber.html</span>
+	<span class="k">return</span> <span class="p">[</span><span class="n">y</span><span class="o">**</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="n">power</span><span class="p">)</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="p">[</span><span class="n">x</span><span class="o">*</span><span class="mf">0.0001</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">xrange</span><span class="p">(</span><span class="mi">10000</span><span class="p">),</span><span class="n">n</span><span class="p">)]]</span>
+</div>
+<div class="viewcode-block" id="rand_weighted_choice"><a class="viewcode-back" href="../common.html#common.rand_weighted_choice">[docs]</a><span class="k">def</span> <span class="nf">rand_weighted_choice</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p_arr</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;Choose a value in 0..n-1</span>
+<span class="sd">	with the choice weighted by the probabilities</span>
+<span class="sd">	in the list p_arr. Note that there will be some</span>
+<span class="sd">	floating point rounding errors, but see the note</span>
+<span class="sd">	at the top of this section.&#39;&#39;&#39;</span>
+	<span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">p_arr</span><span class="p">)</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-4</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Sum of probabilities must be 1&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">p_arr</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Need: &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">+</span><span class="s">&quot; probabilities.&quot;</span><span class="p">)</span>
+	<span class="n">cum_pr</span> <span class="o">=</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">p_arr</span><span class="p">[:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p_arr</span><span class="p">))]</span>
+	<span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+	<span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cum_pr</span><span class="o">+</span><span class="p">[</span><span class="n">r</span><span class="p">])</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="c">#End random functions</span>
+</div>
+<div class="viewcode-block" id="chunks"><a class="viewcode-back" href="../common.html#common.chunks">[docs]</a><span class="k">def</span> <span class="nf">chunks</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;Utility function to split the list d into n chunks.&#39;&#39;&#39;</span>
+	<span class="k">return</span> <span class="p">[</span><span class="n">d</span><span class="p">[</span><span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="n">n</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="get_network"><a class="viewcode-back" href="../common.html#common.get_network">[docs]</a><span class="k">def</span> <span class="nf">get_network</span><span class="p">():</span>
+	<span class="sd">&#39;&#39;&#39;Returns network name&#39;&#39;&#39;</span>
+	<span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span><span class="s">&quot;network&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="get_p2sh_vbyte"><a class="viewcode-back" href="../common.html#common.get_p2sh_vbyte">[docs]</a><span class="k">def</span> <span class="nf">get_p2sh_vbyte</span><span class="p">():</span>
+	<span class="sd">&#39;&#39;&#39;Returns the correct magic byte for a </span>
+<span class="sd">	pay to script hash address.&#39;&#39;&#39;</span>
+	<span class="k">if</span> <span class="n">get_network</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+		<span class="k">return</span> <span class="mh">0xc4</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">return</span> <span class="mh">0x05</span>
+</div>
+<div class="viewcode-block" id="get_p2pk_vbyte"><a class="viewcode-back" href="../common.html#common.get_p2pk_vbyte">[docs]</a><span class="k">def</span> <span class="nf">get_p2pk_vbyte</span><span class="p">():</span>
+	<span class="sd">&#39;&#39;&#39;Returns the correct magic byte for a </span>
+<span class="sd">	pay to public key hash address.&#39;&#39;&#39;</span>
+	<span class="k">if</span> <span class="n">get_network</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+		<span class="k">return</span> <span class="mh">0x6f</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">return</span> <span class="mh">0x00</span>
+</div>
+<div class="viewcode-block" id="validate_address"><a class="viewcode-back" href="../common.html#common.validate_address">[docs]</a><span class="k">def</span> <span class="nf">validate_address</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">ver</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">get_version_byte</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+	<span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+		<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;Checksum wrong. Typo in address?&#39;</span>
+	<span class="k">if</span> <span class="n">ver</span> <span class="o">!=</span> <span class="n">get_p2pk_vbyte</span><span class="p">()</span> <span class="ow">and</span> <span class="n">ver</span> <span class="o">!=</span> <span class="n">get_p2sh_vbyte</span><span class="p">():</span>
+		<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;Wrong address version. Testnet/mainnet confused?&#39;</span>
+	<span class="k">return</span> <span class="bp">True</span><span class="p">,</span> <span class="s">&#39;address validated&#39;</span>
+</div>
+<div class="viewcode-block" id="debug_dump_object"><a class="viewcode-back" href="../common.html#common.debug_dump_object">[docs]</a><span class="k">def</span> <span class="nf">debug_dump_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">skip_fields</span><span class="o">=</span><span class="p">[]):</span>
+	<span class="sd">&#39;&#39;&#39;Print out the contents of a Python object.</span>
+<span class="sd">	Useful for debugging.</span>
+<span class="sd">	If sensitive info is contained, add it to the</span>
+<span class="sd">	skip_fields argument to prevent printout.&#39;&#39;&#39;</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;Class debug dump, name:&#39;</span> <span class="o">+</span> <span class="n">obj</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+	<span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+		<span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">skip_fields</span><span class="p">:</span>
+			<span class="k">continue</span>
+		<span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s">&#39;password&#39;</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s">&#39;given_password&#39;</span><span class="p">:</span>
+			<span class="k">continue</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;key=&#39;</span> <span class="o">+</span> <span class="n">k</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;string: len:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+			<span class="n">debug</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+			<span class="n">debug</span><span class="p">(</span><span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="select_gradual"><a class="viewcode-back" href="../common.html#common.select_gradual">[docs]</a><span class="k">def</span> <span class="nf">select_gradual</span><span class="p">(</span><span class="n">unspent</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	UTXO selection algorithm for gradual dust reduction</span>
+<span class="sd">	If possible, combines outputs, picking as few as possible of the largest</span>
+<span class="sd">	utxos less than the target value; if the target value is larger than the</span>
+<span class="sd">	sum of all smaller utxos, uses the smallest utxo larger than the value.</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="n">value</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="k">lambda</span> <span class="n">u</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span>
+	<span class="n">high</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent</span> <span class="k">if</span> <span class="n">key</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">value</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+	<span class="n">low</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent</span> <span class="k">if</span> <span class="n">key</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">value</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+	<span class="n">lowsum</span><span class="o">=</span><span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span><span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">,</span><span class="nb">map</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">low</span><span class="p">),</span><span class="mi">0</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">lowsum</span><span class="p">:</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">high</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;Not enough funds&#39;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="p">[</span><span class="n">high</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+		<span class="k">while</span> <span class="n">total</span> <span class="o">&lt;</span> <span class="n">value</span><span class="p">:</span>
+			<span class="n">total</span> <span class="o">+=</span> <span class="n">low</span><span class="p">[</span><span class="n">end</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]</span>
+			<span class="n">end</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="k">while</span> <span class="n">total</span> <span class="o">&gt;=</span> <span class="n">value</span> <span class="o">+</span> <span class="n">low</span><span class="p">[</span><span class="n">start</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]:</span>
+			<span class="n">total</span> <span class="o">-=</span> <span class="n">low</span><span class="p">[</span><span class="n">start</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]</span>
+			<span class="n">start</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="k">return</span> <span class="n">low</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="select_greedy"><a class="viewcode-back" href="../common.html#common.select_greedy">[docs]</a><span class="k">def</span> <span class="nf">select_greedy</span><span class="p">(</span><span class="n">unspent</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	UTXO selection algorithm for greedy dust reduction, but leaves out</span>
+<span class="sd">	extraneous utxos, preferring to keep multiple small ones.</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="n">value</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">cursor</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="k">lambda</span> <span class="n">u</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">],</span> <span class="mi">0</span>
+	<span class="n">utxos</span><span class="p">,</span> <span class="n">picked</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unspent</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">),</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">utxo</span> <span class="ow">in</span> <span class="n">utxos</span><span class="p">:</span>      <span class="c"># find the smallest consecutive sum &gt;= value</span>
+		<span class="n">value</span> <span class="o">-=</span> <span class="n">key</span><span class="p">(</span><span class="n">utxo</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c"># perfect match! (skip dilution stage)</span>
+			<span class="k">return</span> <span class="n">utxos</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">cursor</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="c"># end is non-inclusive</span>
+                <span class="k">elif</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span> <span class="c"># overshot</span>
+			<span class="n">picked</span> <span class="o">+=</span> <span class="p">[</span><span class="n">utxo</span><span class="p">]</span> <span class="c"># definitely need this utxo</span>
+			<span class="k">break</span>            <span class="c"># proceed to dilution</span>
+		<span class="n">cursor</span> <span class="o">+=</span> <span class="mi">1</span>
+	<span class="k">for</span> <span class="n">utxo</span> <span class="ow">in</span> <span class="n">utxos</span><span class="p">[</span><span class="n">cursor</span><span class="o">-</span><span class="mi">1</span><span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="c"># dilution loop</span>
+		<span class="n">value</span> <span class="o">+=</span> <span class="n">key</span><span class="p">(</span><span class="n">utxo</span><span class="p">)</span> <span class="c"># see if we can skip this one</span>
+		<span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>      <span class="c"># no, that drops us below the target</span>
+			<span class="n">picked</span> <span class="o">+=</span> <span class="p">[</span><span class="n">utxo</span><span class="p">]</span> <span class="c"># so we need this one too</span>
+			<span class="n">value</span> <span class="o">-=</span> <span class="n">key</span><span class="p">(</span><span class="n">utxo</span><span class="p">)</span> <span class="c"># &#39;backtrack&#39; the counter</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">picked</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">picked</span>
+	<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;Not enough funds&#39;</span><span class="p">)</span> <span class="c"># if all else fails, we do too</span>
+</div>
+<div class="viewcode-block" id="select_greediest"><a class="viewcode-back" href="../common.html#common.select_greediest">[docs]</a><span class="k">def</span> <span class="nf">select_greediest</span><span class="p">(</span><span class="n">unspent</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	UTXO selection algorithm for speediest dust reduction</span>
+<span class="sd">	Combines the shortest run of utxos (sorted by size, from smallest) which</span>
+<span class="sd">	exceeds the target value; if the target value is larger than the sum of</span>
+<span class="sd">	all smaller utxos, uses the smallest utxo larger than the target value.</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="n">value</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="k">lambda</span> <span class="n">u</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span>
+	<span class="n">high</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent</span> <span class="k">if</span> <span class="n">key</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">value</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+	<span class="n">low</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent</span> <span class="k">if</span> <span class="n">key</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">value</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+	<span class="n">lowsum</span><span class="o">=</span><span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span><span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">,</span><span class="nb">map</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">low</span><span class="p">),</span><span class="mi">0</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">lowsum</span><span class="p">:</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">high</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;Not enough funds&#39;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="p">[</span><span class="n">high</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">end</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+		<span class="k">while</span> <span class="n">total</span> <span class="o">&lt;</span> <span class="n">value</span><span class="p">:</span>
+			<span class="n">total</span> <span class="o">+=</span> <span class="n">low</span><span class="p">[</span><span class="n">end</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]</span>
+			<span class="n">end</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="k">return</span> <span class="n">low</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="AbstractWallet"><a class="viewcode-back" href="../common.html#common.AbstractWallet">[docs]</a><span class="k">class</span> <span class="nc">AbstractWallet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	Abstract wallet for use with JoinMarket</span>
+<span class="sd">	Mostly written with class Wallet in mind, </span>
+<span class="sd">	the default JoinMarket HD wallet.</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">utxo_selector</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">select</span> <span class="c"># default fallback: upstream</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;POLICY&quot;</span><span class="p">,</span> <span class="s">&quot;merge_algorithm&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;gradual&quot;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">utxo_selector</span> <span class="o">=</span> <span class="n">select_gradual</span>
+			<span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;POLICY&quot;</span><span class="p">,</span> <span class="s">&quot;merge_algorithm&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;greedy&quot;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">utxo_selector</span> <span class="o">=</span> <span class="n">select_greedy</span>
+			<span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;POLICY&quot;</span><span class="p">,</span> <span class="s">&quot;merge_algorithm&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;greediest&quot;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">utxo_selector</span> <span class="o">=</span> <span class="n">select_greediest</span>
+			<span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;POLICY&quot;</span><span class="p">,</span> <span class="s">&quot;merge_algorithm&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s">&quot;default&quot;</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unknown merge algorithm&quot;</span><span class="p">)</span>
+		<span class="k">except</span> <span class="n">NoSectionError</span><span class="p">:</span>
+			<span class="k">pass</span>
+
+<div class="viewcode-block" id="AbstractWallet.get_key_from_addr"><a class="viewcode-back" href="../common.html#common.AbstractWallet.get_key_from_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_key_from_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">None</span></div>
+<div class="viewcode-block" id="AbstractWallet.get_utxos_by_mixdepth"><a class="viewcode-back" href="../common.html#common.AbstractWallet.get_utxos_by_mixdepth">[docs]</a>	<span class="k">def</span> <span class="nf">get_utxos_by_mixdepth</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">None</span></div>
+<div class="viewcode-block" id="AbstractWallet.get_change_addr"><a class="viewcode-back" href="../common.html#common.AbstractWallet.get_change_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">None</span></div>
+<div class="viewcode-block" id="AbstractWallet.update_cache_index"><a class="viewcode-back" href="../common.html#common.AbstractWallet.update_cache_index">[docs]</a>	<span class="k">def</span> <span class="nf">update_cache_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">pass</span></div>
+<div class="viewcode-block" id="AbstractWallet.remove_old_utxos"><a class="viewcode-back" href="../common.html#common.AbstractWallet.remove_old_utxos">[docs]</a>	<span class="k">def</span> <span class="nf">remove_old_utxos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+		<span class="k">pass</span></div>
+<div class="viewcode-block" id="AbstractWallet.add_new_utxos"><a class="viewcode-back" href="../common.html#common.AbstractWallet.add_new_utxos">[docs]</a>	<span class="k">def</span> <span class="nf">add_new_utxos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">txid</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="AbstractWallet.select_utxos"><a class="viewcode-back" href="../common.html#common.AbstractWallet.select_utxos">[docs]</a>	<span class="k">def</span> <span class="nf">select_utxos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixdepth</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+		<span class="n">utxo_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_utxos_by_mixdepth</span><span class="p">()[</span><span class="n">mixdepth</span><span class="p">]</span>
+		<span class="n">unspent</span> <span class="o">=</span> <span class="p">[{</span><span class="s">&#39;utxo&#39;</span><span class="p">:</span> <span class="n">utxo</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="n">addrval</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]}</span>
+			<span class="k">for</span> <span class="n">utxo</span><span class="p">,</span> <span class="n">addrval</span> <span class="ow">in</span> <span class="n">utxo_list</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()]</span>
+		<span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxo_selector</span><span class="p">(</span><span class="n">unspent</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;for mixdepth=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">mixdepth</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; amount=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; selected:&#39;</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">inputs</span><span class="p">))</span>
+		<span class="k">return</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">i</span><span class="p">[</span><span class="s">&#39;utxo&#39;</span><span class="p">],</span> <span class="p">{</span><span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">],</span> <span class="s">&#39;address&#39;</span><span class="p">:</span>
+			<span class="n">utxo_list</span><span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="s">&#39;utxo&#39;</span><span class="p">]][</span><span class="s">&#39;address&#39;</span><span class="p">]})</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="AbstractWallet.get_balance_by_mixdepth"><a class="viewcode-back" href="../common.html#common.AbstractWallet.get_balance_by_mixdepth">[docs]</a>	<span class="k">def</span> <span class="nf">get_balance_by_mixdepth</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">mix_balance</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">):</span>
+			<span class="n">mix_balance</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">for</span> <span class="n">mixdepth</span><span class="p">,</span> <span class="n">utxos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_utxos_by_mixdepth</span><span class="p">()</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="n">mix_balance</span><span class="p">[</span><span class="n">mixdepth</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">addrval</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">addrval</span> <span class="ow">in</span> <span class="n">utxos</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+		<span class="k">return</span> <span class="n">mix_balance</span>
+</div></div>
+<div class="viewcode-block" id="Wallet"><a class="viewcode-back" href="../common.html#common.Wallet">[docs]</a><span class="k">class</span> <span class="nc">Wallet</span><span class="p">(</span><span class="n">AbstractWallet</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seedarg</span><span class="p">,</span> <span class="n">max_mix_depth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">gaplimit</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">extend_mixdepth</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">storepassword</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">Wallet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span> <span class="o">=</span> <span class="n">max_mix_depth</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">storepassword</span> <span class="o">=</span> <span class="n">storepassword</span>
+		<span class="c">#key is address, value is (mixdepth, forchange, index)</span>
+		<span class="c">#if mixdepth = -1 it&#39;s an imported key and index refers to imported_privkeys</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">unspent</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">spent_utxos</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">imported_privkeys</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_wallet_file_data</span><span class="p">(</span><span class="n">seedarg</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">extend_mixdepth</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index_cache</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_mix_depth</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index_cache</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">gaplimit</span> <span class="o">=</span> <span class="n">gaplimit</span>
+		<span class="n">master</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">bip32_master_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+		<span class="n">m_0</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">bip32_ckd</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+		<span class="n">mixing_depth_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">btc</span><span class="o">.</span><span class="n">bip32_ckd</span><span class="p">(</span><span class="n">m_0</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">)]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">keys</span> <span class="o">=</span> <span class="p">[(</span><span class="n">btc</span><span class="o">.</span><span class="n">bip32_ckd</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">btc</span><span class="o">.</span><span class="n">bip32_ckd</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mixing_depth_keys</span><span class="p">]</span>
+
+		<span class="c">#self.index = [[0, 0]]*max_mix_depth</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+<div class="viewcode-block" id="Wallet.read_wallet_file_data"><a class="viewcode-back" href="../common.html#common.Wallet.read_wallet_file_data">[docs]</a>	<span class="k">def</span> <span class="nf">read_wallet_file_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">index_cache</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span>
+		<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39;wallets&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+			<span class="k">if</span> <span class="n">get_network</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;testnet&#39;</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;filename interpreted as seed, only available in testnet because this probably has lower entropy&#39;</span><span class="p">)</span>
+				<span class="k">return</span> <span class="n">filename</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;wallet file not found&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+		<span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
+		<span class="n">walletfile</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+		<span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+		<span class="n">walletdata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">walletfile</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">walletdata</span><span class="p">[</span><span class="s">&#39;network&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">get_network</span><span class="p">():</span>
+			<span class="k">print</span> <span class="s">&#39;wallet network(</span><span class="si">%s</span><span class="s">) does not match joinmarket configured network(</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span>
+				<span class="n">walletdata</span><span class="p">[</span><span class="s">&#39;network&#39;</span><span class="p">],</span> <span class="n">get_network</span><span class="p">())</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">if</span> <span class="s">&#39;index_cache&#39;</span> <span class="ow">in</span> <span class="n">walletdata</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">index_cache</span> <span class="o">=</span> <span class="n">walletdata</span><span class="p">[</span><span class="s">&#39;index_cache&#39;</span><span class="p">]</span>
+		<span class="n">decrypted</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">while</span> <span class="ow">not</span> <span class="n">decrypted</span><span class="p">:</span>
+			<span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">&#39;Enter wallet decryption passphrase: &#39;</span><span class="p">)</span>
+			<span class="n">password_key</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">bin_dbl_sha256</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+			<span class="n">encrypted_seed</span> <span class="o">=</span> <span class="n">walletdata</span><span class="p">[</span><span class="s">&#39;encrypted_seed&#39;</span><span class="p">]</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="n">decrypted_seed</span> <span class="o">=</span> <span class="n">slowaes</span><span class="o">.</span><span class="n">decryptData</span><span class="p">(</span><span class="n">password_key</span><span class="p">,</span> <span class="n">encrypted_seed</span>
+					<span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+				<span class="c">#there is a small probability of getting a valid PKCS7 padding</span>
+				<span class="c">#by chance from a wrong password; sanity check the seed length</span>
+				<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">decrypted_seed</span><span class="p">)</span> <span class="o">==</span> <span class="mi">32</span><span class="p">:</span>
+					<span class="n">decrypted</span> <span class="o">=</span> <span class="bp">True</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="k">raise</span> <span class="ne">ValueError</span>
+			<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+				<span class="k">print</span> <span class="s">&#39;Incorrect password&#39;</span>
+				<span class="n">decrypted</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">storepassword</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">password_key</span> <span class="o">=</span> <span class="n">password_key</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">walletdata</span> <span class="o">=</span> <span class="n">walletdata</span>
+		<span class="k">if</span> <span class="s">&#39;imported_keys&#39;</span> <span class="ow">in</span> <span class="n">walletdata</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">epk_m</span> <span class="ow">in</span> <span class="n">walletdata</span><span class="p">[</span><span class="s">&#39;imported_keys&#39;</span><span class="p">]:</span>
+				<span class="n">privkey</span> <span class="o">=</span> <span class="n">slowaes</span><span class="o">.</span><span class="n">decryptData</span><span class="p">(</span><span class="n">password_key</span><span class="p">,</span> <span class="n">epk_m</span><span class="p">[</span><span class="s">&#39;encrypted_privkey&#39;</span><span class="p">]</span>
+					<span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)</span>
+				<span class="n">privkey</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">encode_privkey</span><span class="p">(</span><span class="n">privkey</span><span class="p">,</span> <span class="s">&#39;hex_compressed&#39;</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">epk_m</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imported_privkeys</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">imported_privkeys</span><span class="p">[</span><span class="n">epk_m</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">btc</span><span class="o">.</span><span class="n">privtoaddr</span><span class="p">(</span><span class="n">privkey</span><span class="p">,</span> <span class="n">get_p2pk_vbyte</span><span class="p">())]</span> <span class="o">=</span> <span class="p">(</span><span class="n">epk_m</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">],</span>
+					<span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imported_privkeys</span><span class="p">[</span><span class="n">epk_m</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">]]))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">imported_privkeys</span><span class="p">[</span><span class="n">epk_m</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">privkey</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">decrypted_seed</span>
+</div>
+<div class="viewcode-block" id="Wallet.update_cache_index"><a class="viewcode-back" href="../common.html#common.Wallet.update_cache_index">[docs]</a>	<span class="k">def</span> <span class="nf">update_cache_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Set the value of the index pointer</span>
+<span class="sd">		at each mixdepth in the wallet file, so </span>
+<span class="sd">		it can be picked up correctly on restart.&#39;&#39;&#39;</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+			<span class="k">return</span>
+		<span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
+		<span class="n">walletfile</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+		<span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+		<span class="n">walletdata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">walletfile</span><span class="p">)</span>
+		<span class="n">walletdata</span><span class="p">[</span><span class="s">&#39;index_cache&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span>
+		<span class="n">walletfile</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">walletdata</span><span class="p">)</span>
+		<span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+		<span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">walletfile</span><span class="p">)</span>
+		<span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_key"><a class="viewcode-back" href="../common.html#common.Wallet.get_key">[docs]</a>	<span class="k">def</span> <span class="nf">get_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+		<span class="k">return</span> <span class="n">btc</span><span class="o">.</span><span class="n">bip32_extract_key</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">bip32_ckd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">[</span><span class="n">mixing_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">],</span> <span class="n">i</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_addr"><a class="viewcode-back" href="../common.html#common.Wallet.get_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+		<span class="k">return</span> <span class="n">btc</span><span class="o">.</span><span class="n">privtoaddr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_key</span><span class="p">(</span><span class="n">mixing_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">,</span> <span class="n">i</span><span class="p">),</span> <span class="n">magicbyte</span><span class="o">=</span><span class="n">get_p2pk_vbyte</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_new_addr"><a class="viewcode-back" href="../common.html#common.Wallet.get_new_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_new_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Returns the next unused address at the mixdepth</span>
+<span class="sd">		mixing_depth and the change branch (1/0) forchange.</span>
+<span class="sd">		The index pointer is moved forward by 1.&#39;&#39;&#39;</span>
+		<span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mixing_depth</span><span class="p">]</span>
+		<span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_addr</span><span class="p">(</span><span class="n">mixing_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">,</span> <span class="n">index</span><span class="p">[</span><span class="n">forchange</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">addr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mixing_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">,</span> <span class="n">index</span><span class="p">[</span><span class="n">forchange</span><span class="p">])</span>
+		<span class="n">index</span><span class="p">[</span><span class="n">forchange</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="c">#self.update_cache_index()</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bc_interface</span><span class="p">,</span> <span class="n">blockchaininterface</span><span class="o">.</span><span class="n">BitcoinCoreInterface</span><span class="p">):</span>
+			<span class="k">if</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">wallet_synced</span><span class="p">:</span> <span class="c">#do not import in the middle of sync_wallet()</span>
+				<span class="k">if</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getaccount&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">addr</span><span class="p">])</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+					<span class="n">debug</span><span class="p">(</span><span class="s">&#39;importing address &#39;</span> <span class="o">+</span> <span class="n">addr</span> <span class="o">+</span> <span class="s">&#39; to bitcoin core&#39;</span><span class="p">)</span>
+					<span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;importaddress&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">addr</span><span class="p">,</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">get_wallet_name</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">False</span><span class="p">])</span>
+		<span class="k">return</span> <span class="n">addr</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_receive_addr"><a class="viewcode-back" href="../common.html#common.Wallet.get_receive_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_receive_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Return the next address on the &quot;receive&quot; branch</span>
+<span class="sd">		for this mixing depth.&#39;&#39;&#39;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_new_addr</span><span class="p">(</span><span class="n">mixing_depth</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_change_addr"><a class="viewcode-back" href="../common.html#common.Wallet.get_change_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Return the next address on the &quot;change&quot; branch</span>
+<span class="sd">		for this mixing depth.&#39;&#39;&#39;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_new_addr</span><span class="p">(</span><span class="n">mixing_depth</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_key_from_addr"><a class="viewcode-back" href="../common.html#common.Wallet.get_key_from_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_key_from_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Return the private key for the address addr.&#39;&#39;&#39;</span>
+		<span class="k">if</span> <span class="n">addr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+		<span class="n">ac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">addr</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">ac</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_key</span><span class="p">(</span><span class="o">*</span><span class="n">ac</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">imported_privkeys</span><span class="p">[</span><span class="n">ac</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="n">ac</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+</div>
+<div class="viewcode-block" id="Wallet.remove_old_utxos"><a class="viewcode-back" href="../common.html#common.Wallet.remove_old_utxos">[docs]</a>	<span class="k">def</span> <span class="nf">remove_old_utxos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Remove utxos in the transaction tx</span>
+<span class="sd">		from the wallet internal utxo list.&#39;&#39;&#39;</span>
+		<span class="n">removed_utxos</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">ins</span> <span class="ow">in</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;ins&#39;</span><span class="p">]:</span>
+			<span class="n">utxo</span> <span class="o">=</span> <span class="n">ins</span><span class="p">[</span><span class="s">&#39;outpoint&#39;</span><span class="p">][</span><span class="s">&#39;hash&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ins</span><span class="p">[</span><span class="s">&#39;outpoint&#39;</span><span class="p">][</span><span class="s">&#39;index&#39;</span><span class="p">])</span>
+			<span class="k">if</span> <span class="n">utxo</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unspent</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="n">removed_utxos</span><span class="p">[</span><span class="n">utxo</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unspent</span><span class="p">[</span><span class="n">utxo</span><span class="p">]</span>
+			<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">unspent</span><span class="p">[</span><span class="n">utxo</span><span class="p">]</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;removed utxos, wallet now is </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_utxos_by_mixdepth</span><span class="p">()))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">spent_utxos</span> <span class="o">+=</span> <span class="n">removed_utxos</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">removed_utxos</span>
+</div>
+<div class="viewcode-block" id="Wallet.add_new_utxos"><a class="viewcode-back" href="../common.html#common.Wallet.add_new_utxos">[docs]</a>	<span class="k">def</span> <span class="nf">add_new_utxos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">txid</span><span class="p">):</span>
+		<span class="n">added_utxos</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">outs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]):</span>
+			<span class="n">addr</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">script_to_address</span><span class="p">(</span><span class="n">outs</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">get_p2pk_vbyte</span><span class="p">())</span>
+			<span class="k">if</span> <span class="n">addr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="n">addrdict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="n">addr</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="n">outs</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]}</span>
+			<span class="n">utxo</span> <span class="o">=</span> <span class="n">txid</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+			<span class="n">added_utxos</span><span class="p">[</span><span class="n">utxo</span><span class="p">]</span> <span class="o">=</span> <span class="n">addrdict</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">unspent</span><span class="p">[</span><span class="n">utxo</span><span class="p">]</span> <span class="o">=</span> <span class="n">addrdict</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;added utxos, wallet now is </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_utxos_by_mixdepth</span><span class="p">()))</span>
+		<span class="k">return</span> <span class="n">added_utxos</span>
+</div>
+<div class="viewcode-block" id="Wallet.get_utxos_by_mixdepth"><a class="viewcode-back" href="../common.html#common.Wallet.get_utxos_by_mixdepth">[docs]</a>	<span class="k">def</span> <span class="nf">get_utxos_by_mixdepth</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		returns a list of utxos sorted by different mix levels</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+		<span class="n">mix_utxo_list</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">):</span>
+			<span class="n">mix_utxo_list</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">utxo</span><span class="p">,</span> <span class="n">addrvalue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unspent</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="n">mixdepth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">addrvalue</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">mixdepth</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mix_utxo_list</span><span class="p">:</span>
+				<span class="n">mix_utxo_list</span><span class="p">[</span><span class="n">mixdepth</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+			<span class="n">mix_utxo_list</span><span class="p">[</span><span class="n">mixdepth</span><span class="p">][</span><span class="n">utxo</span><span class="p">]</span> <span class="o">=</span> <span class="n">addrvalue</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;get_utxos_by_mixdepth = </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">mix_utxo_list</span><span class="p">))</span>
+		<span class="k">return</span> <span class="n">mix_utxo_list</span>
+</div></div>
+<div class="viewcode-block" id="BitcoinCoreWallet"><a class="viewcode-back" href="../common.html#common.BitcoinCoreWallet">[docs]</a><span class="k">class</span> <span class="nc">BitcoinCoreWallet</span><span class="p">(</span><span class="n">AbstractWallet</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;An implementation of Wallet which uses coins in Bitcoin Core&#39;s own wallet,</span>
+<span class="sd">	rather than JoinMarket&#39;s HD wallet. &#39; &quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fromaccount</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">BitcoinCoreWallet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bc_interface</span><span class="p">,</span> <span class="n">blockchaininterface</span><span class="o">.</span><span class="n">BitcoinCoreInterface</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Bitcoin Core wallet can only be used when blockchain interface is BitcoinCoreInterface&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fromaccount</span> <span class="o">=</span> <span class="n">fromaccount</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">max_mix_depth</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="BitcoinCoreWallet.get_key_from_addr"><a class="viewcode-back" href="../common.html#common.BitcoinCoreWallet.get_key_from_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_key_from_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ensure_wallet_unlocked</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;dumpprivkey&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">addr</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreWallet.get_utxos_by_mixdepth"><a class="viewcode-back" href="../common.html#common.BitcoinCoreWallet.get_utxos_by_mixdepth">[docs]</a>	<span class="k">def</span> <span class="nf">get_utxos_by_mixdepth</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">unspent_list</span> <span class="o">=</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;listunspent&#39;</span><span class="p">,</span> <span class="p">[])</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">{}}</span>
+		<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent_list</span><span class="p">:</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;spendable&#39;</span><span class="p">]:</span>
+				<span class="k">continue</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fromaccount</span> <span class="ow">and</span> <span class="p">((</span><span class="s">&#39;account&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">u</span><span class="p">)</span> <span class="ow">or</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;account&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fromaccount</span><span class="p">):</span>
+				<span class="k">continue</span>
+			<span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;txid&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;vout&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">],</span>
+				<span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;amount&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="n">Decimal</span><span class="p">(</span><span class="s">&#39;1e8&#39;</span><span class="p">))}</span>
+		<span class="k">return</span> <span class="n">result</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreWallet.get_change_addr"><a class="viewcode-back" href="../common.html#common.BitcoinCoreWallet.get_change_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mixing_depth</span><span class="p">):</span>
+		<span class="k">return</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getrawchangeaddress&#39;</span><span class="p">,</span> <span class="p">[])</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreWallet.ensure_wallet_unlocked"><a class="viewcode-back" href="../common.html#common.BitcoinCoreWallet.ensure_wallet_unlocked">[docs]</a>	<span class="k">def</span> <span class="nf">ensure_wallet_unlocked</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Allows user to unlock wallet by entering decryption</span>
+<span class="sd">		password on the command line.&#39;&#39;&#39;</span>
+		<span class="n">wallet_info</span> <span class="o">=</span> <span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getwalletinfo&#39;</span><span class="p">,</span> <span class="p">[])</span>
+		<span class="k">if</span> <span class="s">&#39;unlocked_until&#39;</span> <span class="ow">in</span> <span class="n">wallet_info</span> <span class="ow">and</span> <span class="n">wallet_info</span><span class="p">[</span><span class="s">&#39;unlocked_until&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+				<span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">&#39;Enter passphrase to unlock wallet: &#39;</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">password</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+					<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Aborting wallet unlock&#39;</span><span class="p">)</span>
+				<span class="k">try</span><span class="p">:</span>
+					<span class="c">#TODO cleanly unlock wallet after use, not with arbitrary timeout</span>
+					<span class="n">bc_interface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;walletpassphrase&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">password</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+					<span class="k">break</span>
+				<span class="k">except</span> <span class="n">jsonrpc</span><span class="o">.</span><span class="n">JsonRpcError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">14</span><span class="p">:</span>
+						<span class="k">raise</span> <span class="n">exc</span>
+					<span class="c"># Wrong passphrase, try again.</span>
+</div></div>
+<div class="viewcode-block" id="calc_cj_fee"><a class="viewcode-back" href="../common.html#common.calc_cj_fee">[docs]</a><span class="k">def</span> <span class="nf">calc_cj_fee</span><span class="p">(</span><span class="n">ordertype</span><span class="p">,</span> <span class="n">cjfee</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;Returns the actual coinjoin fee in satoshis</span>
+<span class="sd">	given the ordertype (currently relorder or absorder),</span>
+<span class="sd">	the cjfee parameter (which in some cases is a decimal ratio),</span>
+<span class="sd">	and the actual coinjoin amount in satoshis.&#39;&#39;&#39;</span>
+	<span class="n">real_cjfee</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="k">if</span> <span class="n">ordertype</span> <span class="o">==</span> <span class="s">&#39;absorder&#39;</span><span class="p">:</span>
+		<span class="n">real_cjfee</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cjfee</span><span class="p">)</span>
+	<span class="k">elif</span> <span class="n">ordertype</span> <span class="o">==</span> <span class="s">&#39;relorder&#39;</span><span class="p">:</span>
+		<span class="n">real_cjfee</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">Decimal</span><span class="p">(</span><span class="n">cjfee</span><span class="p">)</span> <span class="o">*</span> <span class="n">Decimal</span><span class="p">(</span><span class="n">cj_amount</span><span class="p">))</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="mi">1</span><span class="p">)))</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;unknown order type: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ordertype</span><span class="p">))</span>
+	<span class="k">return</span> <span class="n">real_cjfee</span>
+</div>
+<div class="viewcode-block" id="weighted_order_choose"><a class="viewcode-back" href="../common.html#common.weighted_order_choose">[docs]</a><span class="k">def</span> <span class="nf">weighted_order_choose</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">feekey</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	Algorithm for choosing the weighting function</span>
+<span class="sd">	it is an exponential</span>
+<span class="sd">	P(f) = exp(-(f - fmin) / phi)</span>
+<span class="sd">	P(f) - probability of order being chosen</span>
+<span class="sd">	f - order fee</span>
+<span class="sd">	fmin - minimum fee in the order book</span>
+<span class="sd">	phi - scaling parameter, 63% of the distribution is within</span>
+
+<span class="sd">	define number M, related to the number of counterparties in this coinjoin</span>
+<span class="sd">	phi has a value such that it contains up to the Mth order</span>
+<span class="sd">	unless M &lt; orderbook size, then phi goes up to the last order</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="n">minfee</span> <span class="o">=</span> <span class="n">feekey</span><span class="p">(</span><span class="n">orders</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+	<span class="n">M</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">M</span><span class="p">:</span>
+		<span class="n">phi</span> <span class="o">=</span> <span class="n">feekey</span><span class="p">(</span><span class="n">orders</span><span class="p">[</span><span class="n">M</span><span class="p">])</span> <span class="o">-</span> <span class="n">minfee</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">phi</span> <span class="o">=</span> <span class="n">feekey</span><span class="p">(</span><span class="n">orders</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">minfee</span>
+	<span class="n">fee</span> <span class="o">=</span> <span class="p">[</span><span class="n">feekey</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">]</span>
+	<span class="k">if</span> <span class="n">phi</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+		<span class="n">weight</span> <span class="o">=</span> <span class="p">[</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span><span class="o">*</span><span class="n">f</span> <span class="o">-</span> <span class="n">minfee</span><span class="p">)</span> <span class="o">/</span> <span class="n">phi</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fee</span><span class="p">]</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">weight</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">fee</span><span class="p">)</span>
+	<span class="n">weight</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">weight</span><span class="p">]</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;phi=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; weights = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">weight</span><span class="p">))</span>
+	<span class="n">chosen_order_index</span> <span class="o">=</span> <span class="n">rand_weighted_choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">orders</span><span class="p">),</span> <span class="n">weight</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">orders</span><span class="p">[</span><span class="n">chosen_order_index</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="cheapest_order_choose"><a class="viewcode-back" href="../common.html#common.cheapest_order_choose">[docs]</a><span class="k">def</span> <span class="nf">cheapest_order_choose</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">feekey</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	Return the cheapest order from the orders.</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">feekey</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="pick_order"><a class="viewcode-back" href="../common.html#common.pick_order">[docs]</a><span class="k">def</span> <span class="nf">pick_order</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">feekey</span><span class="p">):</span>
+	<span class="sd">&#39;&#39;&#39;Manually choose an order from the list</span>
+<span class="sd">	orders.&#39;&#39;&#39;</span>
+	<span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&quot;Considered orders:&quot;</span><span class="p">);</span>
+	<span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">:</span>
+		<span class="n">i</span><span class="o">+=</span><span class="mi">1</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;    </span><span class="si">%2d</span><span class="s">. </span><span class="si">%20s</span><span class="s">, CJ fee: </span><span class="si">%6d</span><span class="s">, tx fee: </span><span class="si">%6d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">o</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+	<span class="n">pickedOrderIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+	<span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;Only one possible pick, picking it.&quot;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">orders</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="k">while</span> <span class="n">pickedOrderIndex</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">pickedOrderIndex</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">raw_input</span><span class="p">(</span><span class="s">&#39;Pick an order between 0 and &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;: &#39;</span><span class="p">))</span>
+		<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+			<span class="n">pickedOrderIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+			<span class="k">continue</span><span class="p">;</span>
+			
+		<span class="k">if</span> <span class="n">pickedOrderIndex</span><span class="o">&gt;=</span><span class="mi">0</span> <span class="ow">and</span> <span class="n">pickedOrderIndex</span><span class="o">&lt;</span><span class="nb">len</span><span class="p">(</span><span class="n">orders</span><span class="p">):</span>
+			<span class="k">return</span> <span class="n">orders</span><span class="p">[</span><span class="n">pickedOrderIndex</span><span class="p">]</span>
+		<span class="n">pickedOrderIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+		
+</div>
+<div class="viewcode-block" id="choose_orders"><a class="viewcode-back" href="../common.html#common.choose_orders">[docs]</a><span class="k">def</span> <span class="nf">choose_orders</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">chooseOrdersBy</span><span class="p">,</span> <span class="n">ignored_makers</span><span class="o">=</span><span class="p">[]):</span>
+	<span class="sd">&#39;&#39;&#39;Given the database of current orders db, the coinjoin amount cj_amount,</span>
+<span class="sd">	an order choice algorithm function chooseOrdersBy and optionally a list of </span>
+<span class="sd">	counterparties to ignore in ignore_makers, return a dict of chosen orders</span>
+<span class="sd">	and the total coinjoin fee that would be applied in case this selection</span>
+<span class="sd">	is accepted.&#39;&#39;&#39;</span>
+	<span class="n">sqlorders</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT * FROM orderbook;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+	<span class="n">orders</span> <span class="o">=</span> <span class="p">[(</span><span class="n">o</span><span class="p">[</span><span class="s">&#39;counterparty&#39;</span><span class="p">],</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">],</span>	<span class="n">calc_cj_fee</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s">&#39;ordertype&#39;</span><span class="p">],</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;cjfee&#39;</span><span class="p">],</span> <span class="n">cj_amount</span><span class="p">),</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;txfee&#39;</span><span class="p">])</span>
+		<span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">sqlorders</span> <span class="k">if</span> <span class="n">cj_amount</span> <span class="o">&gt;=</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;minsize&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">cj_amount</span> <span class="o">&lt;=</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;maxsize&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;counterparty&#39;</span><span class="p">]</span>
+		<span class="ow">not</span> <span class="ow">in</span> <span class="n">ignored_makers</span><span class="p">]</span>
+	<span class="n">feekey</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">o</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="c"># function that returns the fee for a given order</span>
+	<span class="n">counterparties</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">])</span>
+	<span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">counterparties</span><span class="p">):</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ERROR not enough liquidity in the orderbook n=</span><span class="si">%d</span><span class="s"> suitable-counterparties=</span><span class="si">%d</span><span class="s"> amount=</span><span class="si">%d</span><span class="s"> totalorders=</span><span class="si">%d</span><span class="s">&#39;</span>
+			<span class="o">%</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">counterparties</span><span class="p">),</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">orders</span><span class="p">)))</span>
+		<span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">0</span> <span class="c">#TODO handle not enough liquidity better, maybe an Exception</span>
+	<span class="c">#restrict to one order per counterparty, choose the one with the lowest cjfee</span>
+	<span class="c">#this is done in advance of the order selection algo, so applies to all of them.</span>
+	<span class="c">#however, if orders are picked manually, allow duplicates.</span>
+	<span class="k">if</span> <span class="n">chooseOrdersBy</span> <span class="o">!=</span> <span class="n">pick_order</span><span class="p">:</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">dict</span><span class="p">((</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">feekey</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">))</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">feekey</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">feekey</span><span class="p">)</span> <span class="c">#sort from smallest to biggest cj fee	</span>
+
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;considered orders = </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">]))</span>
+	<span class="n">total_cj_fee</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">chosen_orders</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+		<span class="n">chosen_order</span> <span class="o">=</span> <span class="n">chooseOrdersBy</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">feekey</span><span class="p">)</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orders</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">chosen_order</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="c">#remove all orders from that same counterparty</span>
+		<span class="n">chosen_orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chosen_order</span><span class="p">)</span>
+		<span class="n">total_cj_fee</span> <span class="o">+=</span> <span class="n">chosen_order</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;chosen orders = </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">chosen_orders</span><span class="p">]))</span>
+	<span class="n">chosen_orders</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">chosen_orders</span><span class="p">]</span>
+	<span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">chosen_orders</span><span class="p">),</span> <span class="n">total_cj_fee</span>
+</div>
+<div class="viewcode-block" id="choose_sweep_orders"><a class="viewcode-back" href="../common.html#common.choose_sweep_orders">[docs]</a><span class="k">def</span> <span class="nf">choose_sweep_orders</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">total_input_value</span><span class="p">,</span> <span class="n">total_txfee</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">chooseOrdersBy</span><span class="p">,</span> <span class="n">ignored_makers</span><span class="o">=</span><span class="p">[]):</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	choose an order given that we want to be left with no change</span>
+<span class="sd">	i.e. sweep an entire group of utxos</span>
+
+<span class="sd">	solve for cjamount when mychange = 0</span>
+<span class="sd">	for an order with many makers, a mixture of absorder and relorder</span>
+<span class="sd">	mychange = totalin - cjamount - total_txfee - sum(absfee) - sum(relfee*cjamount)</span>
+<span class="sd">	=&gt; 0 = totalin - mytxfee - sum(absfee) - cjamount*(1 + sum(relfee))</span>
+<span class="sd">	=&gt; cjamount = (totalin - mytxfee - sum(absfee)) / (1 + sum(relfee))</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+	<span class="k">def</span> <span class="nf">calc_zero_change_cj_amount</span><span class="p">(</span><span class="n">ordercombo</span><span class="p">):</span>
+		<span class="n">sumabsfee</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">sumrelfee</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="s">&#39;0&#39;</span><span class="p">)</span>
+		<span class="n">sumtxfee_contribution</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">ordercombo</span><span class="p">:</span>
+			<span class="n">sumtxfee_contribution</span> <span class="o">+=</span> <span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;txfee&#39;</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;ordertype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;absorder&#39;</span><span class="p">:</span>
+				<span class="n">sumabsfee</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;cjfee&#39;</span><span class="p">])</span>
+			<span class="k">elif</span> <span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;ordertype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;relorder&#39;</span><span class="p">:</span>
+				<span class="n">sumrelfee</span> <span class="o">+=</span> <span class="n">Decimal</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;cjfee&#39;</span><span class="p">])</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;unknown order type: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;ordertype&#39;</span><span class="p">]))</span>
+		<span class="n">my_txfee</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">total_txfee</span> <span class="o">-</span> <span class="n">sumtxfee_contribution</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+		<span class="n">cjamount</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_input_value</span> <span class="o">-</span> <span class="n">my_txfee</span> <span class="o">-</span> <span class="n">sumabsfee</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">sumrelfee</span><span class="p">)</span>
+		<span class="n">cjamount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cjamount</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="mi">1</span><span class="p">)))</span>
+		<span class="k">return</span> <span class="n">cjamount</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">sumabsfee</span> <span class="o">+</span> <span class="n">sumrelfee</span><span class="o">*</span><span class="n">cjamount</span><span class="p">)</span>
+
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;choosing sweep orders for total_input_value = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_input_value</span><span class="p">))</span>
+	<span class="n">sqlorders</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT * FROM orderbook WHERE minsize &lt;= ?;&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">total_input_value</span><span class="p">,))</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+	<span class="n">orderkeys</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;counterparty&#39;</span><span class="p">,</span> <span class="s">&#39;oid&#39;</span><span class="p">,</span> <span class="s">&#39;ordertype&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">,</span> <span class="s">&#39;maxsize&#39;</span><span class="p">,</span> <span class="s">&#39;txfee&#39;</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">]</span>
+	<span class="n">orderlist</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">([(</span><span class="n">k</span><span class="p">,</span> <span class="n">o</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">orderkeys</span><span class="p">])</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">sqlorders</span>
+		<span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;counterparty&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ignored_makers</span><span class="p">]</span>
+	<span class="c">#orderlist = sqlorders #uncomment this and comment previous two lines for faster runtime but less readable output</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;orderlist = </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orderlist</span><span class="p">]))</span>
+
+	<span class="c">#choose N amount of orders</span>
+	<span class="n">available_orders</span> <span class="o">=</span> <span class="p">[(</span><span class="n">o</span><span class="p">,</span> <span class="n">calc_cj_fee</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s">&#39;ordertype&#39;</span><span class="p">],</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;cjfee&#39;</span><span class="p">],</span> <span class="n">total_input_value</span><span class="p">),</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;txfee&#39;</span><span class="p">])</span>
+		<span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orderlist</span><span class="p">]</span>
+	<span class="n">feekey</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="c"># function that returns the fee for a given order</span>
+	<span class="n">available_orders</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">available_orders</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">feekey</span><span class="p">)</span> <span class="c">#sort from smallest to biggest cj fee</span>
+	<span class="n">chosen_orders</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">chosen_orders</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_orders</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">chosen_orders</span><span class="p">):</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ERROR not enough liquidity in the orderbook&#39;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">0</span> <span class="c">#TODO handle not enough liquidity better, maybe an Exception</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">chosen_orders</span><span class="p">)):</span>
+			<span class="n">chosen_order</span> <span class="o">=</span> <span class="n">chooseOrdersBy</span><span class="p">(</span><span class="n">available_orders</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">feekey</span><span class="p">)</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;chosen = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">chosen_order</span><span class="p">))</span>
+			<span class="c">#remove all orders from that same counterparty</span>
+			<span class="n">available_orders</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">available_orders</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;counterparty&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">chosen_order</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;counterparty&#39;</span><span class="p">]]</span>
+			<span class="n">chosen_orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chosen_order</span><span class="p">)</span>
+		<span class="c">#calc cj_amount and check its in range</span>
+		<span class="n">cj_amount</span><span class="p">,</span> <span class="n">total_fee</span> <span class="o">=</span> <span class="n">calc_zero_change_cj_amount</span><span class="p">(</span><span class="n">chosen_orders</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">chosen_orders</span><span class="p">):</span>
+			<span class="n">minsize</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;minsize&#39;</span><span class="p">]</span>
+			<span class="n">maxsize</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;maxsize&#39;</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">cj_amount</span> <span class="o">&gt;</span> <span class="n">maxsize</span> <span class="ow">or</span> <span class="n">cj_amount</span> <span class="o">&lt;</span> <span class="n">minsize</span><span class="p">:</span>
+				<span class="n">chosen_orders</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;chosen orders = </span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">chosen_orders</span><span class="p">]))</span>
+	<span class="n">result</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;counterparty&#39;</span><span class="p">],</span> <span class="n">o</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;oid&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">chosen_orders</span><span class="p">])</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;cj amount = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cj_amount</span><span class="p">))</span>
+	<span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">cj_amount</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

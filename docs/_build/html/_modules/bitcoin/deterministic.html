@@ -1,0 +1,351 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bitcoin.deterministic &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bitcoin.deterministic</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">bitcoin.main</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">from</span> <span class="nn">binascii</span> <span class="kn">import</span> <span class="n">hexlify</span>
+<span class="c"># Electrum wallets</span>
+
+
+<div class="viewcode-block" id="electrum_stretch"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.electrum_stretch">[docs]</a><span class="k">def</span> <span class="nf">electrum_stretch</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">slowsha</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+<span class="c"># Accepts seed or stretched seed, returns master public key</span>
+
+</div>
+<div class="viewcode-block" id="electrum_mpk"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.electrum_mpk">[docs]</a><span class="k">def</span> <span class="nf">electrum_mpk</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="o">==</span> <span class="mi">32</span><span class="p">:</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="n">electrum_stretch</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">privkey_to_pubkey</span><span class="p">(</span><span class="n">seed</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]</span>
+
+<span class="c"># Accepts (seed or stretched seed), index and secondary index</span>
+<span class="c"># (conventionally 0 for ordinary addresses, 1 for change) , returns privkey</span>
+
+</div>
+<div class="viewcode-block" id="electrum_privkey"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.electrum_privkey">[docs]</a><span class="k">def</span> <span class="nf">electrum_privkey</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">for_change</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="o">==</span> <span class="mi">32</span><span class="p">:</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="n">electrum_stretch</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">mpk</span> <span class="o">=</span> <span class="n">electrum_mpk</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">dbl_sha256</span><span class="p">(</span><span class="n">from_int_representation_to_bytes</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="n">from_int_representation_to_bytes</span><span class="p">(</span><span class="n">for_change</span><span class="p">)</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">mpk</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">add_privkeys</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">offset</span><span class="p">)</span>
+
+<span class="c"># Accepts (seed or stretched seed or master pubkey), index and secondary index</span>
+<span class="c"># (conventionally 0 for ordinary addresses, 1 for change) , returns pubkey</span>
+
+</div>
+<div class="viewcode-block" id="electrum_pubkey"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.electrum_pubkey">[docs]</a><span class="k">def</span> <span class="nf">electrum_pubkey</span><span class="p">(</span><span class="n">masterkey</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">for_change</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">masterkey</span><span class="p">)</span> <span class="o">==</span> <span class="mi">32</span><span class="p">:</span>
+        <span class="n">mpk</span> <span class="o">=</span> <span class="n">electrum_mpk</span><span class="p">(</span><span class="n">electrum_stretch</span><span class="p">(</span><span class="n">masterkey</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">masterkey</span><span class="p">)</span> <span class="o">==</span> <span class="mi">64</span><span class="p">:</span>
+        <span class="n">mpk</span> <span class="o">=</span> <span class="n">electrum_mpk</span><span class="p">(</span><span class="n">masterkey</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mpk</span> <span class="o">=</span> <span class="n">masterkey</span>
+    <span class="n">bin_mpk</span> <span class="o">=</span> <span class="n">encode_pubkey</span><span class="p">(</span><span class="n">mpk</span><span class="p">,</span> <span class="s">&#39;bin_electrum&#39;</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">bin_dbl_sha256</span><span class="p">(</span><span class="n">from_int_representation_to_bytes</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="n">from_int_representation_to_bytes</span><span class="p">(</span><span class="n">for_change</span><span class="p">)</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="n">bin_mpk</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">add_pubkeys</span><span class="p">(</span><span class="s">&#39;04&#39;</span><span class="o">+</span><span class="n">mpk</span><span class="p">,</span> <span class="n">privtopub</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+
+<span class="c"># seed/stretched seed/pubkey -&gt; address (convenience method)</span>
+
+</div>
+<div class="viewcode-block" id="electrum_address"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.electrum_address">[docs]</a><span class="k">def</span> <span class="nf">electrum_address</span><span class="p">(</span><span class="n">masterkey</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">for_change</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">pubkey_to_address</span><span class="p">(</span><span class="n">electrum_pubkey</span><span class="p">(</span><span class="n">masterkey</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">for_change</span><span class="p">),</span> <span class="n">version</span><span class="p">)</span>
+
+<span class="c"># Given a master public key, a private key from that wallet and its index,</span>
+<span class="c"># cracks the secret exponent which can be used to generate all other private</span>
+<span class="c"># keys in the wallet</span>
+</div>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">def crack_electrum_wallet(mpk, pk, n, for_change=0):</span>
+<span class="sd">    bin_mpk = encode_pubkey(mpk, &#39;bin_electrum&#39;)</span>
+<span class="sd">    offset = dbl_sha256(str(n)+&#39;:&#39;+str(for_change)+&#39;:&#39;+bin_mpk)</span>
+<span class="sd">    return subtract_privkeys(pk, offset)</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="c"># Below code ASSUMES binary inputs and compressed pubkeys</span>
+<span class="n">MAINNET_PRIVATE</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x04\x88\xAD\xE4</span><span class="s">&#39;</span>
+<span class="n">MAINNET_PUBLIC</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x04\x88\xB2\x1E</span><span class="s">&#39;</span>
+<span class="n">TESTNET_PRIVATE</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x04\x35\x83\x94</span><span class="s">&#39;</span>
+<span class="n">TESTNET_PUBLIC</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x04\x35\x87\xCF</span><span class="s">&#39;</span>
+<span class="n">PRIVATE</span> <span class="o">=</span> <span class="p">[</span><span class="n">MAINNET_PRIVATE</span><span class="p">,</span> <span class="n">TESTNET_PRIVATE</span><span class="p">]</span>
+<span class="n">PUBLIC</span> <span class="o">=</span> <span class="p">[</span><span class="n">MAINNET_PUBLIC</span><span class="p">,</span> <span class="n">TESTNET_PUBLIC</span><span class="p">]</span>
+
+<span class="c"># BIP32 child key derivation</span>
+
+
+<div class="viewcode-block" id="raw_bip32_ckd"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.raw_bip32_ckd">[docs]</a><span class="k">def</span> <span class="nf">raw_bip32_ckd</span><span class="p">(</span><span class="n">rawtuple</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+    <span class="n">vbytes</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">oldi</span><span class="p">,</span> <span class="n">chaincode</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">rawtuple</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">vbytes</span> <span class="ow">in</span> <span class="n">PRIVATE</span><span class="p">:</span>
+        <span class="n">priv</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="n">pub</span> <span class="o">=</span> <span class="n">privtopub</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pub</span> <span class="o">=</span> <span class="n">key</span>
+
+    <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">vbytes</span> <span class="ow">in</span> <span class="n">PUBLIC</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Can&#39;t do private derivation on public key!&quot;</span><span class="p">)</span>
+        <span class="n">I</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">chaincode</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="o">+</span><span class="n">priv</span><span class="p">[:</span><span class="mi">32</span><span class="p">]</span><span class="o">+</span><span class="n">encode</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha512</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">I</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">chaincode</span><span class="p">,</span> <span class="n">pub</span><span class="o">+</span><span class="n">encode</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha512</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">vbytes</span> <span class="ow">in</span> <span class="n">PRIVATE</span><span class="p">:</span>
+        <span class="n">newkey</span> <span class="o">=</span> <span class="n">add_privkeys</span><span class="p">(</span><span class="n">I</span><span class="p">[:</span><span class="mi">32</span><span class="p">]</span><span class="o">+</span><span class="n">B</span><span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">priv</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+        <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">bin_hash160</span><span class="p">(</span><span class="n">privtopub</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">False</span><span class="p">))[:</span><span class="mi">4</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">vbytes</span> <span class="ow">in</span> <span class="n">PUBLIC</span><span class="p">:</span>
+        <span class="n">newkey</span> <span class="o">=</span> <span class="n">add_pubkeys</span><span class="p">([</span><span class="n">privtopub</span><span class="p">(</span><span class="n">I</span><span class="p">[:</span><span class="mi">32</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">),</span> <span class="n">key</span><span class="p">],</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">bin_hash160</span><span class="p">(</span><span class="n">key</span><span class="p">)[:</span><span class="mi">4</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">vbytes</span><span class="p">,</span> <span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">I</span><span class="p">[</span><span class="mi">32</span><span class="p">:],</span> <span class="n">newkey</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="bip32_serialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_serialize">[docs]</a><span class="k">def</span> <span class="nf">bip32_serialize</span><span class="p">(</span><span class="n">rawtuple</span><span class="p">):</span>
+    <span class="n">vbytes</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">chaincode</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">rawtuple</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">encode</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+    <span class="n">chaincode</span> <span class="o">=</span> <span class="n">encode</span><span class="p">(</span><span class="n">hash_to_int</span><span class="p">(</span><span class="n">chaincode</span><span class="p">),</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+    <span class="n">keydata</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="o">+</span><span class="n">key</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">vbytes</span> <span class="ow">in</span> <span class="n">PRIVATE</span> <span class="k">else</span> <span class="n">key</span>
+    <span class="n">bindata</span> <span class="o">=</span> <span class="n">vbytes</span> <span class="o">+</span> <span class="n">from_int_to_byte</span><span class="p">(</span><span class="n">depth</span> <span class="o">%</span> <span class="mi">256</span><span class="p">)</span> <span class="o">+</span> <span class="n">fingerprint</span> <span class="o">+</span> <span class="n">i</span> <span class="o">+</span> <span class="n">chaincode</span> <span class="o">+</span> <span class="n">keydata</span>
+    <span class="k">return</span> <span class="n">changebase</span><span class="p">(</span><span class="n">bindata</span><span class="o">+</span><span class="n">bin_dbl_sha256</span><span class="p">(</span><span class="n">bindata</span><span class="p">)[:</span><span class="mi">4</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">58</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="bip32_deserialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_deserialize">[docs]</a><span class="k">def</span> <span class="nf">bip32_deserialize</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">dbin</span> <span class="o">=</span> <span class="n">changebase</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="mi">58</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">bin_dbl_sha256</span><span class="p">(</span><span class="n">dbin</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">])[:</span><span class="mi">4</span><span class="p">]</span> <span class="o">!=</span> <span class="n">dbin</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Invalid checksum&quot;</span><span class="p">)</span>
+    <span class="n">vbytes</span> <span class="o">=</span> <span class="n">dbin</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">from_byte_to_int</span><span class="p">(</span><span class="n">dbin</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+    <span class="n">fingerprint</span> <span class="o">=</span> <span class="n">dbin</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="mi">9</span><span class="p">]</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">dbin</span><span class="p">[</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">],</span> <span class="mi">256</span><span class="p">)</span>
+    <span class="n">chaincode</span> <span class="o">=</span> <span class="n">dbin</span><span class="p">[</span><span class="mi">13</span><span class="p">:</span><span class="mi">45</span><span class="p">]</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">dbin</span><span class="p">[</span><span class="mi">46</span><span class="p">:</span><span class="mi">78</span><span class="p">]</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span> <span class="k">if</span> <span class="n">vbytes</span> <span class="ow">in</span> <span class="n">PRIVATE</span> <span class="k">else</span> <span class="n">dbin</span><span class="p">[</span><span class="mi">45</span><span class="p">:</span><span class="mi">78</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">vbytes</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">chaincode</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="raw_bip32_privtopub"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.raw_bip32_privtopub">[docs]</a><span class="k">def</span> <span class="nf">raw_bip32_privtopub</span><span class="p">(</span><span class="n">rawtuple</span><span class="p">):</span>
+    <span class="n">vbytes</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">chaincode</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">rawtuple</span>
+    <span class="n">newvbytes</span> <span class="o">=</span> <span class="n">MAINNET_PUBLIC</span> <span class="k">if</span> <span class="n">vbytes</span> <span class="o">==</span> <span class="n">MAINNET_PRIVATE</span> <span class="k">else</span> <span class="n">TESTNET_PUBLIC</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">newvbytes</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">fingerprint</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">chaincode</span><span class="p">,</span> <span class="n">privtopub</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="bip32_privtopub"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_privtopub">[docs]</a><span class="k">def</span> <span class="nf">bip32_privtopub</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">bip32_serialize</span><span class="p">(</span><span class="n">raw_bip32_privtopub</span><span class="p">(</span><span class="n">bip32_deserialize</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span>
+
+</div>
+<div class="viewcode-block" id="bip32_ckd"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_ckd">[docs]</a><span class="k">def</span> <span class="nf">bip32_ckd</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">bip32_serialize</span><span class="p">(</span><span class="n">raw_bip32_ckd</span><span class="p">(</span><span class="n">bip32_deserialize</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">i</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="bip32_master_key"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_master_key">[docs]</a><span class="k">def</span> <span class="nf">bip32_master_key</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">vbytes</span><span class="o">=</span><span class="n">MAINNET_PRIVATE</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">from_string_to_bytes</span><span class="p">(</span><span class="s">&quot;Bitcoin seed&quot;</span><span class="p">),</span> <span class="n">seed</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha512</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">bip32_serialize</span><span class="p">((</span><span class="n">vbytes</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="o">*</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">I</span><span class="p">[</span><span class="mi">32</span><span class="p">:],</span> <span class="n">I</span><span class="p">[:</span><span class="mi">32</span><span class="p">]</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="bip32_bin_extract_key"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_bin_extract_key">[docs]</a><span class="k">def</span> <span class="nf">bip32_bin_extract_key</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">bip32_deserialize</span><span class="p">(</span><span class="n">data</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="bip32_extract_key"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_extract_key">[docs]</a><span class="k">def</span> <span class="nf">bip32_extract_key</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">safe_hexlify</span><span class="p">(</span><span class="n">bip32_deserialize</span><span class="p">(</span><span class="n">data</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</div>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd"># Exploits the same vulnerability as above in Electrum wallets</span>
+<span class="sd"># Takes a BIP32 pubkey and one of the child privkeys of its corresponding</span>
+<span class="sd"># privkey and returns the BIP32 privkey associated with that pubkey</span>
+
+
+<span class="sd">def raw_crack_bip32_privkey(parent_pub, priv):</span>
+<span class="sd">    vbytes, depth, fingerprint, i, chaincode, key = priv</span>
+<span class="sd">    pvbytes, pdepth, pfingerprint, pi, pchaincode, pkey = parent_pub</span>
+<span class="sd">    i = int(i)</span>
+
+<span class="sd">    if i &gt;= 2**31:</span>
+<span class="sd">        raise Exception(&quot;Can&#39;t crack private derivation!&quot;)</span>
+
+<span class="sd">    I = hmac.new(pchaincode, pkey+encode(i, 256, 4), hashlib.sha512).digest()</span>
+
+<span class="sd">    pprivkey = subtract_privkeys(key, I[:32]+b&#39;\x01&#39;)</span>
+
+<span class="sd">    newvbytes = MAINNET_PRIVATE if vbytes == MAINNET_PUBLIC else TESTNET_PRIVATE</span>
+<span class="sd">    return (newvbytes, pdepth, pfingerprint, pi, pchaincode, pprivkey)</span>
+
+
+<span class="sd">def crack_bip32_privkey(parent_pub, priv):</span>
+<span class="sd">    dsppub = bip32_deserialize(parent_pub)</span>
+<span class="sd">    dspriv = bip32_deserialize(priv)</span>
+<span class="sd">    return bip32_serialize(raw_crack_bip32_privkey(dsppub, dspriv))</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<div class="viewcode-block" id="coinvault_pub_to_bip32"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.coinvault_pub_to_bip32">[docs]</a><span class="k">def</span> <span class="nf">coinvault_pub_to_bip32</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">34</span><span class="p">:])</span>
+    <span class="n">I1</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">chr</span><span class="p">,</span> <span class="n">vals</span><span class="p">[:</span><span class="mi">33</span><span class="p">]))</span>
+    <span class="n">I2</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">chr</span><span class="p">,</span> <span class="n">vals</span><span class="p">[</span><span class="mi">35</span><span class="p">:</span><span class="mi">67</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">bip32_serialize</span><span class="p">((</span><span class="n">MAINNET_PUBLIC</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="o">*</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">I2</span><span class="p">,</span> <span class="n">I1</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="coinvault_priv_to_bip32"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.coinvault_priv_to_bip32">[docs]</a><span class="k">def</span> <span class="nf">coinvault_priv_to_bip32</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">34</span><span class="p">:])</span>
+    <span class="n">I2</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">chr</span><span class="p">,</span> <span class="n">vals</span><span class="p">[</span><span class="mi">35</span><span class="p">:</span><span class="mi">67</span><span class="p">]))</span>
+    <span class="n">I3</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">chr</span><span class="p">,</span> <span class="n">vals</span><span class="p">[</span><span class="mi">72</span><span class="p">:</span><span class="mi">104</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">bip32_serialize</span><span class="p">((</span><span class="n">MAINNET_PRIVATE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="o">*</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">I2</span><span class="p">,</span> <span class="n">I3</span><span class="o">+</span><span class="n">b</span><span class="s">&#39;</span><span class="se">\x01</span><span class="s">&#39;</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="bip32_descend"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.bip32_descend">[docs]</a><span class="k">def</span> <span class="nf">bip32_descend</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">key</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">bip32_ckd</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">bip32_extract_key</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="test"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.deterministic.test">[docs]</a><span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
+    <span class="c">#Run code against BIP32 test vectors</span>
+    <span class="n">testvector1</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;seed&#39;</span><span class="p">:</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="s">&#39;000102030405060708090a0b0c0d0e0f&#39;</span><span class="p">),</span>
+        <span class="s">&#39;depths&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="o">+</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1000000000</span><span class="p">],</span>
+        <span class="s">&#39;keys&#39;</span><span class="p">:</span>
+        <span class="p">[(</span><span class="s">&#39;xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprv9wTYmMFdV23N2TdNG573QoEsfRrWKQgWeibmLntzniatZvR9BmLnvSxqu53Kw1UmYPxLgboyZQaXwTCg8MSY3H2EU4pWcQDnRnrVA1xe8fs&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprvA2JDeKCSNNZky6uBCviVfJSKyQ1mDYahRjijr5idH2WwLsEd4Hsb2Tyh8RfQMuPh7f7RtyzTtdrbdqqsunu5Mm3wDvUAKRHSC34sJ7in334&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6FHa3pjLCk84BayeJxFW2SP4XRrFd1JYnxeLeU8EqN3vDfZmbqBqaGJAyiLjTAwm6ZLRQUMv1ZACTj37sR62cfN7fe5JnJ7dh8zL4fiyLHV&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWmj4WggLyQjgPie1rFSruoUihUZREPSL39UNdE3BBDu76&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6H1LXWLaKsWFhvm6RVpEL9P4KfRZSW7abD2ttkWP3SSQvnyA8FSVqNTEcYFgJS2UaFcxupHiYkro49S8yGasTvXEYBVPamhGW6cFJodrTHy&#39;</span><span class="p">)]}</span>
+    <span class="n">testvector2</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;seed&#39;</span><span class="p">:</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="s">&#39;fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542&#39;</span><span class="p">),</span>
+        <span class="s">&#39;depths&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2147483647</span><span class="o">+</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2147483646</span><span class="o">+</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span>
+        <span class="s">&#39;keys&#39;</span><span class="p">:</span>
+        <span class="p">[(</span><span class="s">&#39;xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTAwCd6vnxVrcjfy2kRgVsFawNzmjuHc2YmYRmagcEPdU9&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6ASAVgeehLbnwdqV6UKMHVzgqAG8Gr6riv3Fxxpj8ksbH9ebxaEyBLZ85ySDhKiLDBrQSARLq1uNRts8RuJiHjaDMBU4Zn9h8LZNnBC5y4a&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprv9zFnWC6h2cLgpmSA46vutJzBcfJ8yaJGg8cX1e5StJh45BBciYTRXSd25UEPVuesF9yog62tGAQtHjXajPPdbRCHuWS6T8XA2ECKADdw4Ef&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6DF8uhdarytz3FWdA8TvFSvvAh8dP3283MY7p2V4SeE2wyWmG5mg5EwVvmdMVCQcoNJxGoWaU9DCWh89LojfZ537wTfunKau47EL2dhHKon&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL&#39;</span><span class="p">),</span>
+         <span class="p">(</span><span class="s">&#39;xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8Dq38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j&#39;</span><span class="p">,</span>
+          <span class="s">&#39;xpub6FnCn6nSzZAw5Tw7cgR9bi15UV96gLZhjDstkXXxvCLsUXBGXPdSnLFbdpq8p9HmGsApME5hQTZ3emM2rnY5agb9rXpVGyy3bdW6EEgAtqt&#39;</span><span class="p">)]}</span>    
+    
+    <span class="n">testvectors</span> <span class="o">=</span> <span class="p">[</span><span class="n">testvector1</span><span class="p">,</span> <span class="n">testvector2</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">testvectors</span><span class="p">:</span>
+        <span class="n">master</span> <span class="o">=</span> <span class="n">bip32_master_key</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s">&#39;seed&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">master</span> <span class="o">!=</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="s">&#39;failed: master xpriv&#39;</span>
+        <span class="n">masterpub</span> <span class="o">=</span> <span class="n">bip32_privtopub</span><span class="p">(</span><span class="n">master</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">masterpub</span> <span class="o">!=</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">print</span> <span class="n">masterpub</span>
+            <span class="k">return</span> <span class="s">&#39;failed: master xpub&#39;</span>
+        <span class="n">currentkey</span> <span class="o">=</span> <span class="n">master</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s">&#39;depths&#39;</span><span class="p">])):</span>
+            <span class="n">currentkey</span> <span class="o">=</span> <span class="n">bip32_ckd</span><span class="p">(</span><span class="n">currentkey</span><span class="p">,</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;depths&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">print</span> <span class="n">currentkey</span>
+            <span class="k">print</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">currentkey</span> <span class="o">!=</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="k">print</span> <span class="n">currentkey</span>
+                <span class="k">return</span> <span class="s">&#39;failed: child priv key, should be: &#39;</span><span class="o">+</span><span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">pub</span> <span class="o">=</span> <span class="n">bip32_privtopub</span><span class="p">(</span><span class="n">currentkey</span><span class="p">)</span>
+            <span class="k">print</span> <span class="n">pub</span>
+            <span class="k">print</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">pub</span> <span class="o">!=</span> <span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="k">print</span> <span class="n">pub</span>
+                <span class="k">return</span> <span class="s">&#39;failed: child pub key, should be: &#39;</span><span class="o">+</span><span class="n">t</span><span class="p">[</span><span class="s">&#39;keys&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="s">&#39;success&#39;</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

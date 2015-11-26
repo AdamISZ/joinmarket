@@ -1,0 +1,150 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>sendpayment module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-sendpayment">
+<span id="sendpayment-module"></span><h1>sendpayment module<a class="headerlink" href="#module-sendpayment" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="sendpayment.PaymentThread">
+<em class="property">class </em><tt class="descclassname">sendpayment.</tt><tt class="descname">PaymentThread</tt><big>(</big><em>taker</em><big>)</big><a class="reference internal" href="_modules/sendpayment.html#PaymentThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.PaymentThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<p>A thread which does the buy-side algorithm -
+chooses which coinjoins to initiate and when</p>
+<dl class="method">
+<dt id="sendpayment.PaymentThread.create_tx">
+<tt class="descname">create_tx</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/sendpayment.html#PaymentThread.create_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.PaymentThread.create_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sendpayment.PaymentThread.finishcallback">
+<tt class="descname">finishcallback</tt><big>(</big><em>coinjointx</em><big>)</big><a class="reference internal" href="_modules/sendpayment.html#PaymentThread.finishcallback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.PaymentThread.finishcallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>When transaction construction completed,
+either sign and push to the network, or retry
+if some makers did not respond.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sendpayment.PaymentThread.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/sendpayment.html#PaymentThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.PaymentThread.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sendpayment.PaymentThread.sendpayment_choose_orders">
+<tt class="descname">sendpayment_choose_orders</tt><big>(</big><em>cj_amount</em>, <em>makercount</em>, <em>nonrespondants=</em>, <span class="optional">[</span><span class="optional">]</span><em>active_nicks=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="reference internal" href="_modules/sendpayment.html#PaymentThread.sendpayment_choose_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.PaymentThread.sendpayment_choose_orders" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sendpayment.SendPayment">
+<em class="property">class </em><tt class="descclassname">sendpayment.</tt><tt class="descname">SendPayment</tt><big>(</big><em>msgchan</em>, <em>wallet</em>, <em>destaddr</em>, <em>amount</em>, <em>makercount</em>, <em>txfee</em>, <em>waittime</em>, <em>mixdepth</em>, <em>answeryes</em>, <em>chooseOrdersFunc</em><big>)</big><a class="reference internal" href="_modules/sendpayment.html#SendPayment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.SendPayment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="taker.html#taker.Taker" title="taker.Taker"><tt class="xref py py-class docutils literal"><span class="pre">taker.Taker</span></tt></a></p>
+<p>A Taker for initiating and carrying out 
+a single coinjoin transaction using a JoinMarket wallet.</p>
+<dl class="method">
+<dt id="sendpayment.SendPayment.on_welcome">
+<tt class="descname">on_welcome</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/sendpayment.html#SendPayment.on_welcome"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.SendPayment.on_welcome" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="sendpayment.check_high_fee">
+<tt class="descclassname">sendpayment.</tt><tt class="descname">check_high_fee</tt><big>(</big><em>total_fee_pc</em><big>)</big><a class="reference internal" href="_modules/sendpayment.html#check_high_fee"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.check_high_fee" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="sendpayment.main">
+<tt class="descclassname">sendpayment.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/sendpayment.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sendpayment.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/sendpayment.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

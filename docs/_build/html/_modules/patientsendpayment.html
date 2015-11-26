@@ -1,0 +1,271 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>patientsendpayment &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for patientsendpayment</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">optparse</span> <span class="kn">import</span> <span class="n">OptionParser</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">timedelta</span>
+<span class="kn">import</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">binascii</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">__file__</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s">&#39;lib&#39;</span><span class="p">))</span>
+
+<span class="kn">from</span> <span class="nn">common</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">common</span>
+<span class="kn">import</span> <span class="nn">taker</span>
+<span class="kn">import</span> <span class="nn">maker</span>
+<span class="kn">from</span> <span class="nn">irc</span> <span class="kn">import</span> <span class="n">IRCMessageChannel</span><span class="p">,</span> <span class="n">random_nick</span>
+<span class="kn">import</span> <span class="nn">bitcoin</span> <span class="kn">as</span> <span class="nn">btc</span>
+
+<span class="k">class</span> <span class="nc">TakerThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+<div class="viewcode-block" id="TakerThread"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.TakerThread">[docs]</a>	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmaker</span><span class="p">):</span>
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span> <span class="o">=</span> <span class="n">tmaker</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="bp">False</span>
+
+	<span class="k">def</span> <span class="nf">finishcallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coinjointx</span><span class="p">):</span>
+<div class="viewcode-block" id="TakerThread.finishcallback"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.TakerThread.finishcallback">[docs]</a>		<span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="TakerThread.run"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.TakerThread.run">[docs]</a>		<span class="c">#TODO this thread doesnt wake up for what could be hours</span>
+		<span class="c"># need a loop that periodically checks self.finished</span>
+		<span class="c">#TODO another issue is, what if the bot has run out of utxos and</span>
+		<span class="c"># needs to wait for some tx to confirm before it can trade</span>
+		<span class="c"># presumably it needs to wait here until the tx confirms</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">waittime</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="k">print</span> <span class="s">&#39;giving up waiting&#39;</span>
+		<span class="c">#cancel the remaining order</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">modify_orders</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="p">[])</span>
+		<span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span> <span class="o">=</span> <span class="n">choose_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">makercount</span><span class="p">,</span> <span class="n">weighted_order_choose</span><span class="p">)</span>
+		<span class="k">print</span> <span class="s">&#39;chosen orders to fill &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; totalcjfee=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_cj_fee</span><span class="p">)</span>
+		<span class="n">total_amount</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">amount</span> <span class="o">+</span> <span class="n">total_cj_fee</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">txfee</span>
+		<span class="k">print</span> <span class="s">&#39;total amount spent = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_amount</span><span class="p">)</span>
+
+		<span class="n">utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">select_utxos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">,</span> <span class="n">total_amount</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">start_cj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">wallet</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">utxos</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">destaddr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">),</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">tmaker</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">finishcallback</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">PatientSendPayment</span><span class="p">(</span><span class="n">maker</span><span class="o">.</span><span class="n">Maker</span><span class="p">,</span> <span class="n">taker</span><span class="o">.</span><span class="n">Taker</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="PatientSendPayment"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment">[docs]</a>	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">,</span> <span class="n">wallet</span><span class="p">,</span> <span class="n">destaddr</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">makercount</span><span class="p">,</span> <span class="n">txfee</span><span class="p">,</span> <span class="n">cjfee</span><span class="p">,</span>
+			<span class="n">waittime</span><span class="p">,</span> <span class="n">mixdepth</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">destaddr</span> <span class="o">=</span> <span class="n">destaddr</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">=</span> <span class="n">amount</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">makercount</span> <span class="o">=</span> <span class="n">makercount</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">txfee</span> <span class="o">=</span> <span class="n">txfee</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cjfee</span> <span class="o">=</span> <span class="n">cjfee</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">waittime</span> <span class="o">=</span> <span class="n">waittime</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">mixdepth</span> <span class="o">=</span> <span class="n">mixdepth</span>
+		<span class="n">maker</span><span class="o">.</span><span class="n">Maker</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">,</span> <span class="n">wallet</span><span class="p">)</span>
+		<span class="n">taker</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">get_crypto_box_from_nick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">):</span>
+<div class="viewcode-block" id="PatientSendPayment.get_crypto_box_from_nick"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment.get_crypto_box_from_nick">[docs]</a>		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cjtx</span><span class="p">:</span>
+			<span class="k">return</span> <span class="n">taker</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">get_crypto_box_from_nick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="n">maker</span><span class="o">.</span><span class="n">Maker</span><span class="o">.</span><span class="n">get_crypto_box_from_nick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="PatientSendPayment.on_welcome"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment.on_welcome">[docs]</a>		<span class="n">maker</span><span class="o">.</span><span class="n">Maker</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">taker</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">takerthread</span> <span class="o">=</span> <span class="n">TakerThread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">takerthread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">create_my_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="PatientSendPayment.create_my_orders"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment.create_my_orders">[docs]</a>		<span class="c">#choose an absolute fee order to discourage people from</span>
+		<span class="c"># mixing smaller amounts</span>
+		<span class="n">order</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;oid&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;ordertype&#39;</span><span class="p">:</span> <span class="s">&#39;absorder&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+			<span class="s">&#39;maxsize&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span> <span class="s">&#39;txfee&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cjfee</span><span class="p">}</span>
+		<span class="k">return</span> <span class="p">[</span><span class="n">order</span><span class="p">]</span>
+
+	<span class="k">def</span> <span class="nf">oid_to_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cjorder</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span></div>
+<div class="viewcode-block" id="PatientSendPayment.oid_to_order"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment.oid_to_order">[docs]</a>		<span class="c">#TODO race condition (kinda)</span>
+		<span class="c">#if an order arrives and before it finishes another order arrives</span>
+		<span class="c"># its possible this bot will end up paying to the destaddr more than it</span>
+		<span class="c"># intended</span>
+		<span class="n">utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">select_utxos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">utxos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">destaddr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">on_tx_unconfirmed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cjorder</span><span class="p">,</span> <span class="n">balance</span><span class="p">,</span> <span class="n">removed_utxos</span><span class="p">):</span></div>
+<div class="viewcode-block" id="PatientSendPayment.on_tx_unconfirmed"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment.on_tx_unconfirmed">[docs]</a>		<span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">-=</span> <span class="n">cjorder</span><span class="o">.</span><span class="n">cj_amount</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">takerthread</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="bp">True</span>
+			<span class="k">print</span> <span class="s">&#39;finished sending, exiting..&#39;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+			<span class="k">return</span> <span class="p">([],</span> <span class="p">[])</span>
+		<span class="n">available_balance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_balance_by_mixdepth</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">available_balance</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">:</span>
+			<span class="n">order</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;oid&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;ordertype&#39;</span><span class="p">:</span> <span class="s">&#39;absorder&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+				<span class="s">&#39;maxsize&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span> <span class="s">&#39;txfee&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cjfee</span><span class="p">}</span>
+			<span class="k">return</span> <span class="p">([],</span> <span class="p">[</span><span class="n">order</span><span class="p">])</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;not enough money left, have to wait until tx confirms&#39;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="p">[])</span>
+
+	<span class="k">def</span> <span class="nf">on_tx_confirmed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cjorder</span><span class="p">,</span> <span class="n">confirmations</span><span class="p">,</span> <span class="n">txid</span><span class="p">,</span> <span class="n">balance</span><span class="p">):</span></div>
+<div class="viewcode-block" id="PatientSendPayment.on_tx_confirmed"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.PatientSendPayment.on_tx_confirmed">[docs]</a>		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">order</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;oid&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;ordertype&#39;</span><span class="p">:</span> <span class="s">&#39;absorder&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+				<span class="s">&#39;maxsize&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span> <span class="s">&#39;txfee&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cjfee</span><span class="p">}</span>
+			<span class="k">return</span> <span class="p">([],</span> <span class="p">[</span><span class="n">order</span><span class="p">])</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="p">([],</span> <span class="p">[])</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span></div></div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../patientsendpayment.html#patientsendpayment.main">[docs]</a>	<span class="n">parser</span> <span class="o">=</span> <span class="n">OptionParser</span><span class="p">(</span><span class="n">usage</span><span class="o">=</span><span class="s">&#39;usage: %prog [options] [wallet file / fromaccount] [amount] [destaddr]&#39;</span><span class="p">,</span>
+		<span class="n">description</span><span class="o">=</span><span class="s">&#39;Sends a payment from your wallet to an given address&#39;</span> <span class="o">+</span>
+			<span class="s">&#39; using coinjoin. First acts as a maker, announcing an order and &#39;</span> <span class="o">+</span>
+			<span class="s">&#39;waiting for someone to fill it. After a set period of time, gives&#39;</span> <span class="o">+</span>
+			<span class="s">&#39; up waiting and acts as a taker and coinjoins any remaining coins&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-f&#39;</span><span class="p">,</span> <span class="s">&#39;--txfee&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;txfee&#39;</span><span class="p">,</span>
+		<span class="n">default</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&#39;miner fee contribution, in satoshis, default=10000&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-N&#39;</span><span class="p">,</span> <span class="s">&#39;--makercount&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;makercount&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;how many makers to coinjoin with when taking liquidity, default=2&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-w&#39;</span><span class="p">,</span> <span class="s">&#39;--wait-time&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;waittime&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;wait time in hours as a maker before becoming a taker, default=8&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-c&#39;</span><span class="p">,</span> <span class="s">&#39;--cjfee&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;cjfee&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;coinjoin fee asked for when being a maker, in satoshis per order filled, default=50000&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">50000</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--mixdepth&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mixdepth&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;mixing depth to spend from, default=0&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--rpcwallet&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;userpcwallet&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;Use the Bitcoin Core wallet through json rpc, instead of the internal joinmarket &#39;</span> <span class="o">+</span>
+			<span class="s">&#39;wallet. Requires blockchain_source=json-rpc&#39;</span><span class="p">)</span>
+	<span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;Needs a wallet, amount and destination address&#39;</span><span class="p">)</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">wallet_name</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+	<span class="n">destaddr</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+	
+	<span class="n">load_program_config</span><span class="p">()</span>
+	<span class="n">addr_valid</span><span class="p">,</span> <span class="n">errormsg</span> <span class="o">=</span> <span class="n">validate_address</span><span class="p">(</span><span class="n">destaddr</span><span class="p">)</span>
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">addr_valid</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;ERROR: Address invalid. &#39;</span> <span class="o">+</span> <span class="n">errormsg</span>
+		<span class="k">return</span>
+	
+	<span class="n">waittime</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">waittime</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+	<span class="k">print</span> <span class="s">&#39;txfee=</span><span class="si">%d</span><span class="s"> cjfee=</span><span class="si">%d</span><span class="s"> waittime=</span><span class="si">%s</span><span class="s"> makercount=</span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">cjfee</span><span class="p">,</span>
+		<span class="nb">str</span><span class="p">(</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">waittime</span><span class="p">)),</span> <span class="n">options</span><span class="o">.</span><span class="n">makercount</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">userpcwallet</span><span class="p">:</span>
+		<span class="n">wallet</span> <span class="o">=</span> <span class="n">Wallet</span><span class="p">(</span><span class="n">wallet_name</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;not implemented yet&#39;</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="n">wallet</span> <span class="o">=</span> <span class="n">BitcoinCoreWallet</span><span class="p">(</span><span class="n">fromaccount</span> <span class="o">=</span> <span class="n">wallet_name</span><span class="p">)</span>
+	<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">sync_wallet</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+
+	<span class="n">available_balance</span> <span class="o">=</span> <span class="n">wallet</span><span class="o">.</span><span class="n">get_balance_by_mixdepth</span><span class="p">()[</span><span class="n">options</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">]</span>
+	<span class="k">if</span> <span class="n">available_balance</span> <span class="o">&lt;</span> <span class="n">amount</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;not enough money at mixdepth=</span><span class="si">%d</span><span class="s">, exiting&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">)</span>
+		<span class="k">return</span>
+
+	<span class="n">common</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">random_nick</span><span class="p">()</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;Running patient sender of a payment&#39;</span><span class="p">)</span>
+
+	<span class="n">irc</span> <span class="o">=</span> <span class="n">IRCMessageChannel</span><span class="p">(</span><span class="n">common</span><span class="o">.</span><span class="n">nickname</span><span class="p">)</span>
+	<span class="n">bot</span> <span class="o">=</span> <span class="n">PatientSendPayment</span><span class="p">(</span><span class="n">irc</span><span class="p">,</span> <span class="n">wallet</span><span class="p">,</span> <span class="n">destaddr</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">makercount</span><span class="p">,</span>
+		<span class="n">options</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">cjfee</span><span class="p">,</span> <span class="n">waittime</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">)</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">irc</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+	<span class="k">except</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;CRASHING, DUMPING EVERYTHING&#39;</span><span class="p">)</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;addr_cache&#39;</span><span class="p">,</span> <span class="s">&#39;keys&#39;</span><span class="p">,</span> <span class="s">&#39;seed&#39;</span><span class="p">])</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">taker</span><span class="p">)</span>
+		<span class="kn">import</span> <span class="nn">traceback</span>
+		<span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span></div>
+	<span class="n">main</span><span class="p">()</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;done&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>blockchaininterface &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for blockchaininterface</h1><div class="highlight"><pre>
+<span class="c">#from joinmarket import *</span>
+<span class="kn">import</span> <span class="nn">unittest</span>
+<span class="kn">import</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">abc</span><span class="o">,</span> <span class="nn">pprint</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">BaseHTTPServer</span><span class="o">,</span> <span class="nn">urllib</span>
+<span class="kn">from</span> <span class="nn">decimal</span> <span class="kn">import</span> <span class="n">Decimal</span>
+<span class="kn">import</span> <span class="nn">bitcoin</span> <span class="kn">as</span> <span class="nn">btc</span>
+
+<span class="kn">import</span> <span class="nn">common</span>
+<span class="kn">import</span> <span class="nn">jsonrpc</span>
+
+<span class="c"># This can be removed once CliJsonRpc is gone.</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+
+<div class="viewcode-block" id="CliJsonRpc"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.CliJsonRpc">[docs]</a><span class="k">class</span> <span class="nc">CliJsonRpc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fake JsonRpc class that uses the Bitcoin CLI executable.  This is used</span>
+<span class="sd">    as temporary fall back before we switch completely (and exclusively)</span>
+<span class="sd">    to the real JSON-RPC interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cli</span><span class="p">,</span> <span class="n">testnet</span><span class="p">):</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">cli</span> <span class="o">=</span> <span class="n">cli</span>
+	<span class="k">if</span> <span class="n">testnet</span><span class="p">:</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;-testnet&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CliJsonRpc.call"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.CliJsonRpc.call">[docs]</a>    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+	<span class="n">fullCall</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="n">fullCall</span><span class="o">.</span><span class="n">extend</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cli</span><span class="p">)</span>
+	<span class="n">fullCall</span><span class="o">.</span><span class="n">append</span> <span class="p">(</span><span class="n">method</span><span class="p">)</span>
+	<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+	    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+		<span class="n">fullCall</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+	    <span class="k">else</span><span class="p">:</span>
+		<span class="n">fullCall</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+
+	<span class="n">res</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">fullCall</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">res</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="bp">None</span>
+
+	<span class="k">try</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span> <span class="p">(</span><span class="n">res</span><span class="p">)</span>
+	<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="is_index_ahead_of_cache"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.is_index_ahead_of_cache">[docs]</a><span class="k">def</span> <span class="nf">is_index_ahead_of_cache</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">):</span>
+	<span class="k">if</span> <span class="n">mix_depth</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">wallet</span><span class="o">.</span><span class="n">index_cache</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">True</span>
+	<span class="k">return</span> <span class="n">wallet</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">wallet</span><span class="o">.</span><span class="n">index_cache</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="get_blockchain_interface_instance"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.get_blockchain_interface_instance">[docs]</a><span class="k">def</span> <span class="nf">get_blockchain_interface_instance</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+	<span class="n">source</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;blockchain_source&quot;</span><span class="p">)</span>
+	<span class="n">network</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">get_network</span><span class="p">()</span>
+	<span class="n">testnet</span> <span class="o">=</span> <span class="n">network</span><span class="o">==</span><span class="s">&#39;testnet&#39;</span>
+	<span class="k">if</span> <span class="n">source</span> <span class="o">==</span> <span class="s">&#39;bitcoin-rpc&#39;</span><span class="p">:</span>
+		<span class="n">rpc_host</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_host&quot;</span><span class="p">)</span>
+		<span class="n">rpc_port</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_port&quot;</span><span class="p">)</span>
+		<span class="n">rpc_user</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_user&quot;</span><span class="p">)</span>
+		<span class="n">rpc_password</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_password&quot;</span><span class="p">)</span>
+		<span class="n">rpc</span> <span class="o">=</span> <span class="n">jsonrpc</span><span class="o">.</span><span class="n">JsonRpc</span><span class="p">(</span><span class="n">rpc_host</span><span class="p">,</span> <span class="n">rpc_port</span><span class="p">,</span> <span class="n">rpc_user</span><span class="p">,</span> <span class="n">rpc_password</span><span class="p">)</span>
+		<span class="n">bc_interface</span> <span class="o">=</span> <span class="n">BitcoinCoreInterface</span><span class="p">(</span><span class="n">rpc</span><span class="p">,</span> <span class="n">network</span><span class="p">)</span>
+	<span class="k">elif</span> <span class="n">source</span> <span class="o">==</span> <span class="s">&#39;json-rpc&#39;</span><span class="p">:</span>
+		<span class="n">bitcoin_cli_cmd</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;bitcoin_cli_cmd&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+		<span class="n">rpc</span> <span class="o">=</span> <span class="n">CliJsonRpc</span><span class="p">(</span><span class="n">bitcoin_cli_cmd</span><span class="p">,</span> <span class="n">testnet</span><span class="p">)</span>
+		<span class="n">bc_interface</span> <span class="o">=</span> <span class="n">BitcoinCoreInterface</span><span class="p">(</span><span class="n">rpc</span><span class="p">,</span> <span class="n">network</span><span class="p">)</span>
+	<span class="k">elif</span> <span class="n">source</span> <span class="o">==</span> <span class="s">&#39;regtest&#39;</span><span class="p">:</span>
+		<span class="n">rpc_host</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_host&quot;</span><span class="p">)</span>
+		<span class="n">rpc_port</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_port&quot;</span><span class="p">)</span>
+		<span class="n">rpc_user</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_user&quot;</span><span class="p">)</span>
+		<span class="n">rpc_password</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;rpc_password&quot;</span><span class="p">)</span>
+		<span class="n">rpc</span> <span class="o">=</span> <span class="n">jsonrpc</span><span class="o">.</span><span class="n">JsonRpc</span><span class="p">(</span><span class="n">rpc_host</span><span class="p">,</span> <span class="n">rpc_port</span><span class="p">,</span> <span class="n">rpc_user</span><span class="p">,</span> <span class="n">rpc_password</span><span class="p">)</span>
+		<span class="n">bc_interface</span> <span class="o">=</span> <span class="n">RegtestBitcoinCoreInterface</span><span class="p">(</span><span class="n">rpc</span><span class="p">)</span>
+	<span class="k">elif</span> <span class="n">source</span> <span class="o">==</span> <span class="s">&#39;blockr&#39;</span><span class="p">:</span>
+		<span class="n">bc_interface</span> <span class="o">=</span> <span class="n">BlockrInterface</span><span class="p">(</span><span class="n">testnet</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Invalid blockchain source&quot;</span><span class="p">)</span>	
+	<span class="k">return</span> <span class="n">bc_interface</span>
+</div>
+<div class="viewcode-block" id="BlockchainInterface"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface">[docs]</a><span class="k">class</span> <span class="nc">BlockchainInterface</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABCMeta</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">pass</span>
+
+<div class="viewcode-block" id="BlockchainInterface.sync_wallet"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface.sync_wallet">[docs]</a>	<span class="k">def</span> <span class="nf">sync_wallet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sync_addresses</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sync_unspent</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+</div>
+	<span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="BlockchainInterface.sync_addresses"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface.sync_addresses">[docs]</a>	<span class="k">def</span> <span class="nf">sync_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Finds which addresses have been used and sets wallet.index appropriately&#39;&#39;&#39;</span>
+		<span class="k">pass</span>
+</div>
+	<span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="BlockchainInterface.sync_unspent"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface.sync_unspent">[docs]</a>	<span class="k">def</span> <span class="nf">sync_unspent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Finds the unspent transaction outputs belonging to this wallet, sets wallet.unspent&#39;&#39;&#39;</span>
+		<span class="k">pass</span>
+</div>
+	<span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="BlockchainInterface.add_tx_notify"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface.add_tx_notify">[docs]</a>	<span class="k">def</span> <span class="nf">add_tx_notify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">,</span> <span class="n">notifyaddr</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Invokes unconfirmfun and confirmfun when tx is seen on the network&#39;&#39;&#39;</span>
+		<span class="k">pass</span>
+</div>
+	<span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="BlockchainInterface.pushtx"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface.pushtx">[docs]</a>	<span class="k">def</span> <span class="nf">pushtx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;pushes tx to the network, returns txhash, or None if failed&#39;&#39;&#39;</span>
+		<span class="k">pass</span>
+</div>
+	<span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="BlockchainInterface.query_utxo_set"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockchainInterface.query_utxo_set">[docs]</a>	<span class="k">def</span> <span class="nf">query_utxo_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txouts</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		takes a utxo or a list of utxos</span>
+<span class="sd">		returns None if they are spend or unconfirmed</span>
+<span class="sd">		otherwise returns value in satoshis, address and output script</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+		<span class="c">#address and output script contain the same information btw</span>
+</div></div>
+<div class="viewcode-block" id="BlockrInterface"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockrInterface">[docs]</a><span class="k">class</span> <span class="nc">BlockrInterface</span><span class="p">(</span><span class="n">BlockchainInterface</span><span class="p">):</span>
+	<span class="n">BLOCKR_MAX_ADDR_REQ_COUNT</span> <span class="o">=</span> <span class="mi">20</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">testnet</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">BlockrInterface</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="s">&#39;testnet&#39;</span> <span class="k">if</span> <span class="n">testnet</span> <span class="k">else</span> <span class="s">&#39;btc&#39;</span> <span class="c">#see bci.py in bitcoin module</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">=</span> <span class="s">&#39;tbtc&#39;</span> <span class="k">if</span> <span class="n">testnet</span> <span class="k">else</span> <span class="s">&#39;btc&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">last_sync_unspent</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="BlockrInterface.sync_addresses"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockrInterface.sync_addresses">[docs]</a>	<span class="k">def</span> <span class="nf">sync_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;downloading wallet history&#39;</span><span class="p">)</span>
+		<span class="c">#sets Wallet internal indexes to be at the next unused address</span>
+		<span class="k">for</span> <span class="n">mix_depth</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">wallet</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">):</span>
+			<span class="k">for</span> <span class="n">forchange</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+				<span class="n">unused_addr_count</span> <span class="o">=</span> <span class="mi">0</span>
+				<span class="n">last_used_addr</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+				<span class="k">while</span> <span class="n">unused_addr_count</span> <span class="o">&lt;</span> <span class="n">wallet</span><span class="o">.</span><span class="n">gaplimit</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">is_index_ahead_of_cache</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">):</span>
+					<span class="n">addrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_new_addr</span><span class="p">(</span><span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BLOCKR_MAX_ADDR_REQ_COUNT</span><span class="p">)]</span>
+
+					<span class="c">#TODO send a pull request to pybitcointools</span>
+					<span class="c"># because this surely should be possible with a function from it</span>
+					<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/address/txs/&#39;</span>
+					<span class="c">#print &#39;downloading, lastusedaddr = &#39; + last_used_addr + &#39; unusedaddrcount= &#39; + str(unused_addr_count)</span>
+					<span class="n">res</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span><span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">addrs</span><span class="p">))</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">res</span><span class="p">)[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+					<span class="k">for</span> <span class="n">dat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+						<span class="c">#if forchange == 0:</span>
+						<span class="c">#	print &#39; nbtxs &#39; + str(dat[&#39;nb_txs&#39;]) + &#39; addr=&#39; + dat[&#39;address&#39;] + &#39; unused=&#39; + str(unused_addr_count)</span>
+						<span class="k">if</span> <span class="n">dat</span><span class="p">[</span><span class="s">&#39;nb_txs&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+							<span class="n">last_used_addr</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]</span>
+							<span class="n">unused_addr_count</span> <span class="o">=</span> <span class="mi">0</span>
+						<span class="k">else</span><span class="p">:</span>
+							<span class="n">unused_addr_count</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="k">if</span> <span class="n">last_used_addr</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+					<span class="n">wallet</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">wallet</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span> <span class="o">=</span> <span class="n">wallet</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">last_used_addr</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+</div>
+<div class="viewcode-block" id="BlockrInterface.sync_unspent"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockrInterface.sync_unspent">[docs]</a>	<span class="k">def</span> <span class="nf">sync_unspent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="c">#finds utxos in the wallet</span>
+		<span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+		<span class="n">rate_limit_time</span> <span class="o">=</span> <span class="mi">10</span><span class="o">*</span><span class="mi">60</span> <span class="c">#dont refresh unspent dict more often than 10 minutes</span>
+		<span class="k">if</span> <span class="n">st</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_sync_unspent</span> <span class="o">&lt;</span> <span class="n">rate_limit_time</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;blockr sync_unspent() happened too recently (</span><span class="si">%d</span><span class="s">sec), skipping&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">st</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_sync_unspent</span><span class="p">))</span>
+			<span class="k">return</span>
+		<span class="n">wallet</span><span class="o">.</span><span class="n">unspent</span> <span class="o">=</span> <span class="p">{}</span>
+
+		<span class="n">addrs</span> <span class="o">=</span> <span class="n">wallet</span><span class="o">.</span><span class="n">addr_cache</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;no tx used&#39;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">):</span>
+			<span class="n">inc</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">)</span> <span class="o">-</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">BLOCKR_MAX_ADDR_REQ_COUNT</span><span class="p">)</span>
+			<span class="n">req</span> <span class="o">=</span> <span class="n">addrs</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">inc</span><span class="p">]</span>
+			<span class="n">i</span> <span class="o">+=</span> <span class="n">inc</span>
+
+			<span class="c">#TODO send a pull request to pybitcointools </span>
+			<span class="c"># unspent() doesnt tell you which address, you get a bunch of utxos</span>
+			<span class="c"># but dont know which privkey to sign with</span>
+			
+			<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/address/unspent/&#39;</span>
+			<span class="n">res</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span><span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">req</span><span class="p">))</span>
+			<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">res</span><span class="p">)[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+			<span class="k">if</span> <span class="s">&#39;unspent&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+				<span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+			<span class="k">for</span> <span class="n">dat</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+				<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">dat</span><span class="p">[</span><span class="s">&#39;unspent&#39;</span><span class="p">]:</span>
+					<span class="n">wallet</span><span class="o">.</span><span class="n">unspent</span><span class="p">[</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;:&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;address&#39;</span><span class="p">:</span>
+						<span class="n">dat</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">],</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;amount&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">))}</span>
+		<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">wallet</span><span class="o">.</span><span class="n">spent_utxos</span><span class="p">:</span>
+			<span class="n">wallet</span><span class="o">.</span><span class="n">unspent</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">last_sync_unspent</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+		<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;blockr sync_unspent took &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">last_sync_unspent</span> <span class="o">-</span> <span class="n">st</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39;sec&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BlockrInterface.add_tx_notify"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockrInterface.add_tx_notify">[docs]</a>	<span class="k">def</span> <span class="nf">add_tx_notify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">,</span> <span class="n">notifyaddr</span><span class="p">):</span>
+		<span class="n">unconfirm_timeout</span> <span class="o">=</span> <span class="mi">10</span><span class="o">*</span><span class="mi">60</span> <span class="c">#seconds</span>
+		<span class="n">unconfirm_poll_period</span> <span class="o">=</span> <span class="mi">5</span>
+		<span class="n">confirm_timeout</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span>
+		<span class="n">confirm_poll_period</span> <span class="o">=</span> <span class="mi">5</span><span class="o">*</span><span class="mi">60</span>
+		<span class="k">class</span> <span class="nc">NotifyThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+			<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockr_domain</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">):</span>
+				<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">=</span> <span class="n">blockr_domain</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">unconfirmfun</span> <span class="o">=</span> <span class="n">unconfirmfun</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">confirmfun</span> <span class="o">=</span> <span class="n">confirmfun</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">tx_output_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">sv</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">sv</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">sv</span> <span class="ow">in</span> <span class="n">txd</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]])</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">output_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">btc</span><span class="o">.</span><span class="n">script_to_address</span><span class="p">(</span><span class="n">scrval</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+					<span class="n">common</span><span class="o">.</span><span class="n">get_p2pk_vbyte</span><span class="p">())</span> <span class="k">for</span> <span class="n">scrval</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_output_set</span><span class="p">]</span>
+				<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;txoutset=&#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx_output_set</span><span class="p">))</span>
+				<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;outaddrs=&#39;</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_addresses</span><span class="p">))</span>
+
+			<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+				<span class="n">st</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+				<span class="n">unconfirmed_txid</span> <span class="o">=</span> <span class="bp">None</span>
+				<span class="n">unconfirmed_txhex</span> <span class="o">=</span> <span class="bp">None</span>
+				<span class="k">while</span> <span class="ow">not</span> <span class="n">unconfirmed_txid</span><span class="p">:</span>
+					<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">unconfirm_poll_period</span><span class="p">)</span>
+					<span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span> <span class="o">-</span> <span class="n">st</span> <span class="o">&gt;</span> <span class="n">unconfirm_timeout</span><span class="p">:</span>
+						<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;checking for unconfirmed tx timed out&#39;</span><span class="p">)</span>
+						<span class="k">return</span>
+					<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/address/unspent/&#39;</span>
+					<span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_addresses</span><span class="p">)</span> <span class="c">#seriously weird bug with blockr.io</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_addresses</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;?unconfirmed=1&#39;</span><span class="p">))[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+					<span class="n">shared_txid</span> <span class="o">=</span> <span class="bp">None</span>
+					<span class="k">for</span> <span class="n">unspent_list</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+						<span class="n">txs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">txdata</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">txdata</span> <span class="ow">in</span> <span class="n">unspent_list</span><span class="p">[</span><span class="s">&#39;unspent&#39;</span><span class="p">]])</span>
+						<span class="k">if</span> <span class="ow">not</span> <span class="n">shared_txid</span><span class="p">:</span>
+							<span class="n">shared_txid</span> <span class="o">=</span> <span class="n">txs</span>
+						<span class="k">else</span><span class="p">:</span>	
+							<span class="n">shared_txid</span> <span class="o">=</span> <span class="n">shared_txid</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">txs</span><span class="p">)</span>
+					<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;sharedtxid = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">shared_txid</span><span class="p">))</span>
+					<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shared_txid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+						<span class="k">continue</span>
+					<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c">#here for some race condition bullshit with blockr.io</span>
+					<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/tx/raw/&#39;</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">shared_txid</span><span class="p">)))[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+					<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+						<span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+					<span class="k">for</span> <span class="n">txinfo</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+						<span class="n">txhex</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">txinfo</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;hex&#39;</span><span class="p">])</span>
+						<span class="n">outs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">sv</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">sv</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">sv</span> <span class="ow">in</span> <span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">txhex</span><span class="p">)[</span><span class="s">&#39;outs&#39;</span><span class="p">]])</span>
+						<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;unconfirm query outs = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">outs</span><span class="p">))</span>
+						<span class="k">if</span> <span class="n">outs</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_output_set</span><span class="p">:</span>
+							<span class="n">unconfirmed_txid</span> <span class="o">=</span> <span class="n">txinfo</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;txid&#39;</span><span class="p">]</span>
+							<span class="n">unconfirmed_txhex</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">txinfo</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;hex&#39;</span><span class="p">])</span>
+							<span class="k">break</span>
+
+				<span class="bp">self</span><span class="o">.</span><span class="n">unconfirmfun</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">unconfirmed_txhex</span><span class="p">),</span> <span class="n">unconfirmed_txid</span><span class="p">)</span>
+
+				<span class="n">st</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+				<span class="n">confirmed_txid</span> <span class="o">=</span> <span class="bp">None</span>
+				<span class="n">confirmed_txhex</span> <span class="o">=</span> <span class="bp">None</span>
+				<span class="k">while</span> <span class="ow">not</span> <span class="n">confirmed_txid</span><span class="p">:</span>
+					<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">confirm_poll_period</span><span class="p">)</span>
+					<span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span> <span class="o">-</span> <span class="n">st</span> <span class="o">&gt;</span> <span class="n">confirm_timeout</span><span class="p">:</span>
+						<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;checking for confirmed tx timed out&#39;</span><span class="p">)</span>
+						<span class="k">return</span>
+					<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/address/txs/&#39;</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_addresses</span><span class="p">)))[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+					<span class="n">shared_txid</span> <span class="o">=</span> <span class="bp">None</span>
+					<span class="k">for</span> <span class="n">addrtxs</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+						<span class="n">txs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">txdata</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">txdata</span> <span class="ow">in</span> <span class="n">addrtxs</span><span class="p">[</span><span class="s">&#39;txs&#39;</span><span class="p">]])</span>
+						<span class="k">if</span> <span class="ow">not</span> <span class="n">shared_txid</span><span class="p">:</span>
+							<span class="n">shared_txid</span> <span class="o">=</span> <span class="n">txs</span>
+						<span class="k">else</span><span class="p">:</span>	
+							<span class="n">shared_txid</span> <span class="o">=</span> <span class="n">shared_txid</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">txs</span><span class="p">)</span>
+					<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;sharedtxid = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">shared_txid</span><span class="p">))</span>
+					<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shared_txid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+						<span class="k">continue</span>
+					<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/tx/raw/&#39;</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">shared_txid</span><span class="p">)))[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+					<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+						<span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+					<span class="k">for</span> <span class="n">txinfo</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+						<span class="n">txhex</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">txinfo</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;hex&#39;</span><span class="p">])</span>
+						<span class="n">outs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">sv</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">sv</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">sv</span> <span class="ow">in</span> <span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">txhex</span><span class="p">)[</span><span class="s">&#39;outs&#39;</span><span class="p">]])</span>
+						<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;confirm query outs = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">outs</span><span class="p">))</span>
+						<span class="k">if</span> <span class="n">outs</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_output_set</span><span class="p">:</span>
+							<span class="n">confirmed_txid</span> <span class="o">=</span> <span class="n">txinfo</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;txid&#39;</span><span class="p">]</span>
+							<span class="n">confirmed_txhex</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">txinfo</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">][</span><span class="s">&#39;hex&#39;</span><span class="p">])</span>
+							<span class="k">break</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">confirmfun</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">confirmed_txhex</span><span class="p">),</span> <span class="n">confirmed_txid</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+		<span class="n">NotifyThread</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="BlockrInterface.pushtx"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockrInterface.pushtx">[docs]</a>	<span class="k">def</span> <span class="nf">pushtx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">json_str</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">blockr_pushtx</span><span class="p">(</span><span class="n">txhex</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="p">)</span>
+		<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;failed blockr.io pushtx&#39;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="bp">None</span>
+		<span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;success&#39;</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> 
+			<span class="k">return</span> <span class="bp">None</span>
+		<span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="BlockrInterface.query_utxo_set"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BlockrInterface.query_utxo_set">[docs]</a>	<span class="k">def</span> <span class="nf">query_utxo_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txout</span><span class="p">):</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">txout</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+			<span class="n">txout</span> <span class="o">=</span> <span class="p">[</span><span class="n">txout</span><span class="p">]</span>
+		<span class="n">txids</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span><span class="p">[:</span><span class="mi">64</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">txout</span><span class="p">]</span>
+		<span class="n">txids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">txids</span><span class="p">))</span> <span class="c">#remove duplicates</span>
+		<span class="c">#self.BLOCKR_MAX_ADDR_REQ_COUNT = 2</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">txids</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">BLOCKR_MAX_ADDR_REQ_COUNT</span><span class="p">:</span>
+			<span class="n">txids</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">chunks</span><span class="p">(</span><span class="n">txids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">BLOCKR_MAX_ADDR_REQ_COUNT</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">txids</span> <span class="o">=</span> <span class="p">[</span><span class="n">txids</span><span class="p">]</span>
+		<span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">ids</span> <span class="ow">in</span> <span class="n">txids</span><span class="p">:</span>
+			<span class="n">blockr_url</span> <span class="o">=</span> <span class="s">&#39;https://&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockr_domain</span> <span class="o">+</span> <span class="s">&#39;.blockr.io/api/v1/tx/info/&#39;</span>
+			<span class="n">blockr_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">make_request</span><span class="p">(</span><span class="n">blockr_url</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ids</span><span class="p">)))[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blockr_data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+				<span class="n">blockr_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">blockr_data</span><span class="p">]</span>
+			<span class="n">data</span> <span class="o">+=</span> <span class="n">blockr_data</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">txo</span> <span class="ow">in</span> <span class="n">txout</span><span class="p">:</span>
+			<span class="n">txdata</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span> <span class="k">if</span> <span class="n">d</span><span class="p">[</span><span class="s">&#39;tx&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">txo</span><span class="p">[:</span><span class="mi">64</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">vout</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">txdata</span><span class="p">[</span><span class="s">&#39;vouts&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">txo</span><span class="p">[</span><span class="mi">65</span><span class="p">:])][</span><span class="mi">0</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">vout</span><span class="p">[</span><span class="s">&#39;is_spent&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+				<span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="n">vout</span><span class="p">[</span><span class="s">&#39;amount&#39;</span><span class="p">])</span><span class="o">*</span><span class="n">Decimal</span><span class="p">(</span><span class="s">&#39;1e8&#39;</span><span class="p">)),</span>
+					<span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="n">vout</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">],</span> <span class="s">&#39;script&#39;</span><span class="p">:</span> <span class="n">vout</span><span class="p">[</span><span class="s">&#39;extras&#39;</span><span class="p">][</span><span class="s">&#39;script&#39;</span><span class="p">]})</span>
+		<span class="k">return</span> <span class="n">result</span>
+
+		</div></div>
+<div class="viewcode-block" id="NotifyRequestHeader"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.NotifyRequestHeader">[docs]</a><span class="k">class</span> <span class="nc">NotifyRequestHeader</span><span class="p">(</span><span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">base_server</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span> <span class="o">=</span> <span class="n">base_server</span><span class="o">.</span><span class="n">btcinterface</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">base_server</span> <span class="o">=</span> <span class="n">base_server</span>
+		<span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">base_server</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NotifyRequestHeader.do_HEAD"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.NotifyRequestHeader.do_HEAD">[docs]</a>	<span class="k">def</span> <span class="nf">do_HEAD</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">pages</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;/walletnotify?&#39;</span><span class="p">,</span> <span class="s">&#39;/alertnotify?&#39;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/walletnotify?&#39;</span><span class="p">):</span>
+			<span class="n">txid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]):]</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">txid</span><span class="p">):</span>
+				<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;not a txid&#39;</span><span class="p">)</span>
+				<span class="k">return</span>
+			<span class="n">tx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getrawtransaction&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">txid</span><span class="p">])</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;^[0-9a-fA-F]*$&#39;</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+				<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;not a txhex&#39;</span><span class="p">)</span>
+				<span class="k">return</span>
+			<span class="n">txd</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+			<span class="n">tx_output_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">sv</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">sv</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">sv</span> <span class="ow">in</span> <span class="n">txd</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]])</span>
+
+			<span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+			<span class="k">for</span> <span class="n">tx_out</span><span class="p">,</span> <span class="n">ucfun</span><span class="p">,</span> <span class="n">cfun</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span><span class="o">.</span><span class="n">txnotify_fun</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">tx_out</span> <span class="o">==</span> <span class="n">tx_output_set</span><span class="p">:</span>
+					<span class="n">unconfirmfun</span> <span class="o">=</span> <span class="n">ucfun</span>
+					<span class="n">confirmfun</span> <span class="o">=</span> <span class="n">cfun</span>
+					<span class="k">break</span>
+			<span class="k">if</span> <span class="n">unconfirmfun</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;txid=&#39;</span> <span class="o">+</span> <span class="n">txid</span> <span class="o">+</span> <span class="s">&#39; not being listened for&#39;</span><span class="p">)</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">txdata</span> <span class="o">=</span> <span class="bp">None</span> <span class="c">#on rare occasions people spend their output without waiting for a confirm</span>
+				<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">txd</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">])):</span>
+					<span class="n">txdata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;gettxout&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">txid</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="bp">True</span><span class="p">])</span>
+					<span class="k">if</span> <span class="n">txdata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+						<span class="k">break</span>
+				<span class="k">assert</span> <span class="n">txdata</span> <span class="o">!=</span> <span class="bp">None</span>
+				<span class="k">if</span> <span class="n">txdata</span><span class="p">[</span><span class="s">&#39;confirmations&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+					<span class="n">unconfirmfun</span><span class="p">(</span><span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">)</span>
+					<span class="c">#TODO pass the total transfered amount value here somehow</span>
+					<span class="c">#wallet_name = self.get_wallet_name()</span>
+					<span class="c">#amount = </span>
+					<span class="c">#bitcoin-cli move wallet_name &quot;&quot; amount</span>
+					<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;ran unconfirmfun&#39;</span><span class="p">)</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">confirmfun</span><span class="p">(</span><span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">,</span> <span class="n">txdata</span><span class="p">[</span><span class="s">&#39;confirmations&#39;</span><span class="p">])</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span><span class="o">.</span><span class="n">txnotify_fun</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">tx_out</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">))</span>
+					<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;ran confirmfun&#39;</span><span class="p">)</span>
+
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/alertnotify?&#39;</span><span class="p">):</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">core_alert</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">pages</span><span class="p">[</span><span class="mi">1</span><span class="p">]):])</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Got an alert!</span><span class="se">\n</span><span class="s">Message=&#39;</span> <span class="o">+</span> <span class="n">common</span><span class="o">.</span><span class="n">core_alert</span><span class="p">)</span>
+
+		<span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&#39;curl -sI --connect-timeout 1 http://localhost:&#39;</span> <span class="o">+</span>
+			<span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_server</span><span class="o">.</span><span class="n">server_address</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+		<span class="c">#self.send_header(&#39;Connection&#39;, &#39;close&#39;)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="BitcoinCoreNotifyThread"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreNotifyThread">[docs]</a><span class="k">class</span> <span class="nc">BitcoinCoreNotifyThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">btcinterface</span><span class="p">):</span>
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span> <span class="o">=</span> <span class="n">btcinterface</span>
+
+<div class="viewcode-block" id="BitcoinCoreNotifyThread.run"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreNotifyThread.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">notify_host</span> <span class="o">=</span> <span class="s">&#39;localhost&#39;</span>
+		<span class="n">notify_port</span> <span class="o">=</span> <span class="mi">62602</span> <span class="c">#defaults</span>
+		<span class="k">if</span> <span class="s">&#39;notify_host&#39;</span> <span class="ow">in</span> <span class="n">common</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">):</span>
+			<span class="n">notify_host</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;notify_host&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+		<span class="k">if</span> <span class="s">&#39;notify_port&#39;</span> <span class="ow">in</span> <span class="n">common</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">):</span>
+			<span class="n">notify_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">common</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;notify_port&quot;</span><span class="p">))</span>
+		<span class="k">for</span> <span class="n">inc</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+			<span class="n">hostport</span> <span class="o">=</span> <span class="p">(</span><span class="n">notify_host</span><span class="p">,</span> <span class="n">notify_port</span> <span class="o">+</span> <span class="n">inc</span><span class="p">)</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="n">httpd</span> <span class="o">=</span> <span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">HTTPServer</span><span class="p">(</span><span class="n">hostport</span><span class="p">,</span> <span class="n">NotifyRequestHeader</span><span class="p">)</span>
+			<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="n">httpd</span><span class="o">.</span><span class="n">btcinterface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">btcinterface</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;started bitcoin core notify listening thread, host=&#39;</span>
+				<span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">notify_host</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; port=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">hostport</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+			<span class="n">httpd</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">()</span>
+		<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;failed to bind for bitcoin core notify listening&#39;</span><span class="p">)</span>
+
+<span class="c">#must run bitcoind with -server</span>
+<span class="c">#-walletnotify=&quot;curl -sI --connect-timeout 1 http://localhost:62602/walletnotify?%s&quot;</span>
+<span class="c">#and make sure curl is installed (git uses it, odds are you&#39;ve already got it)</span>
+
+<span class="c">#TODO must add the tx addresses as watchonly if case we ever broadcast a tx</span>
+<span class="c"># with addresses not belonging to us</span></div></div>
+<div class="viewcode-block" id="BitcoinCoreInterface"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface">[docs]</a><span class="k">class</span> <span class="nc">BitcoinCoreInterface</span><span class="p">(</span><span class="n">BlockchainInterface</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jsonRpc</span><span class="p">,</span> <span class="n">network</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">BitcoinCoreInterface</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">jsonRpc</span> <span class="o">=</span> <span class="n">jsonRpc</span>
+
+		<span class="n">blockchainInfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsonRpc</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="s">&quot;getblockchaininfo&quot;</span><span class="p">,</span> <span class="p">[])</span>
+		<span class="n">actualNet</span> <span class="o">=</span> <span class="n">blockchainInfo</span><span class="p">[</span><span class="s">&#39;chain&#39;</span><span class="p">]</span>
+
+		<span class="n">netmap</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;main&#39;</span><span class="p">:</span> <span class="s">&#39;mainnet&#39;</span><span class="p">,</span> <span class="s">&#39;test&#39;</span><span class="p">:</span> <span class="s">&#39;testnet&#39;</span><span class="p">,</span> <span class="s">&#39;regtest&#39;</span><span class="p">:</span> <span class="s">&#39;regtest&#39;</span><span class="p">}</span>
+		<span class="k">if</span> <span class="n">netmap</span><span class="p">[</span><span class="n">actualNet</span><span class="p">]</span> <span class="o">!=</span> <span class="n">network</span><span class="p">:</span>
+		    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;wrong network configured&#39;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">notifythread</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">txnotify_fun</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet_synced</span> <span class="o">=</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="BitcoinCoreInterface.get_wallet_name"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.get_wallet_name">[docs]</a>	<span class="k">def</span> <span class="nf">get_wallet_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="k">return</span> <span class="s">&#39;joinmarket-wallet-&#39;</span> <span class="o">+</span> <span class="n">btc</span><span class="o">.</span><span class="n">dbl_sha256</span><span class="p">(</span><span class="n">wallet</span><span class="o">.</span><span class="n">keys</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])[:</span><span class="mi">6</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.rpc"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.rpc">[docs]</a>	<span class="k">def</span> <span class="nf">rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;importaddress&#39;</span><span class="p">,</span> <span class="s">&#39;walletpassphrase&#39;</span><span class="p">]:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;rpc: &#39;</span> <span class="o">+</span> <span class="n">method</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsonRpc</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+			<span class="n">res</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">res</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.add_watchonly_addresses"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.add_watchonly_addresses">[docs]</a>	<span class="k">def</span> <span class="nf">add_watchonly_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr_list</span><span class="p">,</span> <span class="n">wallet_name</span><span class="p">):</span>
+		<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;importing &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">addr_list</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39; addresses into account &#39;</span> <span class="o">+</span> <span class="n">wallet_name</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addr_list</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;importaddress&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">addr</span><span class="p">,</span> <span class="n">wallet_name</span><span class="p">,</span> <span class="bp">False</span><span class="p">])</span>
+		<span class="k">if</span> <span class="n">common</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;BLOCKCHAIN&quot;</span><span class="p">,</span> <span class="s">&quot;blockchain_source&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s">&#39;regtest&#39;</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;restart Bitcoin Core with -rescan if you</span><span class="se">\&#39;</span><span class="s">re recovering an existing wallet from backup seed&#39;</span>
+			<span class="k">print</span> <span class="s">&#39; otherwise just restart this joinmarket script&#39;</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.sync_addresses"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.sync_addresses">[docs]</a>	<span class="k">def</span> <span class="nf">sync_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="n">common</span><span class="o">.</span><span class="n">BitcoinCoreWallet</span><span class="p">):</span>
+			<span class="k">return</span>
+		<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;requesting wallet history&#39;</span><span class="p">)</span>
+		<span class="n">wallet_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_wallet_name</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+		<span class="n">addr_req_count</span> <span class="o">=</span> <span class="mi">20</span>
+		<span class="n">wallet_addr_list</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">mix_depth</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">wallet</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">):</span>
+			<span class="k">for</span> <span class="n">forchange</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+				<span class="n">wallet_addr_list</span> <span class="o">+=</span> <span class="p">[</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_new_addr</span><span class="p">(</span><span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">addr_req_count</span><span class="p">)]</span>
+				<span class="n">wallet</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="c">#makes more sense to add these in an account called &quot;joinmarket-imported&quot; but its much</span>
+		<span class="c"># simpler to add to the same account here</span>
+		<span class="k">for</span> <span class="n">privkey_list</span> <span class="ow">in</span> <span class="n">wallet</span><span class="o">.</span><span class="n">imported_privkeys</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+			<span class="k">for</span> <span class="n">privkey</span> <span class="ow">in</span> <span class="n">privkey_list</span><span class="p">:</span>
+				<span class="n">imported_addr</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">privtoaddr</span><span class="p">(</span><span class="n">privkey</span><span class="p">,</span> <span class="n">common</span><span class="o">.</span><span class="n">get_p2pk_vbyte</span><span class="p">())</span>
+				<span class="n">wallet_addr_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">imported_addr</span><span class="p">)</span>
+		<span class="n">imported_addr_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getaddressesbyaccount&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">wallet_name</span><span class="p">])</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">set</span><span class="p">(</span><span class="n">wallet_addr_list</span><span class="p">)</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">imported_addr_list</span><span class="p">)):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">add_watchonly_addresses</span><span class="p">(</span><span class="n">wallet_addr_list</span><span class="p">,</span> <span class="n">wallet_name</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="n">buf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;listtransactions&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">wallet_name</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">True</span><span class="p">])</span>
+		<span class="n">txs</span> <span class="o">=</span> <span class="n">buf</span>
+		<span class="c"># If the buffer&#39;s full, check for more, until it ain&#39;t</span>
+		<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1000</span><span class="p">:</span>
+			<span class="n">buf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;listtransactions&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">wallet_name</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span>
+					<span class="nb">len</span><span class="p">(</span><span class="n">txs</span><span class="p">),</span> <span class="bp">True</span><span class="p">])</span>
+			<span class="n">txs</span> <span class="o">+=</span> <span class="n">buf</span>
+		<span class="c">#TODO check whether used_addr_list can be a set, may be faster (if its a hashset) and allows </span>
+		<span class="c"># using issubset() here and setdiff() for finding which addresses need importing</span>
+		<span class="c">#TODO also check the fastest way to build up python lists, i suspect using += is slow</span>
+		<span class="n">used_addr_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">txs</span> <span class="k">if</span> <span class="n">tx</span><span class="p">[</span><span class="s">&#39;category&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;receive&#39;</span><span class="p">]</span>
+		<span class="n">too_few_addr_mix_change</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">mix_depth</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">wallet</span><span class="o">.</span><span class="n">max_mix_depth</span><span class="p">):</span>
+			<span class="k">for</span> <span class="n">forchange</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+				<span class="n">unused_addr_count</span> <span class="o">=</span> <span class="mi">0</span>
+				<span class="n">last_used_addr</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+				<span class="n">breakloop</span> <span class="o">=</span> <span class="bp">False</span>
+				<span class="k">while</span> <span class="ow">not</span> <span class="n">breakloop</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">unused_addr_count</span> <span class="o">&gt;=</span> <span class="n">wallet</span><span class="o">.</span><span class="n">gaplimit</span> <span class="ow">and</span>\
+							<span class="n">is_index_ahead_of_cache</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">):</span>
+						<span class="k">break</span>
+					<span class="n">mix_change_addrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_new_addr</span><span class="p">(</span><span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">addr_req_count</span><span class="p">)]</span>
+					<span class="k">for</span> <span class="n">mc_addr</span> <span class="ow">in</span> <span class="n">mix_change_addrs</span><span class="p">:</span>
+						<span class="k">if</span> <span class="n">mc_addr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">imported_addr_list</span><span class="p">:</span>
+							<span class="n">too_few_addr_mix_change</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">))</span>
+							<span class="n">breakloop</span> <span class="o">=</span> <span class="bp">True</span>
+							<span class="k">break</span>
+						<span class="k">if</span> <span class="n">mc_addr</span> <span class="ow">in</span> <span class="n">used_addr_list</span><span class="p">:</span>
+							<span class="n">last_used_addr</span> <span class="o">=</span> <span class="n">mc_addr</span>
+							<span class="n">unused_addr_count</span> <span class="o">=</span> <span class="mi">0</span>
+						<span class="k">else</span><span class="p">:</span>
+							<span class="n">unused_addr_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+				<span class="k">if</span> <span class="n">last_used_addr</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+					<span class="n">wallet</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">wallet</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">mix_depth</span><span class="p">][</span><span class="n">forchange</span><span class="p">]</span> <span class="o">=</span> <span class="n">wallet</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">last_used_addr</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+		<span class="n">wallet_addr_list</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">too_few_addr_mix_change</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;too few addresses in &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">too_few_addr_mix_change</span><span class="p">))</span>
+			<span class="k">for</span> <span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span> <span class="ow">in</span> <span class="n">too_few_addr_mix_change</span><span class="p">:</span>
+				<span class="n">wallet_addr_list</span> <span class="o">+=</span> <span class="p">[</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_new_addr</span><span class="p">(</span><span class="n">mix_depth</span><span class="p">,</span> <span class="n">forchange</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">addr_req_count</span><span class="o">*</span><span class="mi">3</span><span class="p">)]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">add_watchonly_addresses</span><span class="p">(</span><span class="n">wallet_addr_list</span><span class="p">,</span> <span class="n">wallet_name</span><span class="p">)</span>
+			<span class="k">return</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet_synced</span> <span class="o">=</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.sync_unspent"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.sync_unspent">[docs]</a>	<span class="k">def</span> <span class="nf">sync_unspent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="n">common</span><span class="o">.</span><span class="n">BitcoinCoreWallet</span><span class="p">):</span>
+			<span class="k">return</span>
+		<span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+		<span class="n">wallet_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_wallet_name</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+		<span class="n">wallet</span><span class="o">.</span><span class="n">unspent</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">unspent_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;listunspent&#39;</span><span class="p">,</span> <span class="p">[])</span>
+		<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unspent_list</span><span class="p">:</span>
+			<span class="k">if</span> <span class="s">&#39;account&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">u</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="k">if</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;account&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">wallet_name</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="k">if</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wallet</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="n">wallet</span><span class="o">.</span><span class="n">unspent</span><span class="p">[</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;txid&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;vout&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="n">u</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">],</span>
+				<span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;amount&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="n">Decimal</span><span class="p">(</span><span class="s">&#39;1e8&#39;</span><span class="p">))}</span>
+		<span class="n">et</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+		<span class="n">common</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;bitcoind sync_unspent took &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">et</span> <span class="o">-</span> <span class="n">st</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39;sec&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.add_tx_notify"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.add_tx_notify">[docs]</a>	<span class="k">def</span> <span class="nf">add_tx_notify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">,</span> <span class="n">notifyaddr</span><span class="p">):</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">notifythread</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">notifythread</span> <span class="o">=</span> <span class="n">BitcoinCoreNotifyThread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">notifythread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+		<span class="n">one_addr_imported</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">for</span> <span class="n">outs</span> <span class="ow">in</span> <span class="n">txd</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]:</span>
+			<span class="n">addr</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">script_to_address</span><span class="p">(</span><span class="n">outs</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">common</span><span class="o">.</span><span class="n">get_p2pk_vbyte</span><span class="p">())</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getaccount&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">addr</span><span class="p">])</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+				<span class="n">one_addr_imported</span> <span class="o">=</span> <span class="bp">True</span>
+				<span class="k">break</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">one_addr_imported</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;importaddress&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">notifyaddr</span><span class="p">,</span> <span class="s">&#39;joinmarket-notify&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">])</span>
+		<span class="n">tx_output_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">sv</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">sv</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">sv</span> <span class="ow">in</span> <span class="n">txd</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">txnotify_fun</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">tx_output_set</span><span class="p">,</span> <span class="n">unconfirmfun</span><span class="p">,</span> <span class="n">confirmfun</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.pushtx"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.pushtx">[docs]</a>	<span class="k">def</span> <span class="nf">pushtx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;sendrawtransaction&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">txhex</span><span class="p">])</span>
+		<span class="k">except</span> <span class="n">jsonrpc</span><span class="o">.</span><span class="n">JsonRpcConnectionError</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="BitcoinCoreInterface.query_utxo_set"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.BitcoinCoreInterface.query_utxo_set">[docs]</a>	<span class="k">def</span> <span class="nf">query_utxo_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txout</span><span class="p">):</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">txout</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+			<span class="n">txout</span> <span class="o">=</span> <span class="p">[</span><span class="n">txout</span><span class="p">]</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">txo</span> <span class="ow">in</span> <span class="n">txout</span><span class="p">:</span>
+			<span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;gettxout&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">txo</span><span class="p">[:</span><span class="mi">64</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">txo</span><span class="p">[</span><span class="mi">65</span><span class="p">:]),</span> <span class="bp">False</span><span class="p">])</span>
+			<span class="k">if</span> <span class="n">ret</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]))</span><span class="o">*</span><span class="n">Decimal</span><span class="p">(</span><span class="s">&#39;1e8&#39;</span><span class="p">)),</span>
+					<span class="s">&#39;address&#39;</span><span class="p">:</span> <span class="n">ret</span><span class="p">[</span><span class="s">&#39;scriptPubKey&#39;</span><span class="p">][</span><span class="s">&#39;addresses&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s">&#39;script&#39;</span><span class="p">:</span> <span class="n">ret</span><span class="p">[</span><span class="s">&#39;scriptPubKey&#39;</span><span class="p">][</span><span class="s">&#39;hex&#39;</span><span class="p">]})</span>
+		<span class="k">return</span> <span class="n">result</span>
+
+
+<span class="c">#class for regtest chain access</span>
+<span class="c">#running on local daemon. Only </span>
+<span class="c">#to be instantiated after network is up</span>
+<span class="c">#with &gt; 100 blocks.</span></div></div>
+<div class="viewcode-block" id="RegtestBitcoinCoreInterface"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.RegtestBitcoinCoreInterface">[docs]</a><span class="k">class</span> <span class="nc">RegtestBitcoinCoreInterface</span><span class="p">(</span><span class="n">BitcoinCoreInterface</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jsonRpc</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">RegtestBitcoinCoreInterface</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">jsonRpc</span><span class="p">,</span> <span class="s">&#39;regtest&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RegtestBitcoinCoreInterface.pushtx"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.RegtestBitcoinCoreInterface.pushtx">[docs]</a>	<span class="k">def</span> <span class="nf">pushtx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="n">ret</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">RegtestBitcoinCoreInterface</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pushtx</span><span class="p">(</span><span class="n">txhex</span><span class="p">)</span>
+		<span class="k">class</span> <span class="nc">TickChainThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+			<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bcinterface</span><span class="p">):</span>
+				<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">bcinterface</span> <span class="o">=</span> <span class="n">bcinterface</span>
+			<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+				<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">bcinterface</span><span class="o">.</span><span class="n">tick_forward_chain</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="n">TickChainThread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">ret</span>
+</div>
+<div class="viewcode-block" id="RegtestBitcoinCoreInterface.tick_forward_chain"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.RegtestBitcoinCoreInterface.tick_forward_chain">[docs]</a>	<span class="k">def</span> <span class="nf">tick_forward_chain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;Special method for regtest only;</span>
+<span class="sd">		instruct to mine n blocks.&#39;&#39;&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;setgenerate&#39;</span><span class="p">,</span> <span class="p">[</span><span class="bp">True</span><span class="p">,</span> <span class="n">n</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="RegtestBitcoinCoreInterface.grab_coins"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.RegtestBitcoinCoreInterface.grab_coins">[docs]</a>	<span class="k">def</span> <span class="nf">grab_coins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">receiving_addr</span><span class="p">,</span> <span class="n">amt</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		NOTE! amt is passed in Coins, not Satoshis!</span>
+<span class="sd">		Special method for regtest only:</span>
+<span class="sd">		take coins from bitcoind&#39;s own wallet</span>
+<span class="sd">		and put them in the receiving addr.</span>
+<span class="sd">		Return the txid.</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+		<span class="k">if</span> <span class="n">amt</span> <span class="o">&gt;</span> <span class="mi">500</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;too greedy&quot;</span><span class="p">)</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		if amt &gt; self.current_balance:</span>
+<span class="sd">		#mine enough to get to the reqd amt</span>
+<span class="sd">		reqd = int(amt - self.current_balance)</span>
+<span class="sd">		reqd_blocks = int(reqd/50) +1</span>
+<span class="sd">		if self.rpc(&#39;setgenerate&#39;, [True, reqd_blocks]):</span>
+<span class="sd">		raise Exception(&quot;Something went wrong&quot;)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+		<span class="c">#now we do a custom create transaction and push to the receiver</span>
+		<span class="n">txid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;sendtoaddress&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">receiving_addr</span><span class="p">,</span> <span class="n">amt</span><span class="p">])</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">txid</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Failed to broadcast transaction&quot;</span><span class="p">)</span>
+		<span class="c">#confirm</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tick_forward_chain</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">txid</span>
+	</div>
+<div class="viewcode-block" id="RegtestBitcoinCoreInterface.get_received_by_addr"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.RegtestBitcoinCoreInterface.get_received_by_addr">[docs]</a>	<span class="k">def</span> <span class="nf">get_received_by_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addresses</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+		<span class="c">#NB This will NOT return coinbase coins (but wont matter in our use case).</span>
+		<span class="c">#allow importaddress to fail in case the address is already in the wallet</span>
+		<span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="n">addresses</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;importaddress&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">address</span><span class="p">,</span> <span class="s">&#39;watchonly&#39;</span><span class="p">])</span>
+			<span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s">&#39;address&#39;</span><span class="p">:</span><span class="n">address</span><span class="p">,</span><span class="s">&#39;balance&#39;</span><span class="p">:</span>\
+				<span class="nb">int</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="mf">1e8</span><span class="p">)</span> <span class="o">*</span> <span class="n">Decimal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;getreceivedbyaddress&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">address</span><span class="p">])))})</span>
+		<span class="k">return</span> <span class="p">{</span><span class="s">&#39;data&#39;</span><span class="p">:</span><span class="n">res</span><span class="p">}</span>	
+</div></div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../blockchaininterface.html#blockchaininterface.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+	<span class="c">#TODO some useful quick testing here, so people know if they&#39;ve set it up right</span>
+	<span class="n">myBCI</span> <span class="o">=</span> <span class="n">RegtestBitcoinCoreInterface</span><span class="p">()</span>
+	<span class="c">#myBCI.send_tx(&#39;stuff&#39;)</span>
+	<span class="k">print</span> <span class="n">myBCI</span><span class="o">.</span><span class="n">get_utxos_from_addr</span><span class="p">([</span><span class="s">&quot;n4EjHhGVS4Rod8ociyviR3FH442XYMWweD&quot;</span><span class="p">])</span>
+	<span class="k">print</span> <span class="n">myBCI</span><span class="o">.</span><span class="n">get_balance_at_addr</span><span class="p">([</span><span class="s">&quot;n4EjHhGVS4Rod8ociyviR3FH442XYMWweD&quot;</span><span class="p">])</span>
+	<span class="n">txid</span> <span class="o">=</span> <span class="n">myBCI</span><span class="o">.</span><span class="n">grab_coins</span><span class="p">(</span><span class="s">&#39;mygp9fsgEJ5U7jkPpDjX9nxRj8b5nC3Hnd&#39;</span><span class="p">,</span><span class="mi">23</span><span class="p">)</span>
+	<span class="k">print</span> <span class="n">txid</span>
+	<span class="k">print</span> <span class="n">myBCI</span><span class="o">.</span><span class="n">get_balance_at_addr</span><span class="p">([</span><span class="s">&#39;mygp9fsgEJ5U7jkPpDjX9nxRj8b5nC3Hnd&#39;</span><span class="p">])</span>
+	<span class="k">print</span> <span class="n">myBCI</span><span class="o">.</span><span class="n">get_utxos_from_addr</span><span class="p">([</span><span class="s">&#39;mygp9fsgEJ5U7jkPpDjX9nxRj8b5nC3Hnd&#39;</span><span class="p">])</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -22,10 +22,12 @@ def check_high_fee(total_fee_pc):
 		print 'WARNING   ' * 6
 		print '\n'.join(['='* 60]*3)
 
-#thread which does the buy-side algorithm
-# chooses which coinjoins to initiate and when
 class PaymentThread(threading.Thread):
+	"""A thread which does the buy-side algorithm -
+	chooses which coinjoins to initiate and when"""
 	def __init__(self, taker):
+		"""The single argument 'taker' is an instance
+		of SendPayment."""
 		threading.Thread.__init__(self)
 		self.daemon = True
 		self.taker = taker
@@ -78,6 +80,9 @@ class PaymentThread(threading.Thread):
 			self.finishcallback, choose_orders_recover)
 
 	def finishcallback(self, coinjointx):
+		"""When transaction construction completed,
+		either sign and push to the network, or retry
+		if some makers did not respond."""
 		if coinjointx.all_responded:
 			coinjointx.self_sign_and_push()
 			debug('created fully signed tx, ending')
@@ -115,6 +120,8 @@ class PaymentThread(threading.Thread):
 
 
 class SendPayment(takermodule.Taker):
+	"""A Taker for initiating and carrying out 
+	a single coinjoin transaction using a JoinMarket wallet."""
 	def __init__(self, msgchan, wallet, destaddr, amount, makercount, txfee, waittime, mixdepth, answeryes, chooseOrdersFunc):
 		takermodule.Taker.__init__(self, msgchan)
 		self.wallet = wallet

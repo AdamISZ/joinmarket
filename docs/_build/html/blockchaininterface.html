@@ -1,0 +1,305 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>blockchaininterface module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-blockchaininterface">
+<span id="blockchaininterface-module"></span><h1>blockchaininterface module<a class="headerlink" href="#module-blockchaininterface" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="blockchaininterface.BitcoinCoreInterface">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">BitcoinCoreInterface</tt><big>(</big><em>jsonRpc</em>, <em>network</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#blockchaininterface.BlockchainInterface" title="blockchaininterface.BlockchainInterface"><tt class="xref py py-class docutils literal"><span class="pre">blockchaininterface.BlockchainInterface</span></tt></a></p>
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.add_tx_notify">
+<tt class="descname">add_tx_notify</tt><big>(</big><em>txd</em>, <em>unconfirmfun</em>, <em>confirmfun</em>, <em>notifyaddr</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.add_tx_notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.add_tx_notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.add_watchonly_addresses">
+<tt class="descname">add_watchonly_addresses</tt><big>(</big><em>addr_list</em>, <em>wallet_name</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.add_watchonly_addresses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.add_watchonly_addresses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.get_wallet_name">
+<tt class="descname">get_wallet_name</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.get_wallet_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.get_wallet_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.pushtx">
+<tt class="descname">pushtx</tt><big>(</big><em>txhex</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.query_utxo_set">
+<tt class="descname">query_utxo_set</tt><big>(</big><em>txout</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.query_utxo_set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.query_utxo_set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.rpc">
+<tt class="descname">rpc</tt><big>(</big><em>method</em>, <em>args</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.rpc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.rpc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.sync_addresses">
+<tt class="descname">sync_addresses</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.sync_addresses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.sync_addresses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreInterface.sync_unspent">
+<tt class="descname">sync_unspent</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreInterface.sync_unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreInterface.sync_unspent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="blockchaininterface.BitcoinCoreNotifyThread">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">BitcoinCoreNotifyThread</tt><big>(</big><em>btcinterface</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreNotifyThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreNotifyThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<dl class="method">
+<dt id="blockchaininterface.BitcoinCoreNotifyThread.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BitcoinCoreNotifyThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BitcoinCoreNotifyThread.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="blockchaininterface.BlockchainInterface">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">BlockchainInterface</tt><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="blockchaininterface.BlockchainInterface.add_tx_notify">
+<tt class="descname">add_tx_notify</tt><big>(</big><em>txd</em>, <em>unconfirmfun</em>, <em>confirmfun</em>, <em>notifyaddr</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface.add_tx_notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface.add_tx_notify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invokes unconfirmfun and confirmfun when tx is seen on the network</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockchainInterface.pushtx">
+<tt class="descname">pushtx</tt><big>(</big><em>txhex</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface.pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface.pushtx" title="Permalink to this definition">¶</a></dt>
+<dd><p>pushes tx to the network, returns txhash, or None if failed</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockchainInterface.query_utxo_set">
+<tt class="descname">query_utxo_set</tt><big>(</big><em>txouts</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface.query_utxo_set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface.query_utxo_set" title="Permalink to this definition">¶</a></dt>
+<dd><p>takes a utxo or a list of utxos
+returns None if they are spend or unconfirmed
+otherwise returns value in satoshis, address and output script</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockchainInterface.sync_addresses">
+<tt class="descname">sync_addresses</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface.sync_addresses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface.sync_addresses" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds which addresses have been used and sets wallet.index appropriately</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockchainInterface.sync_unspent">
+<tt class="descname">sync_unspent</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface.sync_unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface.sync_unspent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the unspent transaction outputs belonging to this wallet, sets wallet.unspent</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockchainInterface.sync_wallet">
+<tt class="descname">sync_wallet</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockchainInterface.sync_wallet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockchainInterface.sync_wallet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="blockchaininterface.BlockrInterface">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">BlockrInterface</tt><big>(</big><em>testnet=False</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockrInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockrInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#blockchaininterface.BlockchainInterface" title="blockchaininterface.BlockchainInterface"><tt class="xref py py-class docutils literal"><span class="pre">blockchaininterface.BlockchainInterface</span></tt></a></p>
+<dl class="attribute">
+<dt id="blockchaininterface.BlockrInterface.BLOCKR_MAX_ADDR_REQ_COUNT">
+<tt class="descname">BLOCKR_MAX_ADDR_REQ_COUNT</tt><em class="property"> = 20</em><a class="headerlink" href="#blockchaininterface.BlockrInterface.BLOCKR_MAX_ADDR_REQ_COUNT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockrInterface.add_tx_notify">
+<tt class="descname">add_tx_notify</tt><big>(</big><em>txd</em>, <em>unconfirmfun</em>, <em>confirmfun</em>, <em>notifyaddr</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockrInterface.add_tx_notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockrInterface.add_tx_notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockrInterface.pushtx">
+<tt class="descname">pushtx</tt><big>(</big><em>txhex</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockrInterface.pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockrInterface.pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockrInterface.query_utxo_set">
+<tt class="descname">query_utxo_set</tt><big>(</big><em>txout</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockrInterface.query_utxo_set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockrInterface.query_utxo_set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockrInterface.sync_addresses">
+<tt class="descname">sync_addresses</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockrInterface.sync_addresses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockrInterface.sync_addresses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.BlockrInterface.sync_unspent">
+<tt class="descname">sync_unspent</tt><big>(</big><em>wallet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#BlockrInterface.sync_unspent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.BlockrInterface.sync_unspent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="blockchaininterface.CliJsonRpc">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">CliJsonRpc</tt><big>(</big><em>cli</em>, <em>testnet</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#CliJsonRpc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.CliJsonRpc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Fake JsonRpc class that uses the Bitcoin CLI executable.  This is used
+as temporary fall back before we switch completely (and exclusively)
+to the real JSON-RPC interface.</p>
+<dl class="method">
+<dt id="blockchaininterface.CliJsonRpc.call">
+<tt class="descname">call</tt><big>(</big><em>method</em>, <em>params</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#CliJsonRpc.call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.CliJsonRpc.call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="blockchaininterface.NotifyRequestHeader">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">NotifyRequestHeader</tt><big>(</big><em>request</em>, <em>client_address</em>, <em>base_server</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#NotifyRequestHeader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.NotifyRequestHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">BaseHTTPServer.BaseHTTPRequestHandler</span></tt></p>
+<dl class="method">
+<dt id="blockchaininterface.NotifyRequestHeader.do_HEAD">
+<tt class="descname">do_HEAD</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#NotifyRequestHeader.do_HEAD"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.NotifyRequestHeader.do_HEAD" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="blockchaininterface.RegtestBitcoinCoreInterface">
+<em class="property">class </em><tt class="descclassname">blockchaininterface.</tt><tt class="descname">RegtestBitcoinCoreInterface</tt><big>(</big><em>jsonRpc</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#RegtestBitcoinCoreInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.RegtestBitcoinCoreInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#blockchaininterface.BitcoinCoreInterface" title="blockchaininterface.BitcoinCoreInterface"><tt class="xref py py-class docutils literal"><span class="pre">blockchaininterface.BitcoinCoreInterface</span></tt></a></p>
+<dl class="method">
+<dt id="blockchaininterface.RegtestBitcoinCoreInterface.get_received_by_addr">
+<tt class="descname">get_received_by_addr</tt><big>(</big><em>addresses</em>, <em>query_params</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#RegtestBitcoinCoreInterface.get_received_by_addr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.RegtestBitcoinCoreInterface.get_received_by_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.RegtestBitcoinCoreInterface.grab_coins">
+<tt class="descname">grab_coins</tt><big>(</big><em>receiving_addr</em>, <em>amt=50</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#RegtestBitcoinCoreInterface.grab_coins"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.RegtestBitcoinCoreInterface.grab_coins" title="Permalink to this definition">¶</a></dt>
+<dd><p>NOTE! amt is passed in Coins, not Satoshis!
+Special method for regtest only:
+take coins from bitcoind&#8217;s own wallet
+and put them in the receiving addr.
+Return the txid.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.RegtestBitcoinCoreInterface.pushtx">
+<tt class="descname">pushtx</tt><big>(</big><em>txhex</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#RegtestBitcoinCoreInterface.pushtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.RegtestBitcoinCoreInterface.pushtx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="blockchaininterface.RegtestBitcoinCoreInterface.tick_forward_chain">
+<tt class="descname">tick_forward_chain</tt><big>(</big><em>n</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#RegtestBitcoinCoreInterface.tick_forward_chain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.RegtestBitcoinCoreInterface.tick_forward_chain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Special method for regtest only;
+instruct to mine n blocks.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="blockchaininterface.get_blockchain_interface_instance">
+<tt class="descclassname">blockchaininterface.</tt><tt class="descname">get_blockchain_interface_instance</tt><big>(</big><em>config</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#get_blockchain_interface_instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.get_blockchain_interface_instance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="blockchaininterface.is_index_ahead_of_cache">
+<tt class="descclassname">blockchaininterface.</tt><tt class="descname">is_index_ahead_of_cache</tt><big>(</big><em>wallet</em>, <em>mix_depth</em>, <em>forchange</em><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#is_index_ahead_of_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.is_index_ahead_of_cache" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="blockchaininterface.main">
+<tt class="descclassname">blockchaininterface.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/blockchaininterface.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#blockchaininterface.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/blockchaininterface.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

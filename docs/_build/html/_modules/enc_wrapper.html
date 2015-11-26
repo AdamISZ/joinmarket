@@ -1,0 +1,216 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>enc_wrapper &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for enc_wrapper</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;A wrapper for public key</span>
+<span class="sd">authenticated encryption</span>
+<span class="sd">using Diffie Hellman key</span>
+<span class="sd">exchange to set up a </span>
+<span class="sd">symmetric encryption.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">libnacl.public</span>
+<span class="kn">import</span> <span class="nn">binascii</span><span class="o">,</span> <span class="nn">base64</span>
+
+<div class="viewcode-block" id="init_keypair"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.init_keypair">[docs]</a><span class="k">def</span> <span class="nf">init_keypair</span><span class="p">(</span><span class="n">fname</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Create a new encryption </span>
+<span class="sd">    keypair; stored in file fname</span>
+<span class="sd">    if provided. The keypair object</span>
+<span class="sd">    is returned.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">kp</span> <span class="o">=</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">public</span><span class="o">.</span><span class="n">SecretKey</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">fname</span><span class="p">:</span>
+        <span class="c">#Note: handles correct file permissions</span>
+        <span class="n">kp</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> 
+    <span class="k">return</span> <span class="n">kp</span>
+
+<span class="c">#the next two functions are useful </span>
+<span class="c">#for exchaging pubkeys with counterparty</span></div>
+<div class="viewcode-block" id="get_pubkey"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.get_pubkey">[docs]</a><span class="k">def</span> <span class="nf">get_pubkey</span><span class="p">(</span><span class="n">kp</span><span class="p">,</span> <span class="n">as_hex</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Given a keypair object,</span>
+<span class="sd">    return its public key, </span>
+<span class="sd">    optionally in hex.&#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">kp</span><span class="o">.</span><span class="n">hex_pk</span><span class="p">()</span> <span class="k">if</span> <span class="n">as_hex</span> <span class="k">else</span> <span class="n">kp</span><span class="o">.</span><span class="n">pk</span>
+</div>
+<div class="viewcode-block" id="init_pubkey"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.init_pubkey">[docs]</a><span class="k">def</span> <span class="nf">init_pubkey</span><span class="p">(</span><span class="n">hexpk</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Create a pubkey object from a</span>
+<span class="sd">    hex formatted string.</span>
+<span class="sd">    Save to file fname if specified.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pk</span> <span class="o">=</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">public</span><span class="o">.</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">hexpk</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">fname</span><span class="p">:</span>
+        <span class="n">pk</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pk</span>
+</div>
+<div class="viewcode-block" id="as_init_encryption"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.as_init_encryption">[docs]</a><span class="k">def</span> <span class="nf">as_init_encryption</span><span class="p">(</span><span class="n">kp</span><span class="p">,</span> <span class="n">c_pk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Given an initialised</span>
+<span class="sd">    keypair kp and a counterparty</span>
+<span class="sd">    pubkey c_pk, create a Box </span>
+<span class="sd">    ready for encryption/decryption.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">libnacl</span><span class="o">.</span><span class="n">public</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">kp</span><span class="o">.</span><span class="n">sk</span><span class="p">,</span> <span class="n">c_pk</span><span class="p">)</span></div>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">After initialisation, it&#39;s possible</span>
+<span class="sd">to use the box object returned from</span>
+<span class="sd">as_init_encryption to directly change</span>
+<span class="sd">from plaintext to ciphertext:</span>
+<span class="sd">    ciphertext = box.encrypt(plaintext)</span>
+<span class="sd">    plaintext = box.decrypt(ciphertext)</span>
+<span class="sd">Notes:</span>
+<span class="sd"> 1. use binary format for ctext/ptext</span>
+<span class="sd"> 2. Nonce is handled at the implementation layer.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="c">#TODO: Sign, verify. At the moment we are using</span>
+<span class="c">#bitcoin signatures so it isn&#39;t necessary.</span>
+
+<span class="c">#encoding for passing over the wire</span>
+<div class="viewcode-block" id="encrypt_encode"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.encrypt_encode">[docs]</a><span class="k">def</span> <span class="nf">encrypt_encode</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">box</span><span class="p">):</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="n">box</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">encrypted</span><span class="p">)</span>
+	</div>
+<div class="viewcode-block" id="decode_decrypt"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.decode_decrypt">[docs]</a><span class="k">def</span> <span class="nf">decode_decrypt</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">box</span><span class="p">):</span>
+    <span class="n">decoded</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">box</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">decoded</span><span class="p">)</span>
+	    </div>
+<div class="viewcode-block" id="test_case"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.test_case">[docs]</a><span class="k">def</span> <span class="nf">test_case</span><span class="p">(</span><span class="n">case_name</span><span class="p">,</span> <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span><span class="p">,</span> <span class="n">ab_message</span><span class="p">,</span> <span class="n">ba_message</span><span class="p">,</span> <span class="n">num_iterations</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iterations</span><span class="p">):</span>
+        <span class="n">ab_message</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">))</span> <span class="k">if</span> <span class="n">ab_message</span> <span class="o">==</span> <span class="s">&#39;rand&#39;</span> <span class="k">else</span> <span class="n">ab_message</span>
+        <span class="n">ba_message</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">))</span> <span class="k">if</span> <span class="n">ba_message</span> <span class="o">==</span> <span class="s">&#39;rand&#39;</span> <span class="k">else</span> <span class="n">ba_message</span>
+        <span class="n">otw_amsg</span> <span class="o">=</span> <span class="n">alice_box</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">ab_message</span><span class="p">)</span>
+        <span class="n">bob_ptext</span> <span class="o">=</span> <span class="n">bob_box</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">otw_amsg</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">bob_ptext</span> <span class="o">==</span> <span class="n">ab_message</span><span class="p">,</span> <span class="s">&quot;Encryption test: FAILED. Alice sent: &quot;</span>\
+               <span class="o">+</span><span class="n">ab_message</span><span class="o">+</span><span class="s">&quot; , Bob received: &quot;</span> <span class="o">+</span> <span class="n">bob_ptext</span>
+        
+        <span class="n">otw_bmsg</span> <span class="o">=</span> <span class="n">bob_box</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">ba_message</span><span class="p">)</span>
+        <span class="n">alice_ptext</span> <span class="o">=</span> <span class="n">alice_box</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">otw_bmsg</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">alice_ptext</span> <span class="o">==</span> <span class="n">ba_message</span><span class="p">,</span> <span class="s">&quot;Encryption test: FAILED. Bob sent: &quot;</span>\
+               <span class="o">+</span><span class="n">ba_message</span><span class="o">+</span><span class="s">&quot; , Alice received: &quot;</span> <span class="o">+</span> <span class="n">alice_ptext</span>
+        
+    <span class="k">print</span> <span class="s">&quot;Encryption test PASSED for case: &quot;</span><span class="o">+</span><span class="n">case_name</span>
+</div>
+<div class="viewcode-block" id="test_keypair_setup"><a class="viewcode-back" href="../enc_wrapper.html#enc_wrapper.test_keypair_setup">[docs]</a><span class="k">def</span> <span class="nf">test_keypair_setup</span><span class="p">():</span>
+    <span class="n">alice_kp</span> <span class="o">=</span> <span class="n">init_keypair</span><span class="p">()</span>
+    <span class="n">bob_kp</span> <span class="o">=</span> <span class="n">init_keypair</span><span class="p">()</span>
+    
+    <span class="c">#this is the DH key exchange part</span>
+    <span class="n">bob_otwpk</span> <span class="o">=</span> <span class="n">get_pubkey</span><span class="p">(</span><span class="n">bob_kp</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+    <span class="n">alice_otwpk</span> <span class="o">=</span> <span class="n">get_pubkey</span><span class="p">(</span><span class="n">alice_kp</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+    
+    <span class="n">bob_pk</span> <span class="o">=</span> <span class="n">init_pubkey</span><span class="p">(</span><span class="n">bob_otwpk</span><span class="p">)</span>
+    <span class="n">alice_box</span> <span class="o">=</span> <span class="n">as_init_encryption</span><span class="p">(</span><span class="n">alice_kp</span><span class="p">,</span> <span class="n">bob_pk</span><span class="p">)</span>
+    <span class="n">alice_pk</span> <span class="o">=</span> <span class="n">init_pubkey</span><span class="p">(</span><span class="n">alice_otwpk</span><span class="p">)</span>
+    <span class="n">bob_box</span> <span class="o">=</span> <span class="n">as_init_encryption</span><span class="p">(</span><span class="n">bob_kp</span><span class="p">,</span> <span class="n">alice_pk</span><span class="p">)</span>
+    
+    <span class="c">#now Alice and Bob can use their &#39;box&#39;</span>
+    <span class="c">#constructs (both of which utilise the same</span>
+    <span class="c">#shared secret) to perform encryption/decryption    </span>
+    <span class="c">#to test the encryption functionality       </span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span><span class="p">)</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    
+    <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span> <span class="o">=</span> <span class="n">test_keypair_setup</span><span class="p">()</span>
+    <span class="n">test_case</span><span class="p">(</span><span class="s">&quot;short ascii&quot;</span><span class="p">,</span> <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span><span class="p">,</span><span class="s">&quot;Attack at dawn&quot;</span><span class="p">,</span><span class="s">&quot;Not tonight Josephine!&quot;</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+    
+    <span class="kn">import</span> <span class="nn">base64</span><span class="o">,</span> <span class="nn">string</span><span class="o">,</span> <span class="nn">random</span>
+    <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span> <span class="o">=</span> <span class="n">test_keypair_setup</span><span class="p">()</span>
+    <span class="n">longb641</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5000</span><span class="p">)))</span>
+    <span class="n">longb642</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5000</span><span class="p">)))</span>
+    <span class="n">test_case</span><span class="p">(</span><span class="s">&quot;long b64&quot;</span><span class="p">,</span> <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span><span class="p">,</span> <span class="n">longb641</span><span class="p">,</span> <span class="n">longb642</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+    <span class="c">#test a large number of messages on the same connection</span>
+    <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span> <span class="o">=</span> <span class="n">test_keypair_setup</span><span class="p">()</span>
+    <span class="n">test_case</span><span class="p">(</span><span class="s">&quot;endless_wittering&quot;</span><span class="p">,</span> <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span><span class="p">,</span><span class="s">&#39;rand&#39;</span><span class="p">,</span><span class="s">&#39;rand&#39;</span><span class="p">,</span><span class="mi">40000</span><span class="p">)</span>
+    <span class="c">#edge cases</span>
+    <span class="c">#1 character</span>
+    <span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span> <span class="o">=</span> <span class="n">test_keypair_setup</span><span class="p">()</span>
+    <span class="n">test_case</span><span class="p">(</span><span class="s">&quot;1 char&quot;</span><span class="p">,</span><span class="n">alice_box</span><span class="p">,</span> <span class="n">bob_box</span><span class="p">,</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="se">\x00</span><span class="s">&#39;</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;All test cases passed - encryption and decryption should work correctly.&quot;</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

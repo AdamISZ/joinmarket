@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>irc module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-irc">
+<span id="irc-module"></span><h1>irc module<a class="headerlink" href="#module-irc" title="Permalink to this headline">¶</a></h1>
+<p>An implementation of MessageChannel
+for IRC.</p>
+<dl class="class">
+<dt id="irc.IRCMessageChannel">
+<em class="property">class </em><tt class="descclassname">irc.</tt><tt class="descname">IRCMessageChannel</tt><big>(</big><em>given_nick</em>, <em>username='username'</em>, <em>realname='realname'</em>, <em>password=None</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="message_channel.html#message_channel.MessageChannel" title="message_channel.MessageChannel"><tt class="xref py py-class docutils literal"><span class="pre">message_channel.MessageChannel</span></tt></a></p>
+<dl class="method">
+<dt id="irc.IRCMessageChannel.announce_orders">
+<tt class="descname">announce_orders</tt><big>(</big><em>orderlist</em>, <em>nick=None</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.announce_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.announce_orders" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.cancel_orders">
+<tt class="descname">cancel_orders</tt><big>(</big><em>oid_list</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.cancel_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.cancel_orders" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.check_for_orders">
+<tt class="descname">check_for_orders</tt><big>(</big><em>nick</em>, <em>chunks</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.check_for_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.check_for_orders" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.fill_orders">
+<tt class="descname">fill_orders</tt><big>(</big><em>nickoid_dict</em>, <em>cj_amount</em>, <em>taker_pubkey</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.fill_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.fill_orders" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.push_tx">
+<tt class="descname">push_tx</tt><big>(</big><em>nick</em>, <em>txhex</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.push_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.push_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.request_orderbook">
+<tt class="descname">request_orderbook</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.request_orderbook"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.request_orderbook" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_auth">
+<tt class="descname">send_auth</tt><big>(</big><em>nick</em>, <em>pubkey</em>, <em>sig</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_auth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_auth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_error">
+<tt class="descname">send_error</tt><big>(</big><em>nick</em>, <em>errormsg</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_ioauth">
+<tt class="descname">send_ioauth</tt><big>(</big><em>nick</em>, <em>utxo_list</em>, <em>cj_pubkey</em>, <em>change_addr</em>, <em>sig</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_ioauth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_ioauth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_pubkey">
+<tt class="descname">send_pubkey</tt><big>(</big><em>nick</em>, <em>pubkey</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_pubkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_pubkey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_raw">
+<tt class="descname">send_raw</tt><big>(</big><em>line</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_raw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_raw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_sigs">
+<tt class="descname">send_sigs</tt><big>(</big><em>nick</em>, <em>sig_list</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_sigs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_sigs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.send_tx">
+<tt class="descname">send_tx</tt><big>(</big><em>nick_list</em>, <em>txhex</em><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.send_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.send_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="irc.IRCMessageChannel.shutdown">
+<tt class="descname">shutdown</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/irc.html#IRCMessageChannel.shutdown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.IRCMessageChannel.shutdown" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="irc.PingThread">
+<em class="property">class </em><tt class="descclassname">irc.</tt><tt class="descname">PingThread</tt><big>(</big><em>irc</em><big>)</big><a class="reference internal" href="_modules/irc.html#PingThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.PingThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<dl class="method">
+<dt id="irc.PingThread.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/irc.html#PingThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.PingThread.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="irc.get_irc_nick">
+<tt class="descclassname">irc.</tt><tt class="descname">get_irc_nick</tt><big>(</big><em>source</em><big>)</big><a class="reference internal" href="_modules/irc.html#get_irc_nick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.get_irc_nick" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="irc.get_irc_text">
+<tt class="descclassname">irc.</tt><tt class="descname">get_irc_text</tt><big>(</big><em>line</em><big>)</big><a class="reference internal" href="_modules/irc.html#get_irc_text"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.get_irc_text" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="irc.random_nick">
+<tt class="descclassname">irc.</tt><tt class="descname">random_nick</tt><big>(</big><em>nick_len=9</em><big>)</big><a class="reference internal" href="_modules/irc.html#random_nick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#irc.random_nick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a random, but somewhat human-readable
+pseudonym of length nick_len.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/irc.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

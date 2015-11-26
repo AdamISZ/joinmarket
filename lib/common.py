@@ -1,3 +1,5 @@
+"""This module contains widely used functions
+including the Joinmarket Wallet classes."""
 
 import bitcoin as btc
 from decimal import Decimal, InvalidOperation
@@ -63,6 +65,9 @@ merge_algorithm = default
 """
 
 def load_program_config():
+	'''Load the configuration from the file joinmarket.cfg
+	in the base directory (hardcoded). Check for required sections.
+	If file is not present, create a default version.'''
 	loadedFiles = config.read([config_location])
 	#Create default config file if not found
 	if len(loadedFiles) != 1:
@@ -145,6 +150,7 @@ def rand_weighted_choice(n, p_arr):
 #End random functions
 
 def chunks(d, n):
+	'''Utility function to split the list d into n chunks.'''
 	return [d[x: x+n] for x in xrange(0, len(d), n)]
 
 def get_network():
@@ -152,12 +158,16 @@ def get_network():
 	return config.get("BLOCKCHAIN","network")
 
 def get_p2sh_vbyte():
+	'''Returns the correct magic byte for a 
+	pay to script hash address.'''
 	if get_network() == 'testnet':
 		return 0xc4
 	else:
 		return 0x05
 
 def get_p2pk_vbyte():
+	'''Returns the correct magic byte for a 
+	pay to public key hash address.'''
 	if get_network() == 'testnet':
 		return 0x6f
 	else:
@@ -173,6 +183,10 @@ def validate_address(addr):
 	return True, 'address validated'
 
 def debug_dump_object(obj, skip_fields=[]):
+	'''Print out the contents of a Python object.
+	Useful for debugging.
+	If sensitive info is contained, add it to the
+	skip_fields argument to prevent printout.'''
 	debug('Class debug dump, name:' + obj.__class__.__name__)
 	for k, v in obj.__dict__.iteritems():
 		if k in skip_fields:
@@ -264,7 +278,8 @@ def select_greediest(unspent, value):
 class AbstractWallet(object):
 	'''
 	Abstract wallet for use with JoinMarket
-	Mostly written with Wallet in mind, the default JoinMarket HD wallet
+	Mostly written with class Wallet in mind, 
+	the default JoinMarket HD wallet.
 	'''
 	def __init__(self):
 		self.utxo_selector = btc.select # default fallback: upstream
@@ -390,6 +405,9 @@ class Wallet(AbstractWallet):
 		return decrypted_seed
 
 	def update_cache_index(self):
+		'''Set the value of the index pointer
+		at each mixdepth in the wallet file, so 
+		it can be picked up correctly on restart.'''
 		if not self.path:
 			return
 		if not os.path.isfile(self.path):
@@ -411,6 +429,9 @@ class Wallet(AbstractWallet):
 		return btc.privtoaddr(self.get_key(mixing_depth, forchange, i), magicbyte=get_p2pk_vbyte())
 
 	def get_new_addr(self, mixing_depth, forchange):
+		'''Returns the next unused address at the mixdepth
+		mixing_depth and the change branch (1/0) forchange.
+		The index pointer is moved forward by 1.'''
 		index = self.index[mixing_depth]
 		addr = self.get_addr(mixing_depth, forchange, index[forchange])
 		self.addr_cache[addr] = (mixing_depth, forchange, index[forchange])
@@ -424,12 +445,17 @@ class Wallet(AbstractWallet):
 		return addr
 
 	def get_receive_addr(self, mixing_depth):
+		'''Return the next address on the "receive" branch
+		for this mixing depth.'''
 		return self.get_new_addr(mixing_depth, False)
 
 	def get_change_addr(self, mixing_depth):
+		'''Return the next address on the "change" branch
+		for this mixing depth.'''
 		return self.get_new_addr(mixing_depth, True)
 
 	def get_key_from_addr(self, addr):
+		'''Return the private key for the address addr.'''
 		if addr not in self.addr_cache:
 			return None
 		ac = self.addr_cache[addr]
@@ -439,6 +465,8 @@ class Wallet(AbstractWallet):
 			return self.imported_privkeys[ac[0]][ac[2]]
 
 	def remove_old_utxos(self, tx):
+		'''Remove utxos in the transaction tx
+		from the wallet internal utxo list.'''
 		removed_utxos = {}
 		for ins in tx['ins']:
 			utxo = ins['outpoint']['hash'] + ':' + str(ins['outpoint']['index'])
@@ -479,6 +507,8 @@ class Wallet(AbstractWallet):
 		return mix_utxo_list
 
 class BitcoinCoreWallet(AbstractWallet):
+	"""An implementation of Wallet which uses coins in Bitcoin Core's own wallet,
+	rather than JoinMarket's HD wallet. ' """
 	def __init__(self, fromaccount):
 		super(BitcoinCoreWallet, self).__init__()
 		if not isinstance(bc_interface, blockchaininterface.BitcoinCoreInterface):
@@ -506,6 +536,8 @@ class BitcoinCoreWallet(AbstractWallet):
 		return bc_interface.rpc('getrawchangeaddress', [])
 
 	def ensure_wallet_unlocked(self):
+		'''Allows user to unlock wallet by entering decryption
+		password on the command line.'''
 		wallet_info = bc_interface.rpc('getwalletinfo', [])
 		if 'unlocked_until' in wallet_info and wallet_info['unlocked_until'] <= 0:
 			while True:
@@ -522,6 +554,10 @@ class BitcoinCoreWallet(AbstractWallet):
 					# Wrong passphrase, try again.
 
 def calc_cj_fee(ordertype, cjfee, cj_amount):
+	'''Returns the actual coinjoin fee in satoshis
+	given the ordertype (currently relorder or absorder),
+	the cjfee parameter (which in some cases is a decimal ratio),
+	and the actual coinjoin amount in satoshis.'''
 	real_cjfee = None
 	if ordertype == 'absorder':
 		real_cjfee = int(cjfee)
@@ -568,6 +604,8 @@ def cheapest_order_choose(orders, n, feekey):
 	return sorted(orders, key=feekey)[0]
 
 def pick_order(orders, n, feekey):
+	'''Manually choose an order from the list
+	orders.'''
 	i = -1
 	print("Considered orders:");
 	for o in orders:
@@ -590,6 +628,11 @@ def pick_order(orders, n, feekey):
 		
 
 def choose_orders(db, cj_amount, n, chooseOrdersBy, ignored_makers=[]):
+	'''Given the database of current orders db, the coinjoin amount cj_amount,
+	an order choice algorithm function chooseOrdersBy and optionally a list of 
+	counterparties to ignore in ignore_makers, return a dict of chosen orders
+	and the total coinjoin fee that would be applied in case this selection
+	is accepted.'''
 	sqlorders = db.execute('SELECT * FROM orderbook;').fetchall()
 	orders = [(o['counterparty'], o['oid'],	calc_cj_fee(o['ordertype'], o['cjfee'], cj_amount), o['txfee'])
 		for o in sqlorders if cj_amount >= o['minsize'] and cj_amount <= o['maxsize'] and o['counterparty']

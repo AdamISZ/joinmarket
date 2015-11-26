@@ -1,0 +1,485 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>maker &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for maker</h1><div class="highlight"><pre>
+<span class="c">#! /usr/bin/env python</span>
+
+<span class="kn">from</span> <span class="nn">common</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">common</span>
+<span class="kn">from</span> <span class="nn">taker</span> <span class="kn">import</span> <span class="n">CoinJoinerPeer</span>
+<span class="kn">import</span> <span class="nn">bitcoin</span> <span class="kn">as</span> <span class="nn">btc</span>
+<span class="kn">import</span> <span class="nn">base64</span><span class="o">,</span> <span class="nn">pprint</span><span class="o">,</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">enc_wrapper</span>
+<span class="kn">import</span> <span class="nn">binascii</span>
+
+<div class="viewcode-block" id="CoinJoinOrder"><a class="viewcode-back" href="../maker.html#maker.CoinJoinOrder">[docs]</a><span class="k">class</span> <span class="nc">CoinJoinOrder</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;An encapsulation of a Coinjoin transaction from maker side.&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maker</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">taker_pk</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span> <span class="o">=</span> <span class="n">maker</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">oid</span> <span class="o">=</span> <span class="n">oid</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cj_amount</span> <span class="o">=</span> <span class="n">amount</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_amount</span> <span class="o">&lt;=</span> <span class="n">common</span><span class="o">.</span><span class="n">DUST_THRESHOLD</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;amount below dust threshold&#39;</span><span class="p">)</span>
+		<span class="c">#the btc pubkey of the utxo that the taker plans to use as input</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">taker_pk</span> <span class="o">=</span> <span class="n">taker_pk</span>
+		<span class="c">#create DH keypair on the fly for this Order object</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">kp</span> <span class="o">=</span> <span class="n">enc_wrapper</span><span class="o">.</span><span class="n">init_keypair</span><span class="p">()</span>
+		<span class="c">#the encryption channel crypto box for this Order object</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">crypto_box</span> <span class="o">=</span> <span class="n">enc_wrapper</span><span class="o">.</span><span class="n">as_init_encryption</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kp</span><span class="p">,</span> \
+		                        <span class="n">enc_wrapper</span><span class="o">.</span><span class="n">init_pubkey</span><span class="p">(</span><span class="n">taker_pk</span><span class="p">))</span>
+		
+		<span class="n">order_s</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">maker</span><span class="o">.</span><span class="n">orderlist</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">]</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">order_s</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;oid not found&#39;</span><span class="p">)</span>
+		<span class="n">order</span> <span class="o">=</span> <span class="n">order_s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;minsize&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">amount</span> <span class="o">&gt;</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;maxsize&#39;</span><span class="p">]:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;amount out of range&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ordertype</span> <span class="o">=</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;ordertype&#39;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">txfee</span> <span class="o">=</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;txfee&#39;</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cjfee</span> <span class="o">=</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;cjfee&#39;</span><span class="p">]</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;new cjorder nick=</span><span class="si">%s</span><span class="s"> oid=</span><span class="si">%d</span><span class="s"> amount=</span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_addr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">change_addr</span> <span class="o">=</span> <span class="n">maker</span><span class="o">.</span><span class="n">oid_to_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">update_cache_index</span><span class="p">()</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;unable to fill order constrained by dust avoidance&#39;</span><span class="p">)</span>
+			<span class="c">#TODO make up orders offers in a way that this error cant appear</span>
+		<span class="c">#check nothing has messed up with the wallet code, remove this code after a while</span>
+		<span class="kn">import</span> <span class="nn">pprint</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;maker utxos = &#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">))</span>
+		<span class="n">utxo_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+		<span class="n">utxo_data</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">query_utxo_set</span><span class="p">(</span><span class="n">utxo_list</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">None</span> <span class="ow">in</span> <span class="n">utxo_data</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;wrongly using an already spent utxo. utxo_data = &#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">utxo_data</span><span class="p">))</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">utxo</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">utxo_list</span><span class="p">,</span> <span class="n">utxo_data</span><span class="p">):</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">[</span><span class="n">utxo</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">data</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;wrongly labeled utxo, expected value &#39;</span> <span class="o">+</span>
+					<span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">[</span><span class="n">utxo</span><span class="p">][</span><span class="s">&#39;value&#39;</span><span class="p">])</span> <span class="o">+</span> <span class="s">&#39; got &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]))</span>
+				<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+		<span class="c">#always a new address even if the order ends up never being</span>
+		<span class="c"># furfilled, you dont want someone pretending to fill all your</span>
+		<span class="c"># orders to find out which addresses you use</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_pubkey</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kp</span><span class="o">.</span><span class="n">hex_pk</span><span class="p">())</span>
+		
+<div class="viewcode-block" id="CoinJoinOrder.auth_counterparty"><a class="viewcode-back" href="../maker.html#maker.CoinJoinOrder.auth_counterparty">[docs]</a>	<span class="k">def</span> <span class="nf">auth_counterparty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">i_utxo_pubkey</span><span class="p">,</span> <span class="n">btc_sig</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;On receiving btc pubkey i_utxo_pubkey and btc_sig</span>
+<span class="sd">		from taker, check that the signature verifies as being</span>
+<span class="sd">		of the message consisting of the taker&#39;s nacl pubkey.</span>
+<span class="sd">		(Note: this is likely to be modified soon)&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">i_utxo_pubkey</span> <span class="o">=</span> <span class="n">i_utxo_pubkey</span>
+		
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">btc</span><span class="o">.</span><span class="n">ecdsa_verify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker_pk</span><span class="p">,</span> <span class="n">btc_sig</span><span class="p">,</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">i_utxo_pubkey</span><span class="p">)):</span>
+			<span class="k">print</span> <span class="s">&#39;signature didnt match pubkey and message&#39;</span>
+			<span class="k">return</span> <span class="bp">False</span>
+		<span class="c">#authorisation of taker passed </span>
+		<span class="c">#(but input utxo pubkey is checked in verify_unsigned_tx).</span>
+		<span class="c">#Send auth request to taker</span>
+		<span class="c">#TODO the next 2 lines are a little inefficient.</span>
+		<span class="n">btc_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_key_from_addr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cj_addr</span><span class="p">)</span>
+		<span class="n">btc_pub</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">privtopub</span><span class="p">(</span><span class="n">btc_key</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+		<span class="n">btc_sig</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">ecdsa_sign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kp</span><span class="o">.</span><span class="n">hex_pk</span><span class="p">(),</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">btc_key</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_ioauth</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">btc_pub</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">change_addr</span><span class="p">,</span> <span class="n">btc_sig</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">True</span>
+	</div>
+<div class="viewcode-block" id="CoinJoinOrder.recv_tx"><a class="viewcode-back" href="../maker.html#maker.CoinJoinOrder.recv_tx">[docs]</a>	<span class="k">def</span> <span class="nf">recv_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;On receiving an incomplete transaction txhex</span>
+<span class="sd">		from taker, sign our inputs and send the signatures back.&quot;&quot;&quot;</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">tx</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">txhex</span><span class="p">)</span>
+		<span class="k">except</span> <span class="ne">IndexError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;malformed txhex. &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;obtained tx</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">))</span>
+		<span class="n">goodtx</span><span class="p">,</span> <span class="n">errmsg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">verify_unsigned_tx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">goodtx</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;not a good tx, reason=&#39;</span> <span class="o">+</span> <span class="n">errmsg</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">errmsg</span><span class="p">)</span>
+		<span class="c">#TODO: the above 3 errors should be encrypted, but it&#39;s a bit messy.</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;goodtx&#39;</span><span class="p">)</span>
+		<span class="n">sigs</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">ins</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;ins&#39;</span><span class="p">]):</span>
+			<span class="n">utxo</span> <span class="o">=</span> <span class="n">ins</span><span class="p">[</span><span class="s">&#39;outpoint&#39;</span><span class="p">][</span><span class="s">&#39;hash&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ins</span><span class="p">[</span><span class="s">&#39;outpoint&#39;</span><span class="p">][</span><span class="s">&#39;index&#39;</span><span class="p">])</span>
+			<span class="k">if</span> <span class="n">utxo</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="p">[</span><span class="n">utxo</span><span class="p">][</span><span class="s">&#39;address&#39;</span><span class="p">]</span>
+			<span class="n">txs</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">txhex</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_key_from_addr</span><span class="p">(</span><span class="n">addr</span><span class="p">))</span>
+			<span class="n">sigs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">btc</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">txs</span><span class="p">)[</span><span class="s">&#39;ins&#39;</span><span class="p">][</span><span class="n">index</span><span class="p">][</span><span class="s">&#39;script&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;hex&#39;</span><span class="p">)))</span>
+		<span class="c">#len(sigs) &gt; 0 guarenteed since i did verify_unsigned_tx()</span>
+
+		<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">add_tx_notify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">unconfirm_callback</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">confirm_callback</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_addr</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;sending sigs &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">sigs</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_sigs</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">sigs</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="CoinJoinOrder.unconfirm_callback"><a class="viewcode-back" href="../maker.html#maker.CoinJoinOrder.unconfirm_callback">[docs]</a>	<span class="k">def</span> <span class="nf">unconfirm_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;On being notified of the unconfirmed</span>
+<span class="sd">		transaction on the blockchain, modify the</span>
+<span class="sd">		maker&#39;s orders appropriately.&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">removed_utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">remove_old_utxos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx</span><span class="p">)</span>
+		<span class="k">finally</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;saw tx on network, removed_utxos=</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">removed_utxos</span><span class="p">))</span>
+		<span class="n">to_cancel</span><span class="p">,</span> <span class="n">to_announce</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">on_tx_unconfirmed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txid</span><span class="p">,</span> <span class="n">removed_utxos</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">modify_orders</span><span class="p">(</span><span class="n">to_cancel</span><span class="p">,</span> <span class="n">to_announce</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CoinJoinOrder.confirm_callback"><a class="viewcode-back" href="../maker.html#maker.CoinJoinOrder.confirm_callback">[docs]</a>	<span class="k">def</span> <span class="nf">confirm_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">,</span> <span class="n">txid</span><span class="p">,</span> <span class="n">confirmations</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;On being notified of the confirmation of the</span>
+<span class="sd">		transaction on the blockchain, update the maker&#39;s</span>
+<span class="sd">		orders appropriately.&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">sync_unspent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet</span><span class="p">)</span>
+		<span class="k">finally</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;tx in a block&#39;</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;earned = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">real_cjfee</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">txfee</span><span class="p">))</span>
+		<span class="n">to_cancel</span><span class="p">,</span> <span class="n">to_announce</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">on_tx_confirmed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+			<span class="n">confirmations</span><span class="p">,</span> <span class="n">txid</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">modify_orders</span><span class="p">(</span><span class="n">to_cancel</span><span class="p">,</span> <span class="n">to_announce</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CoinJoinOrder.verify_unsigned_tx"><a class="viewcode-back" href="../maker.html#maker.CoinJoinOrder.verify_unsigned_tx">[docs]</a>	<span class="k">def</span> <span class="nf">verify_unsigned_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">txd</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;First, verify that the earlier provided btc signature</span>
+<span class="sd">		of the taker&#39;s nacl pubkey corresponds to one of the inputs.</span>
+<span class="sd">		Then, check that our utxos are in the transaction, and that</span>
+<span class="sd">		our expected coinjoin output and change output is contained.</span>
+<span class="sd">		Return True,None if all checks met, or False,errmsg if not.&quot;&quot;&quot;</span>
+		<span class="n">tx_utxo_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">ins</span><span class="p">[</span><span class="s">&#39;outpoint&#39;</span><span class="p">][</span><span class="s">&#39;hash&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> \
+		                   <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ins</span><span class="p">[</span><span class="s">&#39;outpoint&#39;</span><span class="p">][</span><span class="s">&#39;index&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">ins</span> <span class="ow">in</span> <span class="n">txd</span><span class="p">[</span><span class="s">&#39;ins&#39;</span><span class="p">]])</span>
+		<span class="c">#complete authentication: check the tx input uses the authing pubkey</span>
+		<span class="n">input_utxo_data</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">query_utxo_set</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">tx_utxo_set</span><span class="p">))</span>
+		<span class="k">if</span> <span class="bp">None</span> <span class="ow">in</span> <span class="n">input_utxo_data</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;some utxos already spent or not confirmed yet&#39;</span>
+		<span class="n">input_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">input_utxo_data</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">btc</span><span class="o">.</span><span class="n">pubtoaddr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">i_utxo_pubkey</span><span class="p">,</span> <span class="n">get_p2pk_vbyte</span><span class="p">())</span>\
+			<span class="ow">not</span> <span class="ow">in</span> <span class="n">input_addresses</span><span class="p">:</span>
+		        <span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&quot;authenticating bitcoin address is not contained&quot;</span>
+		<span class="n">my_utxo_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">tx_utxo_set</span><span class="o">.</span><span class="n">issuperset</span><span class="p">(</span><span class="n">my_utxo_set</span><span class="p">):</span>
+			<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;my utxos are not contained&#39;</span>
+
+		<span class="n">my_total_in</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">va</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">va</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">utxos</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">real_cjfee</span> <span class="o">=</span> <span class="n">calc_cj_fee</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ordertype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cjfee</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_amount</span><span class="p">)</span>
+		<span class="n">expected_change_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">my_total_in</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_amount</span>
+			<span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">txfee</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_cjfee</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;potentially earned = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">real_cjfee</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">txfee</span><span class="p">))</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;mycjaddr, mychange = &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_addr</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">change_addr</span><span class="p">)</span>
+
+		<span class="n">times_seen_cj_addr</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">times_seen_change_addr</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">for</span> <span class="n">outs</span> <span class="ow">in</span> <span class="n">txd</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]:</span>
+			<span class="n">addr</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">script_to_address</span><span class="p">(</span><span class="n">outs</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">get_p2pk_vbyte</span><span class="p">())</span>
+			<span class="k">if</span> <span class="n">addr</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_addr</span><span class="p">:</span>
+				<span class="n">times_seen_cj_addr</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="k">if</span> <span class="n">outs</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cj_amount</span><span class="p">:</span>
+					<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;Wrong cj_amount. I expect &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cj_amount</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">addr</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">change_addr</span><span class="p">:</span>
+				<span class="n">times_seen_change_addr</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="k">if</span> <span class="n">outs</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">expected_change_value</span><span class="p">:</span>
+					<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;wrong change, i expect &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">expected_change_value</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">times_seen_cj_addr</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">times_seen_change_addr</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;cj or change addr not in tx outputs once, #cjaddr=&#39;</span>
+				<span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">times_seen_cj_addr</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;, #chaddr=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">times_seen_change_addr</span><span class="p">))</span>
+		<span class="k">return</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">None</span>
+</div></div>
+<div class="viewcode-block" id="CJMakerOrderError"><a class="viewcode-back" href="../maker.html#maker.CJMakerOrderError">[docs]</a><span class="k">class</span> <span class="nc">CJMakerOrderError</span><span class="p">(</span><span class="ne">StandardError</span><span class="p">):</span>
+	<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Maker"><a class="viewcode-back" href="../maker.html#maker.Maker">[docs]</a><span class="k">class</span> <span class="nc">Maker</span><span class="p">(</span><span class="n">CoinJoinerPeer</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A Joinmarket entity which provides liquidity</span>
+<span class="sd">	by publishing orders in the orderbook. (&#39;Liquidity maker&#39;).&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">,</span> <span class="n">wallet</span><span class="p">):</span>
+		<span class="n">CoinJoinerPeer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">register_channel_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_set_topic</span><span class="p">,</span>
+			<span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_nick_leave</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+		<span class="n">msgchan</span><span class="o">.</span><span class="n">register_maker_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_orderbook_requested</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">on_order_fill</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_seen_auth</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_seen_tx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_push_tx</span><span class="p">)</span>
+		<span class="n">msgchan</span><span class="o">.</span><span class="n">cjpeer</span> <span class="o">=</span> <span class="bp">self</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet</span> <span class="o">=</span> <span class="n">wallet</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nextoid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_my_orders</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet_unspent_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Maker.get_crypto_box_from_nick"><a class="viewcode-back" href="../maker.html#maker.Maker.get_crypto_box_from_nick">[docs]</a>	<span class="k">def</span> <span class="nf">get_crypto_box_from_nick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Return the nacl crypto Box encapsulating</span>
+<span class="sd">		encrypted messaging with the counterparty &#39;nick&#39;. &quot;&quot;&quot;</span>		
+		<span class="k">if</span> <span class="n">nick</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;wrong ordering of protocol events, no crypto object, nick=&#39;</span> <span class="o">+</span> <span class="n">nick</span><span class="p">)</span>
+			<span class="k">return</span> <span class="bp">None</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span><span class="o">.</span><span class="n">crypto_box</span>
+</div>
+<div class="viewcode-block" id="Maker.on_orderbook_requested"><a class="viewcode-back" href="../maker.html#maker.Maker.on_orderbook_requested">[docs]</a>	<span class="k">def</span> <span class="nf">on_orderbook_requested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Send our orders to any requesting</span>
+<span class="sd">		counterparty in a direct (private) message.&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">announce_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span><span class="p">,</span> <span class="n">nick</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Maker.on_order_fill"><a class="viewcode-back" href="../maker.html#maker.Maker.on_order_fill">[docs]</a>	<span class="k">def</span> <span class="nf">on_order_fill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">taker_pubkey</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;On reception of a !fill message from a counterparty,</span>
+<span class="sd">		instantiate a CoinJoinOrder object to start a new transaction.&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">nick</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;had a partially filled order but starting over now&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">=</span> <span class="n">CoinJoinOrder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">taker_pubkey</span><span class="p">)</span>
+		<span class="k">finally</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Maker.on_seen_auth"><a class="viewcode-back" href="../maker.html#maker.Maker.on_seen_auth">[docs]</a>	<span class="k">def</span> <span class="nf">on_seen_auth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;On reception of an !auth message from a taker,</span>
+<span class="sd">		check that the signature sig is valid w.r.t. the message</span>
+<span class="sd">		nacl pubkey and the bitcoin pubkey &#39;pubkey&#39;.&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">nick</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;No open order from this nick&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span><span class="o">.</span><span class="n">auth_counterparty</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+		<span class="c">#TODO if auth_counterparty returns false, remove this order from active_orders</span>
+		<span class="c"># and send an error</span>
+</div>
+<div class="viewcode-block" id="Maker.on_seen_tx"><a class="viewcode-back" href="../maker.html#maker.Maker.on_seen_tx">[docs]</a>	<span class="k">def</span> <span class="nf">on_seen_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Receive a transaction txhex from the maker</span>
+<span class="sd">		and pass it to the current CoinJoinOrder.recv_tx()&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">nick</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;No open order from this nick&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span><span class="o">.</span><span class="n">recv_tx</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">)</span>
+		<span class="k">finally</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">wallet_unspent_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Maker.on_push_tx"><a class="viewcode-back" href="../maker.html#maker.Maker.on_push_tx">[docs]</a>	<span class="k">def</span> <span class="nf">on_push_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">,</span> <span class="n">txhex</span><span class="p">):</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;received txhex from &#39;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&#39; to push</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">txhex</span><span class="p">)</span>
+		<span class="n">txid</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">pushtx</span><span class="p">(</span><span class="n">txhex</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;pushed tx &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">txid</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">txid</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">nick</span><span class="p">,</span> <span class="s">&#39;Unable to push tx&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Maker.on_welcome"><a class="viewcode-back" href="../maker.html#maker.Maker.on_welcome">[docs]</a>	<span class="k">def</span> <span class="nf">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">announce_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span> <span class="o">=</span> <span class="p">{}</span>
+		</div>
+<div class="viewcode-block" id="Maker.on_nick_leave"><a class="viewcode-back" href="../maker.html#maker.Maker.on_nick_leave">[docs]</a>	<span class="k">def</span> <span class="nf">on_nick_leave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nick</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">nick</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">:</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;nick &#39;</span> <span class="o">+</span> <span class="n">nick</span> <span class="o">+</span> <span class="s">&#39; has left&#39;</span><span class="p">)</span>
+                        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_orders</span><span class="p">[</span><span class="n">nick</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Maker.modify_orders"><a class="viewcode-back" href="../maker.html#maker.Maker.modify_orders">[docs]</a>	<span class="k">def</span> <span class="nf">modify_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_cancel</span><span class="p">,</span> <span class="n">to_announce</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Take two lists of orders to be cancelled and</span>
+<span class="sd">		to be announced and pass the appropriate messages</span>
+<span class="sd">		to be broadcast to the messagechannel object.&quot;&quot;&quot;</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;modifying orders. to_cancel=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">to_cancel</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">to_announce=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">to_announce</span><span class="p">))</span>
+		<span class="k">for</span> <span class="n">oid</span> <span class="ow">in</span> <span class="n">to_cancel</span><span class="p">:</span>
+			<span class="n">order</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">]</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;didnt cancel order which doesnt exist, oid=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">oid</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">to_cancel</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">cancel_orders</span><span class="p">(</span><span class="n">to_cancel</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">to_announce</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">announce_orders</span><span class="p">(</span><span class="n">to_announce</span><span class="p">)</span>
+			<span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">to_announce</span><span class="p">:</span>
+				<span class="n">oldorder_s</span> <span class="o">=</span> <span class="p">[</span><span class="n">order</span> <span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span> <span class="k">if</span> <span class="n">order</span><span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ann</span><span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">]]</span>
+				<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">oldorder_s</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">oldorder_s</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span> <span class="o">+=</span> <span class="n">to_announce</span>
+
+	<span class="c">#these functions</span>
+	<span class="c"># create_my_orders()</span>
+	<span class="c"># oid_to_uxto()</span>
+	<span class="c"># on_tx_unconfirmed()</span>
+	<span class="c"># on_tx_confirmed()</span>
+	<span class="c">#define the sell-side pricing algorithm of this bot</span>
+	<span class="c">#still might be a bad way of doing things, we&#39;ll see</span></div>
+<div class="viewcode-block" id="Maker.create_my_orders"><a class="viewcode-back" href="../maker.html#maker.Maker.create_my_orders">[docs]</a>	<span class="k">def</span> <span class="nf">create_my_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		Tells the highest value possible made by combining all utxos.</span>
+<span class="sd">		fee is 0.2% of the cj amount</span>
+<span class="sd">		total_value = 0</span>
+<span class="sd">		for utxo, addrvalue in self.wallet.unspent.iteritems():</span>
+<span class="sd">			total_value += addrvalue[&#39;value&#39;]</span>
+
+<span class="sd">		order = {&#39;oid&#39;: 0, &#39;ordertype&#39;: &#39;relorder&#39;, &#39;minsize&#39;: 0,</span>
+<span class="sd">			&#39;maxsize&#39;: total_value, &#39;txfee&#39;: 10000, &#39;cjfee&#39;: &#39;0.002&#39;}</span>
+<span class="sd">		Returns [order]</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+		<span class="c">#each utxo is a single absolute-fee order</span>
+		<span class="n">orderlist</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">utxo</span><span class="p">,</span> <span class="n">addrvalue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">unspent</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="n">order</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;oid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_oid</span><span class="p">(),</span> <span class="s">&#39;ordertype&#39;</span><span class="p">:</span> <span class="s">&#39;absorder&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">:</span> <span class="mi">12000</span><span class="p">,</span>
+				<span class="s">&#39;maxsize&#39;</span><span class="p">:</span> <span class="n">addrvalue</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">],</span> <span class="s">&#39;txfee&#39;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>
+				<span class="s">&#39;utxo&#39;</span><span class="p">:</span> <span class="n">utxo</span><span class="p">,</span> <span class="s">&#39;mixdepth&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">addr_cache</span><span class="p">[</span><span class="n">addrvalue</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]][</span><span class="mi">0</span><span class="p">]}</span>
+			<span class="n">orderlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+		<span class="c">#yes you can add keys there that are never used by the rest of the Maker code</span>
+		<span class="c"># so im adding utxo and mixdepth here</span>
+		<span class="k">return</span> <span class="n">orderlist</span>
+		
+
+	<span class="c">#has to return a list of utxos and mixing depth the cj address will be in</span>
+	<span class="c"># the change address will be in mixing_depth-1</span></div>
+<div class="viewcode-block" id="Maker.oid_to_order"><a class="viewcode-back" href="../maker.html#maker.Maker.oid_to_order">[docs]</a>	<span class="k">def</span> <span class="nf">oid_to_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cjorder</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		unspent = []</span>
+<span class="sd">		for utxo, addrvalue in self.wallet.unspent.iteritems():</span>
+<span class="sd">			unspent.append({&#39;value&#39;: addrvalue[&#39;value&#39;], &#39;utxo&#39;: utxo})</span>
+<span class="sd">		inputs = btc.select(unspent, amount)</span>
+<span class="sd">		#TODO this raises an exception if you dont have enough money, id rather it just returned None</span>
+<span class="sd">		mixing_depth = 1</span>
+<span class="sd">		return [i[&#39;utxo&#39;] for i in inputs], mixing_depth</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+		<span class="n">order</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">orderlist</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s">&#39;oid&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">oid</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">cj_addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_receive_addr</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="n">change_addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_change_addr</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="s">&#39;mixdepth&#39;</span><span class="p">])</span>
+		<span class="k">return</span> <span class="p">[</span><span class="n">order</span><span class="p">[</span><span class="s">&#39;utxo&#39;</span><span class="p">]],</span> <span class="n">cj_addr</span><span class="p">,</span> <span class="n">change_addr</span>
+		</div>
+<div class="viewcode-block" id="Maker.get_next_oid"><a class="viewcode-back" href="../maker.html#maker.Maker.get_next_oid">[docs]</a>	<span class="k">def</span> <span class="nf">get_next_oid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nextoid</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nextoid</span>
+</div>
+<div class="viewcode-block" id="Maker.on_tx_unconfirmed"><a class="viewcode-back" href="../maker.html#maker.Maker.on_tx_unconfirmed">[docs]</a>	<span class="k">def</span> <span class="nf">on_tx_unconfirmed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cjorder</span><span class="p">,</span> <span class="n">txid</span><span class="p">,</span> <span class="n">removed_utxos</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Called when the tx is seen on the network</span>
+<span class="sd">		must return which orders to cancel or recreate</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="p">([</span><span class="n">cjorder</span><span class="o">.</span><span class="n">oid</span><span class="p">],</span> <span class="p">[])</span>
+
+	<span class="c">#gets called when the tx is included in a block</span>
+	<span class="c">#must return which orders to cancel or recreate</span>
+	<span class="c"># and i have to think about how that will work for both</span>
+	<span class="c"># the blockchain explorer api method and the bitcoid walletnotify</span></div>
+<div class="viewcode-block" id="Maker.on_tx_confirmed"><a class="viewcode-back" href="../maker.html#maker.Maker.on_tx_confirmed">[docs]</a>	<span class="k">def</span> <span class="nf">on_tx_confirmed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cjorder</span><span class="p">,</span> <span class="n">confirmations</span><span class="p">,</span> <span class="n">txid</span><span class="p">):</span>
+		<span class="n">to_announce</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">out</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cjorder</span><span class="o">.</span><span class="n">tx</span><span class="p">[</span><span class="s">&#39;outs&#39;</span><span class="p">]):</span>
+			<span class="n">addr</span> <span class="o">=</span> <span class="n">btc</span><span class="o">.</span><span class="n">script_to_address</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s">&#39;script&#39;</span><span class="p">],</span> <span class="n">get_p2pk_vbyte</span><span class="p">())</span>
+			<span class="k">if</span> <span class="n">addr</span> <span class="o">==</span> <span class="n">cjorder</span><span class="o">.</span><span class="n">change_addr</span><span class="p">:</span>
+				<span class="n">neworder</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;oid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_oid</span><span class="p">(),</span> <span class="s">&#39;ordertype&#39;</span><span class="p">:</span> <span class="s">&#39;absorder&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">:</span> <span class="mi">12000</span><span class="p">,</span>
+					<span class="s">&#39;maxsize&#39;</span><span class="p">:</span> <span class="n">out</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">],</span> <span class="s">&#39;txfee&#39;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>
+					<span class="s">&#39;utxo&#39;</span><span class="p">:</span> <span class="n">txid</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)}</span>
+				<span class="n">to_announce</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">neworder</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">addr</span> <span class="o">==</span> <span class="n">cjorder</span><span class="o">.</span><span class="n">cj_addr</span><span class="p">:</span>
+				<span class="n">neworder</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;oid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_oid</span><span class="p">(),</span> <span class="s">&#39;ordertype&#39;</span><span class="p">:</span> <span class="s">&#39;absorder&#39;</span><span class="p">,</span> <span class="s">&#39;minsize&#39;</span><span class="p">:</span> <span class="mi">12000</span><span class="p">,</span>
+					<span class="s">&#39;maxsize&#39;</span><span class="p">:</span> <span class="n">out</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">],</span> <span class="s">&#39;txfee&#39;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span> <span class="s">&#39;cjfee&#39;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>
+					<span class="s">&#39;utxo&#39;</span><span class="p">:</span> <span class="n">txid</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)}</span>
+				<span class="n">to_announce</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">neworder</span><span class="p">)</span>
+		<span class="k">return</span> <span class="p">([],</span> <span class="n">to_announce</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../maker.html#maker.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+	<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="n">gethostname</span>
+	<span class="n">nickname</span> <span class="o">=</span> <span class="s">&#39;cj-maker-&#39;</span> <span class="o">+</span> <span class="n">btc</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">gethostname</span><span class="p">())[:</span><span class="mi">6</span><span class="p">]</span>
+	<span class="kn">import</span> <span class="nn">sys</span>
+	<span class="n">seed</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="c">#btc.sha256(&#39;dont use brainwallets except for holding testnet coins&#39;)</span>
+
+	<span class="n">common</span><span class="o">.</span><span class="n">load_program_config</span><span class="p">()</span>
+	<span class="n">wallet</span> <span class="o">=</span> <span class="n">Wallet</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">max_mix_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+	<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">sync_wallet</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+
+	<span class="kn">from</span> <span class="nn">irc</span> <span class="kn">import</span> <span class="n">IRCMessageChannel</span>
+	<span class="n">irc</span> <span class="o">=</span> <span class="n">IRCMessageChannel</span><span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+	<span class="n">maker</span> <span class="o">=</span> <span class="n">Maker</span><span class="p">(</span><span class="n">irc</span><span class="p">,</span> <span class="n">wallet</span><span class="p">)</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;connecting to irc&#39;</span>
+		<span class="n">irc</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+	<span class="k">except</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;CRASHING, DUMPING EVERYTHING&#39;</span><span class="p">)</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;wallet seed = &#39;</span> <span class="o">+</span> <span class="n">seed</span><span class="p">)</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;addr_cache&#39;</span><span class="p">])</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">maker</span><span class="p">)</span>
+		<span class="kn">import</span> <span class="nn">traceback</span>
+		<span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+	<span class="n">main</span><span class="p">()</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;done&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

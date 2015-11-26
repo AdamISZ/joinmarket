@@ -1,0 +1,269 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>maker module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-maker">
+<span id="maker-module"></span><h1>maker module<a class="headerlink" href="#module-maker" title="Permalink to this headline">¶</a></h1>
+<dl class="exception">
+<dt id="maker.CJMakerOrderError">
+<em class="property">exception </em><tt class="descclassname">maker.</tt><tt class="descname">CJMakerOrderError</tt><a class="reference internal" href="_modules/maker.html#CJMakerOrderError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CJMakerOrderError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.StandardError</span></tt></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="maker.CoinJoinOrder">
+<em class="property">class </em><tt class="descclassname">maker.</tt><tt class="descname">CoinJoinOrder</tt><big>(</big><em>maker</em>, <em>nick</em>, <em>oid</em>, <em>amount</em>, <em>taker_pk</em><big>)</big><a class="reference internal" href="_modules/maker.html#CoinJoinOrder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CoinJoinOrder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>An encapsulation of a Coinjoin transaction from maker side.</p>
+<dl class="method">
+<dt id="maker.CoinJoinOrder.auth_counterparty">
+<tt class="descname">auth_counterparty</tt><big>(</big><em>nick</em>, <em>i_utxo_pubkey</em>, <em>btc_sig</em><big>)</big><a class="reference internal" href="_modules/maker.html#CoinJoinOrder.auth_counterparty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CoinJoinOrder.auth_counterparty" title="Permalink to this definition">¶</a></dt>
+<dd><p>On receiving btc pubkey i_utxo_pubkey and btc_sig
+from taker, check that the signature verifies as being
+of the message consisting of the taker&#8217;s nacl pubkey.
+(Note: this is likely to be modified soon)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.CoinJoinOrder.confirm_callback">
+<tt class="descname">confirm_callback</tt><big>(</big><em>txd</em>, <em>txid</em>, <em>confirmations</em><big>)</big><a class="reference internal" href="_modules/maker.html#CoinJoinOrder.confirm_callback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CoinJoinOrder.confirm_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>On being notified of the confirmation of the
+transaction on the blockchain, update the maker&#8217;s
+orders appropriately.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.CoinJoinOrder.recv_tx">
+<tt class="descname">recv_tx</tt><big>(</big><em>nick</em>, <em>txhex</em><big>)</big><a class="reference internal" href="_modules/maker.html#CoinJoinOrder.recv_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CoinJoinOrder.recv_tx" title="Permalink to this definition">¶</a></dt>
+<dd><p>On receiving an incomplete transaction txhex
+from taker, sign our inputs and send the signatures back.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.CoinJoinOrder.unconfirm_callback">
+<tt class="descname">unconfirm_callback</tt><big>(</big><em>txd</em>, <em>txid</em><big>)</big><a class="reference internal" href="_modules/maker.html#CoinJoinOrder.unconfirm_callback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CoinJoinOrder.unconfirm_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>On being notified of the unconfirmed
+transaction on the blockchain, modify the
+maker&#8217;s orders appropriately.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.CoinJoinOrder.verify_unsigned_tx">
+<tt class="descname">verify_unsigned_tx</tt><big>(</big><em>txd</em><big>)</big><a class="reference internal" href="_modules/maker.html#CoinJoinOrder.verify_unsigned_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.CoinJoinOrder.verify_unsigned_tx" title="Permalink to this definition">¶</a></dt>
+<dd><p>First, verify that the earlier provided btc signature
+of the taker&#8217;s nacl pubkey corresponds to one of the inputs.
+Then, check that our utxos are in the transaction, and that
+our expected coinjoin output and change output is contained.
+Return True,None if all checks met, or False,errmsg if not.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="maker.Maker">
+<em class="property">class </em><tt class="descclassname">maker.</tt><tt class="descname">Maker</tt><big>(</big><em>msgchan</em>, <em>wallet</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="taker.html#taker.CoinJoinerPeer" title="taker.CoinJoinerPeer"><tt class="xref py py-class docutils literal"><span class="pre">taker.CoinJoinerPeer</span></tt></a></p>
+<p>A Joinmarket entity which provides liquidity
+by publishing orders in the orderbook. (&#8216;Liquidity maker&#8217;).</p>
+<dl class="method">
+<dt id="maker.Maker.create_my_orders">
+<tt class="descname">create_my_orders</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.create_my_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.create_my_orders" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tells the highest value possible made by combining all utxos.
+fee is 0.2% of the cj amount
+total_value = 0
+for utxo, addrvalue in self.wallet.unspent.iteritems():</p>
+<blockquote>
+<div>total_value += addrvalue[&#8216;value&#8217;]</div></blockquote>
+<dl class="docutils">
+<dt>order = {&#8216;oid&#8217;: 0, &#8216;ordertype&#8217;: &#8216;relorder&#8217;, &#8216;minsize&#8217;: 0,</dt>
+<dd>&#8216;maxsize&#8217;: total_value, &#8216;txfee&#8217;: 10000, &#8216;cjfee&#8217;: &#8216;0.002&#8217;}</dd>
+</dl>
+<p>Returns [order]</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.get_crypto_box_from_nick">
+<tt class="descname">get_crypto_box_from_nick</tt><big>(</big><em>nick</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.get_crypto_box_from_nick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.get_crypto_box_from_nick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the nacl crypto Box encapsulating
+encrypted messaging with the counterparty &#8216;nick&#8217;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.get_next_oid">
+<tt class="descname">get_next_oid</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.get_next_oid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.get_next_oid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.modify_orders">
+<tt class="descname">modify_orders</tt><big>(</big><em>to_cancel</em>, <em>to_announce</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.modify_orders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.modify_orders" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take two lists of orders to be cancelled and
+to be announced and pass the appropriate messages
+to be broadcast to the messagechannel object.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.oid_to_order">
+<tt class="descname">oid_to_order</tt><big>(</big><em>cjorder</em>, <em>oid</em>, <em>amount</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.oid_to_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.oid_to_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>unspent = []
+for utxo, addrvalue in self.wallet.unspent.iteritems():</p>
+<blockquote>
+<div>unspent.append({&#8216;value&#8217;: addrvalue[&#8216;value&#8217;], &#8216;utxo&#8217;: utxo})</div></blockquote>
+<p>inputs = btc.select(unspent, amount)
+#TODO this raises an exception if you dont have enough money, id rather it just returned None
+mixing_depth = 1
+return [i[&#8216;utxo&#8217;] for i in inputs], mixing_depth</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_nick_leave">
+<tt class="descname">on_nick_leave</tt><big>(</big><em>nick</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_nick_leave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_nick_leave" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_order_fill">
+<tt class="descname">on_order_fill</tt><big>(</big><em>nick</em>, <em>oid</em>, <em>amount</em>, <em>taker_pubkey</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_order_fill"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_order_fill" title="Permalink to this definition">¶</a></dt>
+<dd><p>On reception of a !fill message from a counterparty,
+instantiate a CoinJoinOrder object to start a new transaction.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_orderbook_requested">
+<tt class="descname">on_orderbook_requested</tt><big>(</big><em>nick</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_orderbook_requested"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_orderbook_requested" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send our orders to any requesting
+counterparty in a direct (private) message.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_push_tx">
+<tt class="descname">on_push_tx</tt><big>(</big><em>nick</em>, <em>txhex</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_push_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_push_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_seen_auth">
+<tt class="descname">on_seen_auth</tt><big>(</big><em>nick</em>, <em>pubkey</em>, <em>sig</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_seen_auth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_seen_auth" title="Permalink to this definition">¶</a></dt>
+<dd><p>On reception of an !auth message from a taker,
+check that the signature sig is valid w.r.t. the message
+nacl pubkey and the bitcoin pubkey &#8216;pubkey&#8217;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_seen_tx">
+<tt class="descname">on_seen_tx</tt><big>(</big><em>nick</em>, <em>txhex</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_seen_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_seen_tx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Receive a transaction txhex from the maker
+and pass it to the current CoinJoinOrder.recv_tx()</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_tx_confirmed">
+<tt class="descname">on_tx_confirmed</tt><big>(</big><em>cjorder</em>, <em>confirmations</em>, <em>txid</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_tx_confirmed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_tx_confirmed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_tx_unconfirmed">
+<tt class="descname">on_tx_unconfirmed</tt><big>(</big><em>cjorder</em>, <em>txid</em>, <em>removed_utxos</em><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_tx_unconfirmed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_tx_unconfirmed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the tx is seen on the network
+must return which orders to cancel or recreate</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="maker.Maker.on_welcome">
+<tt class="descname">on_welcome</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/maker.html#Maker.on_welcome"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.Maker.on_welcome" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="maker.main">
+<tt class="descclassname">maker.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/maker.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#maker.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/maker.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,8 +1,9 @@
-#A wrapper for public key
-#authenticated encryption
-#using Diffie Hellman key
-#exchange to set up a 
-#symmetric encryption.
+"""A wrapper for public key
+authenticated encryption
+using Diffie Hellman key
+exchange to set up a 
+symmetric encryption.
+"""
 
 import libnacl.public
 import binascii, base64

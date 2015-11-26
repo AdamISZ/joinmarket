@@ -1,4 +1,6 @@
-#
+"""An implementation of MessageChannel
+for IRC."""
+
 from common import *
 from message_channel import MessageChannel
 from message_channel import CJPeerError
@@ -16,6 +18,8 @@ encrypted_commands = ["auth", "ioauth", "tx", "sig"]
 plaintext_commands = ["fill", "error", "pubkey", "orderbook", "relorder", "absorder", "push"]
 
 def random_nick(nick_len=9):
+	"""Generates a random, but somewhat human-readable
+	pseudonym of length nick_len."""
 	vowels = "aeiou"
 	consonants = ''.join([chr(c) for c in range(ord('a'), ord('z')+1) if vowels.find(chr(c)) == -1])
 	assert nick_len % 2 == 1

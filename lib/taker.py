@@ -8,13 +8,21 @@ import binascii
 import sqlite3, base64, threading, time, random, pprint
 
 class CoinJoinTX(object):
+	"""Encapsulation of a single Coinjoin transaction for a taker."""
 	#soon the taker argument will be removed and just be replaced by wallet or some other interface
 	def __init__(self, msgchan, wallet, db, cj_amount, orders, input_utxos, my_cj_addr,
 		my_change_addr, total_txfee, finishcallback, choose_orders_recover, auth_addr=None):
 		'''
-		if my_change is None then there wont be a change address
-		thats used if you want to entirely coinjoin one utxo with no change left over
+		Notes:
+		
+		If my_change_addr is None then there wont be a change address
+		thats used if you want to entirely coinjoin one utxo with no change left over.
+		
 		orders is the orders you want to fill {'counterpartynick': oid, 'cp2': oid2}
+		
+		auth_addr, if provided, specifies the authorising btc address, rather than having
+		it chosen (effectively) randomly from the input utxos. This is used for external
+		wallet access.
 		'''
 		debug('starting cj to ' + str(my_cj_addr) + ' with change at ' + str(my_change_addr))
 		#parameters
@@ -50,6 +58,10 @@ class CoinJoinTX(object):
 		self.msgchan.fill_orders(self.active_orders, self.cj_amount, self.kp.hex_pk())
 
 	def start_encryption(self, nick, maker_pk):
+		"""Instantiates a nacl crypto_box object
+		via ECDH. Creates Bitcoin signature of our nacl pubkey
+		and sends this sig with bitcoin pubkey and nacl pubkey
+		in !auth message."""
 		if nick not in self.active_orders.keys():
 			debug("Counterparty not part of this transaction. Ignoring")
 			return
@@ -75,7 +87,12 @@ class CoinJoinTX(object):
 			return False
 		return True
 	
-	def recv_txio(self, nick, utxo_list, cj_pub, change_addr):	
+	def recv_txio(self, nick, utxo_list, cj_pub, change_addr):
+		"""Called repeatedly to gather the transaction inputs
+		from the makers. Once all have been gathered, constructs
+		the transaction to be signed and sends it to the makers.
+		utxo_list is *our* utxos, cj_pub is the pubkey for our 
+		coinjoin output address, and change_addr is our change address."""
 		if nick not in self.nonrespondants:
 			debug('recv_txio => nick=' + nick + ' not in nonrespondants ' + str(self.nonrespondants))
 			return
@@ -138,6 +155,10 @@ class CoinJoinTX(object):
 			ins['script'] = 'deadbeef'
 
 	def add_signature(self, nick, sigb64):
+		"""Called repeatedly to add signatures to the 
+		transaction template. Once all signatures have been
+		filled in, runs finishcallback (which will sign 
+		and push the transaction.)"""
 		if nick not in self.nonrespondants:
 			debug('add_signature => nick=' + nick + ' not in nonrespondants ' + str(self.nonrespondants))
 			return
@@ -207,7 +228,7 @@ class CoinJoinTX(object):
 			return sign_donation_tx(tx, i, priv)	
 
 	def self_sign(self):
-		#now sign it ourselves
+		"""Sign the current version of the transaction."""
 		tx = btc.serialize(self.latest_tx)
 		for index, ins in enumerate(self.latest_tx['ins']):
 			utxo = ins['outpoint']['hash'] + ':' + str(ins['outpoint']['index'])
@@ -218,6 +239,8 @@ class CoinJoinTX(object):
 		self.latest_tx = btc.deserialize(tx)
 
 	def push(self, txd):
+		"""Push the transaction txd to the network
+		using the existing BlockchainInterface instance."""
 		tx = btc.serialize(txd)
 		debug('\n' + tx)
 		debug('txid = ' + btc.txhash(tx))
@@ -233,10 +256,11 @@ class CoinJoinTX(object):
 		self.push(self.latest_tx)
 
 	def recover_from_nonrespondants(self):
+		"""if there is no choose_orders_recover then end and call finishcallback
+		so the caller can handle it in their own way, notable for sweeping
+		where simply replacing the makers wont work.
+		"""
 		debug('nonresponding makers = ' + str(self.nonrespondants))
-		#if there is no choose_orders_recover then end and call finishcallback
-		# so the caller can handle it in their own way, notable for sweeping
-		# where simply replacing the makers wont work
 		if not self.choose_orders_recover:
 			self.end_timeout_thread = True
 			if self.finishcallback != None:
@@ -291,6 +315,8 @@ class CoinJoinTX(object):
 						self.cjtx.recover_from_nonrespondants()
 
 class CoinJoinerPeer(object):
+	"""Base class of all Taker and Maker
+	and hybrids."""
 	def __init__(self, msgchan):
 		self.msgchan = msgchan
 
@@ -298,6 +324,8 @@ class CoinJoinerPeer(object):
 		raise Exception()
 
 	def on_set_topic(self, newtopic):
+		"""Used for broadcasting important
+		messages to all Joinmarket entities."""
 		chunks = newtopic.split('|')
 		for msg in chunks[1:]:
 			try:
@@ -317,6 +345,11 @@ class CoinJoinerPeer(object):
 
 
 class OrderbookWatch(CoinJoinerPeer):
+	"""A CoinJoiner peer that is used
+	only for viewing the market, not taking part
+	in transactions. Note however that Taker 
+	inherits from this class to use its database
+	of orders."""
 	def __init__(self, msgchan):
 		CoinJoinerPeer.__init__(self, msgchan)
 		self.msgchan.register_orderbookwatch_callbacks(self.on_order_seen,
@@ -387,6 +420,8 @@ class Taker(OrderbookWatch):
 		# that some other guy doesnt send you confusing stuff
 
 	def get_crypto_box_from_nick(self, nick):
+		"""Return the nacl crypto Box encapsulating
+		encrypted messaging with the counterparty 'nick'. """
 		if nick in self.cjtx.crypto_boxes:
 			return self.cjtx.crypto_boxes[nick][1] #libsodium encryption object
 		else:
@@ -395,6 +430,7 @@ class Taker(OrderbookWatch):
 
 	def start_cj(self, wallet, cj_amount, orders, input_utxos, my_cj_addr, my_change_addr,
 			total_txfee, finishcallback=None, choose_orders_recover=None, auth_addr=None):
+		"""Initiate a coinjoin by instantiating a CoinJoinTX object."""
 		self.cjtx = CoinJoinTX(self.msgchan, wallet, self.db, cj_amount, orders,
 			input_utxos, my_cj_addr, my_change_addr, total_txfee, finishcallback,
 			choose_orders_recover, auth_addr)
@@ -403,9 +439,14 @@ class Taker(OrderbookWatch):
 		pass #TODO implement
 
 	def on_pubkey(self, nick, maker_pubkey):
+		"""On reception of !pubkey message from a maker,
+		initiate encrypted messaging with it."""
 		self.cjtx.start_encryption(nick, maker_pubkey)
 
 	def on_ioauth(self, nick, utxo_list, cj_pub, change_addr, btc_sig):
+		"""On reception of an !ioauth message from a maker, 
+		process its input utxos, first verify its btc signature
+		btc_sig of its nacl pubkey with btc pubkey cj_pub ."""
 		if not self.cjtx.auth_counterparty(nick, btc_sig, cj_pub):
 			debug('Authenticated encryption with counterparty: ' + nick + \
 			' not established. TODO: send rejection message')

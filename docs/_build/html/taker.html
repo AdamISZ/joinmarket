@@ -1,0 +1,296 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>taker module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-taker">
+<span id="taker-module"></span><h1>taker module<a class="headerlink" href="#module-taker" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="taker.CoinJoinTX">
+<em class="property">class </em><tt class="descclassname">taker.</tt><tt class="descname">CoinJoinTX</tt><big>(</big><em>msgchan</em>, <em>wallet</em>, <em>db</em>, <em>cj_amount</em>, <em>orders</em>, <em>input_utxos</em>, <em>my_cj_addr</em>, <em>my_change_addr</em>, <em>total_txfee</em>, <em>finishcallback</em>, <em>choose_orders_recover</em>, <em>auth_addr=None</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Encapsulation of a single Coinjoin transaction for a taker.</p>
+<dl class="class">
+<dt id="taker.CoinJoinTX.TimeoutThread">
+<em class="property">class </em><tt class="descname">TimeoutThread</tt><big>(</big><em>cjtx</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.TimeoutThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.TimeoutThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<dl class="method">
+<dt id="taker.CoinJoinTX.TimeoutThread.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.TimeoutThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.TimeoutThread.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.add_signature">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">add_signature</tt><big>(</big><em>nick</em>, <em>sigb64</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.add_signature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.add_signature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called repeatedly to add signatures to the 
+transaction template. Once all signatures have been
+filled in, runs finishcallback (which will sign 
+and push the transaction.)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.auth_counterparty">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">auth_counterparty</tt><big>(</big><em>nick</em>, <em>btc_sig</em>, <em>cj_pub</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.auth_counterparty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.auth_counterparty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validate the counterpartys claim to own the btc
+address/pubkey that will be used for coinjoining 
+with an ecdsa verification.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.coinjoin_address">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">coinjoin_address</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.coinjoin_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.coinjoin_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.push">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">push</tt><big>(</big><em>txd</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.push"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.push" title="Permalink to this definition">¶</a></dt>
+<dd><p>Push the transaction txd to the network
+using the existing BlockchainInterface instance.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.recover_from_nonrespondants">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">recover_from_nonrespondants</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.recover_from_nonrespondants"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.recover_from_nonrespondants" title="Permalink to this definition">¶</a></dt>
+<dd><p>if there is no choose_orders_recover then end and call finishcallback
+so the caller can handle it in their own way, notable for sweeping
+where simply replacing the makers wont work.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.recv_txio">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">recv_txio</tt><big>(</big><em>nick</em>, <em>utxo_list</em>, <em>cj_pub</em>, <em>change_addr</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.recv_txio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.recv_txio" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called repeatedly to gather the transaction inputs
+from the makers. Once all have been gathered, constructs
+the transaction to be signed and sends it to the makers.
+utxo_list is <em>our</em> utxos, cj_pub is the pubkey for our 
+coinjoin output address, and change_addr is our change address.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.self_sign">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">self_sign</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.self_sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.self_sign" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sign the current version of the transaction.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.self_sign_and_push">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">self_sign_and_push</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.self_sign_and_push"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.self_sign_and_push" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.sign_tx">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">sign_tx</tt><big>(</big><em>tx</em>, <em>i</em>, <em>priv</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.sign_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.sign_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinTX.start_encryption">
+<tt class="descclassname">CoinJoinTX.</tt><tt class="descname">start_encryption</tt><big>(</big><em>nick</em>, <em>maker_pk</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinTX.start_encryption"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinTX.start_encryption" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiates a nacl crypto_box object
+via ECDH. Creates Bitcoin signature of our nacl pubkey
+and sends this sig with bitcoin pubkey and nacl pubkey
+in !auth message.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="taker.CoinJoinerPeer">
+<em class="property">class </em><tt class="descclassname">taker.</tt><tt class="descname">CoinJoinerPeer</tt><big>(</big><em>msgchan</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinerPeer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinerPeer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Base class of all Taker and Maker
+and hybrids.</p>
+<dl class="method">
+<dt id="taker.CoinJoinerPeer.get_crypto_box_from_nick">
+<tt class="descname">get_crypto_box_from_nick</tt><big>(</big><em>nick</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinerPeer.get_crypto_box_from_nick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinerPeer.get_crypto_box_from_nick" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.CoinJoinerPeer.on_set_topic">
+<tt class="descname">on_set_topic</tt><big>(</big><em>newtopic</em><big>)</big><a class="reference internal" href="_modules/taker.html#CoinJoinerPeer.on_set_topic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.CoinJoinerPeer.on_set_topic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used for broadcasting important
+messages to all Joinmarket entities.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="taker.OrderbookWatch">
+<em class="property">class </em><tt class="descclassname">taker.</tt><tt class="descname">OrderbookWatch</tt><big>(</big><em>msgchan</em><big>)</big><a class="reference internal" href="_modules/taker.html#OrderbookWatch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.OrderbookWatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#taker.CoinJoinerPeer" title="taker.CoinJoinerPeer"><tt class="xref py py-class docutils literal"><span class="pre">taker.CoinJoinerPeer</span></tt></a></p>
+<p>A CoinJoiner peer that is used
+only for viewing the market, not taking part
+in transactions. Note however that Taker 
+inherits from this class to use its database
+of orders.</p>
+<dl class="method">
+<dt id="taker.OrderbookWatch.on_disconnect">
+<tt class="descname">on_disconnect</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#OrderbookWatch.on_disconnect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.OrderbookWatch.on_disconnect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.OrderbookWatch.on_nick_leave">
+<tt class="descname">on_nick_leave</tt><big>(</big><em>nick</em><big>)</big><a class="reference internal" href="_modules/taker.html#OrderbookWatch.on_nick_leave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.OrderbookWatch.on_nick_leave" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.OrderbookWatch.on_order_cancel">
+<tt class="descname">on_order_cancel</tt><big>(</big><em>counterparty</em>, <em>oid</em><big>)</big><a class="reference internal" href="_modules/taker.html#OrderbookWatch.on_order_cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.OrderbookWatch.on_order_cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.OrderbookWatch.on_order_seen">
+<tt class="descname">on_order_seen</tt><big>(</big><em>counterparty</em>, <em>oid</em>, <em>ordertype</em>, <em>minsize</em>, <em>maxsize</em>, <em>txfee</em>, <em>cjfee</em><big>)</big><a class="reference internal" href="_modules/taker.html#OrderbookWatch.on_order_seen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.OrderbookWatch.on_order_seen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.OrderbookWatch.on_welcome">
+<tt class="descname">on_welcome</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#OrderbookWatch.on_welcome"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.OrderbookWatch.on_welcome" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="taker.Taker">
+<em class="property">class </em><tt class="descclassname">taker.</tt><tt class="descname">Taker</tt><big>(</big><em>msgchan</em><big>)</big><a class="reference internal" href="_modules/taker.html#Taker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#taker.OrderbookWatch" title="taker.OrderbookWatch"><tt class="xref py py-class docutils literal"><span class="pre">taker.OrderbookWatch</span></tt></a></p>
+<dl class="method">
+<dt id="taker.Taker.get_crypto_box_from_nick">
+<tt class="descname">get_crypto_box_from_nick</tt><big>(</big><em>nick</em><big>)</big><a class="reference internal" href="_modules/taker.html#Taker.get_crypto_box_from_nick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker.get_crypto_box_from_nick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the nacl crypto Box encapsulating
+encrypted messaging with the counterparty &#8216;nick&#8217;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.Taker.on_error">
+<tt class="descname">on_error</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/taker.html#Taker.on_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker.on_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.Taker.on_ioauth">
+<tt class="descname">on_ioauth</tt><big>(</big><em>nick</em>, <em>utxo_list</em>, <em>cj_pub</em>, <em>change_addr</em>, <em>btc_sig</em><big>)</big><a class="reference internal" href="_modules/taker.html#Taker.on_ioauth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker.on_ioauth" title="Permalink to this definition">¶</a></dt>
+<dd><p>On reception of an !ioauth message from a maker, 
+process its input utxos, first verify its btc signature
+btc_sig of its nacl pubkey with btc pubkey cj_pub .</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.Taker.on_pubkey">
+<tt class="descname">on_pubkey</tt><big>(</big><em>nick</em>, <em>maker_pubkey</em><big>)</big><a class="reference internal" href="_modules/taker.html#Taker.on_pubkey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker.on_pubkey" title="Permalink to this definition">¶</a></dt>
+<dd><p>On reception of !pubkey message from a maker,
+initiate encrypted messaging with it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="taker.Taker.on_sig">
+<tt class="descname">on_sig</tt><big>(</big><em>nick</em>, <em>sig</em><big>)</big><a class="reference internal" href="_modules/taker.html#Taker.on_sig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker.on_sig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="taker.Taker.start_cj">
+<tt class="descname">start_cj</tt><big>(</big><em>wallet</em>, <em>cj_amount</em>, <em>orders</em>, <em>input_utxos</em>, <em>my_cj_addr</em>, <em>my_change_addr</em>, <em>total_txfee</em>, <em>finishcallback=None</em>, <em>choose_orders_recover=None</em>, <em>auth_addr=None</em><big>)</big><a class="reference internal" href="_modules/taker.html#Taker.start_cj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.Taker.start_cj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initiate a coinjoin by instantiating a CoinJoinTX object.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="taker.donation_address">
+<tt class="descclassname">taker.</tt><tt class="descname">donation_address</tt><big>(</big><em>cjtx</em><big>)</big><a class="reference internal" href="_modules/taker.html#donation_address"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.donation_address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="taker.sign_donation_tx">
+<tt class="descclassname">taker.</tt><tt class="descname">sign_donation_tx</tt><big>(</big><em>tx</em>, <em>i</em>, <em>priv</em><big>)</big><a class="reference internal" href="_modules/taker.html#sign_donation_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#taker.sign_donation_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/taker.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>slowaes module &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-slowaes">
+<span id="slowaes-module"></span><h1>slowaes module<a class="headerlink" href="#module-slowaes" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="slowaes.AES">
+<em class="property">class </em><tt class="descclassname">slowaes.</tt><tt class="descname">AES</tt><a class="reference internal" href="_modules/slowaes.html#AES"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="attribute">
+<dt id="slowaes.AES.Rcon">
+<tt class="descname">Rcon</tt><em class="property"> = [141, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54, 108, 216, 171, 77, 154, 47, 94, 188, 99, 198, 151, 53, 106, 212, 179, 125, 250, 239, 197, 145, 57, 114, 228, 211, 189, 97, 194, 159, 37, 74, 148, 51, 102, 204, 131, 29, 58, 116, 232, 203, 141, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54, 108, 216, 171, 77, 154, 47, 94, 188, 99, 198, 151, 53, 106, 212, 179, 125, 250, 239, 197, 145, 57, 114, 228, 211, 189, 97, 194, 159, 37, 74, 148, 51, 102, 204, 131, 29, 58, 116, 232, 203, 141, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54, 108, 216, 171, 77, 154, 47, 94, 188, 99, 198, 151, 53, 106, 212, 179, 125, 250, 239, 197, 145, 57, 114, 228, 211, 189, 97, 194, 159, 37, 74, 148, 51, 102, 204, 131, 29, 58, 116, 232, 203, 141, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54, 108, 216, 171, 77, 154, 47, 94, 188, 99, 198, 151, 53, 106, 212, 179, 125, 250, 239, 197, 145, 57, 114, 228, 211, 189, 97, 194, 159, 37, 74, 148, 51, 102, 204, 131, 29, 58, 116, 232, 203, 141, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54, 108, 216, 171, 77, 154, 47, 94, 188, 99, 198, 151, 53, 106, 212, 179, 125, 250, 239, 197, 145, 57, 114, 228, 211, 189, 97, 194, 159, 37, 74, 148, 51, 102, 204, 131, 29, 58, 116, 232, 203]</em><a class="headerlink" href="#slowaes.AES.Rcon" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.addRoundKey">
+<tt class="descname">addRoundKey</tt><big>(</big><em>state</em>, <em>roundKey</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.addRoundKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.addRoundKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds (XORs) the round key to the state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.aes_invMain">
+<tt class="descname">aes_invMain</tt><big>(</big><em>state</em>, <em>expandedKey</em>, <em>nbrRounds</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.aes_invMain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.aes_invMain" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.aes_invRound">
+<tt class="descname">aes_invRound</tt><big>(</big><em>state</em>, <em>roundKey</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.aes_invRound"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.aes_invRound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.aes_main">
+<tt class="descname">aes_main</tt><big>(</big><em>state</em>, <em>expandedKey</em>, <em>nbrRounds</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.aes_main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.aes_main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.aes_round">
+<tt class="descname">aes_round</tt><big>(</big><em>state</em>, <em>roundKey</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.aes_round"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.aes_round" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.core">
+<tt class="descname">core</tt><big>(</big><em>word</em>, <em>iteration</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.core"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.core" title="Permalink to this definition">¶</a></dt>
+<dd><p>Key schedule core.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.createRoundKey">
+<tt class="descname">createRoundKey</tt><big>(</big><em>expandedKey</em>, <em>roundKeyPointer</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.createRoundKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.createRoundKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a round key.
+Creates a round key from the given expanded key and the
+position within the expanded key.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.decrypt">
+<tt class="descname">decrypt</tt><big>(</big><em>iput</em>, <em>key</em>, <em>size</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.decrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.decrypt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.encrypt">
+<tt class="descname">encrypt</tt><big>(</big><em>iput</em>, <em>key</em>, <em>size</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.encrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.encrypt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.expandKey">
+<tt class="descname">expandKey</tt><big>(</big><em>key</em>, <em>size</em>, <em>expandedKeySize</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.expandKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.expandKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rijndael&#8217;s key expansion.</p>
+<p>Expands an 128,192,256 key into an 176,208,240 bytes key</p>
+<p>expandedKey is a char list of large enough size,
+key is the non-expanded key.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.galois_multiplication">
+<tt class="descname">galois_multiplication</tt><big>(</big><em>a</em>, <em>b</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.galois_multiplication"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.galois_multiplication" title="Permalink to this definition">¶</a></dt>
+<dd><p>Galois multiplication of 8 bit characters a and b.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.getRconValue">
+<tt class="descname">getRconValue</tt><big>(</big><em>num</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.getRconValue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.getRconValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves a given Rcon Value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.getSBoxInvert">
+<tt class="descname">getSBoxInvert</tt><big>(</big><em>num</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.getSBoxInvert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.getSBoxInvert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves a given Inverted S-Box Value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.getSBoxValue">
+<tt class="descname">getSBoxValue</tt><big>(</big><em>num</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.getSBoxValue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.getSBoxValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves a given S-Box Value</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slowaes.AES.keySize">
+<tt class="descname">keySize</tt><em class="property"> = {'SIZE_256': 32, 'SIZE_192': 24, 'SIZE_128': 16}</em><a class="headerlink" href="#slowaes.AES.keySize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.mixColumn">
+<tt class="descname">mixColumn</tt><big>(</big><em>column</em>, <em>isInv</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.mixColumn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.mixColumn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.mixColumns">
+<tt class="descname">mixColumns</tt><big>(</big><em>state</em>, <em>isInv</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.mixColumns"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.mixColumns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.rotate">
+<tt class="descname">rotate</tt><big>(</big><em>word</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.rotate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.rotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rijndael&#8217;s key schedule rotate operation.</p>
+<p>Rotate a word eight bits to the left: eg, rotate(1d2c3a4f) == 2c3a4f1d
+Word is an char list of size 4 (32 bits overall).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="slowaes.AES.rsbox">
+<tt class="descname">rsbox</tt><em class="property"> = [82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251, 124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203, 84, 123, 148, 50, 166, 194, 35, 61, 238, 76, 149, 11, 66, 250, 195, 78, 8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209, 37, 114, 248, 246, 100, 134, 104, 152, 22, 212, 164, 92, 204, 93, 101, 182, 146, 108, 112, 72, 80, 253, 237, 185, 218, 94, 21, 70, 87, 167, 141, 157, 132, 144, 216, 171, 0, 140, 188, 211, 10, 247, 228, 88, 5, 184, 179, 69, 6, 208, 44, 30, 143, 202, 63, 15, 2, 193, 175, 189, 3, 1, 19, 138, 107, 58, 145, 17, 65, 79, 103, 220, 234, 151, 242, 207, 206, 240, 180, 230, 115, 150, 172, 116, 34, 231, 173, 53, 133, 226, 249, 55, 232, 28, 117, 223, 110, 71, 241, 26, 113, 29, 41, 197, 137, 111, 183, 98, 14, 170, 24, 190, 27, 252, 86, 62, 75, 198, 210, 121, 32, 154, 219, 192, 254, 120, 205, 90, 244, 31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95, 96, 81, 127, 169, 25, 181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239, 160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97, 23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125]</em><a class="headerlink" href="#slowaes.AES.rsbox" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slowaes.AES.sbox">
+<tt class="descname">sbox</tt><em class="property"> = [99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118, 202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192, 183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21, 4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117, 9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132, 83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207, 208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168, 81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210, 205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115, 96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219, 224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121, 231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8, 186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138, 112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158, 225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223, 140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22]</em><a class="headerlink" href="#slowaes.AES.sbox" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.shiftRow">
+<tt class="descname">shiftRow</tt><big>(</big><em>state</em>, <em>statePointer</em>, <em>nbr</em>, <em>isInv</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.shiftRow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.shiftRow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.shiftRows">
+<tt class="descname">shiftRows</tt><big>(</big><em>state</em>, <em>isInv</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.shiftRows"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.shiftRows" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AES.subBytes">
+<tt class="descname">subBytes</tt><big>(</big><em>state</em>, <em>isInv</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AES.subBytes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AES.subBytes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="slowaes.AESModeOfOperation">
+<em class="property">class </em><tt class="descclassname">slowaes.</tt><tt class="descname">AESModeOfOperation</tt><a class="reference internal" href="_modules/slowaes.html#AESModeOfOperation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AESModeOfOperation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="attribute">
+<dt id="slowaes.AESModeOfOperation.aes">
+<tt class="descname">aes</tt><em class="property"> = &lt;slowaes.AES object at 0x7f8dc58f5b50&gt;</em><a class="headerlink" href="#slowaes.AESModeOfOperation.aes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AESModeOfOperation.convertString">
+<tt class="descname">convertString</tt><big>(</big><em>string</em>, <em>start</em>, <em>end</em>, <em>mode</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AESModeOfOperation.convertString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AESModeOfOperation.convertString" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AESModeOfOperation.decrypt">
+<tt class="descname">decrypt</tt><big>(</big><em>cipherIn</em>, <em>originalsize</em>, <em>mode</em>, <em>key</em>, <em>size</em>, <em>IV</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AESModeOfOperation.decrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AESModeOfOperation.decrypt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="slowaes.AESModeOfOperation.encrypt">
+<tt class="descname">encrypt</tt><big>(</big><em>stringIn</em>, <em>mode</em>, <em>key</em>, <em>size</em>, <em>IV</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#AESModeOfOperation.encrypt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.AESModeOfOperation.encrypt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="slowaes.AESModeOfOperation.modeOfOperation">
+<tt class="descname">modeOfOperation</tt><em class="property"> = {'OFB': 0, 'CBC': 2, 'CFB': 1}</em><a class="headerlink" href="#slowaes.AESModeOfOperation.modeOfOperation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="slowaes.append_PKCS7_padding">
+<tt class="descclassname">slowaes.</tt><tt class="descname">append_PKCS7_padding</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#append_PKCS7_padding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.append_PKCS7_padding" title="Permalink to this definition">¶</a></dt>
+<dd><p>return s padded to a multiple of 16-bytes by PKCS7 padding</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slowaes.decryptData">
+<tt class="descclassname">slowaes.</tt><tt class="descname">decryptData</tt><big>(</big><em>key</em>, <em>data</em>, <em>mode=2</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#decryptData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.decryptData" title="Permalink to this definition">¶</a></dt>
+<dd><p>decrypt <cite>data</cite> using <cite>key</cite></p>
+<p><cite>key</cite> should be a string of bytes.</p>
+<p><cite>data</cite> should have the initialization vector prepended as a string of
+ordinal values.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slowaes.encryptData">
+<tt class="descclassname">slowaes.</tt><tt class="descname">encryptData</tt><big>(</big><em>key</em>, <em>data</em>, <em>mode=2</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#encryptData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.encryptData" title="Permalink to this definition">¶</a></dt>
+<dd><p>encrypt <cite>data</cite> using <cite>key</cite></p>
+<p><cite>key</cite> should be a string of bytes.</p>
+<p>returned cipher is a string of bytes prepended with the initialization
+vector.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slowaes.generateRandomKey">
+<tt class="descclassname">slowaes.</tt><tt class="descname">generateRandomKey</tt><big>(</big><em>keysize</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#generateRandomKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.generateRandomKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a key from random data of length <cite>keysize</cite>.</p>
+<p>The returned key is a string of bytes.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="slowaes.strip_PKCS7_padding">
+<tt class="descclassname">slowaes.</tt><tt class="descname">strip_PKCS7_padding</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/slowaes.html#strip_PKCS7_padding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#slowaes.strip_PKCS7_padding" title="Permalink to this definition">¶</a></dt>
+<dd><p>return s stripped of PKCS7 padding</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/slowaes.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">JoinMarket 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

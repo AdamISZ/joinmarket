@@ -1,0 +1,302 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>sendpayment &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for sendpayment</h1><div class="highlight"><pre>
+<span class="c">#! /usr/bin/env python</span>
+
+<span class="kn">from</span> <span class="nn">optparse</span> <span class="kn">import</span> <span class="n">OptionParser</span>
+<span class="kn">import</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">pprint</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span>
+<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">__file__</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="s">&#39;lib&#39;</span><span class="p">))</span>
+
+<span class="kn">from</span> <span class="nn">common</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">common</span>
+<span class="kn">import</span> <span class="nn">taker</span> <span class="kn">as</span> <span class="nn">takermodule</span>
+<span class="kn">from</span> <span class="nn">irc</span> <span class="kn">import</span> <span class="n">IRCMessageChannel</span><span class="p">,</span> <span class="n">random_nick</span>
+<span class="kn">import</span> <span class="nn">bitcoin</span> <span class="kn">as</span> <span class="nn">btc</span>
+
+<div class="viewcode-block" id="check_high_fee"><a class="viewcode-back" href="../sendpayment.html#sendpayment.check_high_fee">[docs]</a><span class="k">def</span> <span class="nf">check_high_fee</span><span class="p">(</span><span class="n">total_fee_pc</span><span class="p">):</span>
+	<span class="n">WARNING_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.02</span> <span class="c"># 2%</span>
+	<span class="k">if</span> <span class="n">total_fee_pc</span> <span class="o">&gt;</span> <span class="n">WARNING_THRESHOLD</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;=&#39;</span><span class="o">*</span> <span class="mi">60</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>
+		<span class="k">print</span> <span class="s">&#39;WARNING   &#39;</span> <span class="o">*</span> <span class="mi">6</span>
+		<span class="k">print</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;=&#39;</span><span class="o">*</span> <span class="mi">60</span><span class="p">]</span><span class="o">*</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">print</span> <span class="s">&#39;OFFERED COINJOIN FEE IS UNUSUALLY HIGH. DOUBLE/TRIPLE CHECK.&#39;</span>
+		<span class="k">print</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;=&#39;</span><span class="o">*</span> <span class="mi">60</span><span class="p">]</span><span class="o">*</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">print</span> <span class="s">&#39;WARNING   &#39;</span> <span class="o">*</span> <span class="mi">6</span>
+		<span class="k">print</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;=&#39;</span><span class="o">*</span> <span class="mi">60</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PaymentThread"><a class="viewcode-back" href="../sendpayment.html#sendpayment.PaymentThread">[docs]</a><span class="k">class</span> <span class="nc">PaymentThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A thread which does the buy-side algorithm -</span>
+<span class="sd">	chooses which coinjoins to initiate and when&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">taker</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;The single argument &#39;taker&#39; is an instance</span>
+<span class="sd">		of SendPayment.&quot;&quot;&quot;</span>
+		<span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">taker</span> <span class="o">=</span> <span class="n">taker</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="PaymentThread.create_tx"><a class="viewcode-back" href="../sendpayment.html#sendpayment.PaymentThread.create_tx">[docs]</a>	<span class="k">def</span> <span class="nf">create_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">crow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT COUNT(DISTINCT counterparty) FROM orderbook;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+		<span class="n">counterparty_count</span> <span class="o">=</span> <span class="n">crow</span><span class="p">[</span><span class="s">&#39;COUNT(DISTINCT counterparty)&#39;</span><span class="p">]</span>
+		<span class="n">counterparty_count</span> <span class="o">-=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">counterparty_count</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">makercount</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;not enough counterparties to fill order, ending&#39;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+			<span class="k">return</span>
+
+		<span class="n">utxos</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">orders</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">cjamount</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">change_addr</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">choose_orders_recover</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">amount</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_utxos_by_mixdepth</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">]</span>
+			<span class="n">total_value</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">va</span><span class="p">[</span><span class="s">&#39;value&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">va</span> <span class="ow">in</span> <span class="n">utxos</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+			<span class="n">orders</span><span class="p">,</span> <span class="n">cjamount</span> <span class="o">=</span> <span class="n">choose_sweep_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">total_value</span><span class="p">,</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">makercount</span><span class="p">,</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">chooseOrdersFunc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span><span class="p">)</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">answeryes</span><span class="p">:</span>
+				<span class="n">total_cj_fee</span> <span class="o">=</span> <span class="n">total_value</span> <span class="o">-</span> <span class="n">cjamount</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">txfee</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;total cj fee = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_cj_fee</span><span class="p">))</span>
+				<span class="n">total_fee_pc</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="n">total_cj_fee</span> <span class="o">/</span> <span class="n">cjamount</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;total coinjoin fee = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%.3g</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="n">total_fee_pc</span><span class="p">)))</span> <span class="o">+</span> <span class="s">&#39;%&#39;</span><span class="p">)</span>
+				<span class="n">check_high_fee</span><span class="p">(</span><span class="n">total_fee_pc</span><span class="p">)</span>
+				<span class="k">if</span> <span class="nb">raw_input</span><span class="p">(</span><span class="s">&#39;send with these orders? (y/n):&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;y&#39;</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+					<span class="k">return</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sendpayment_choose_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">makercount</span><span class="p">)</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">orders</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ERROR not enough liquidity in the orderbook, exiting&#39;</span><span class="p">)</span>
+				<span class="k">return</span>
+			<span class="n">total_amount</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">amount</span> <span class="o">+</span> <span class="n">total_cj_fee</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">txfee</span>
+			<span class="k">print</span> <span class="s">&#39;total amount spent = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_amount</span><span class="p">)</span>
+			<span class="n">utxos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">select_utxos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">,</span> <span class="n">total_amount</span><span class="p">)</span>
+			<span class="n">cjamount</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">amount</span>
+			<span class="n">change_addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="o">.</span><span class="n">get_change_addr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">)</span>
+			<span class="n">choose_orders_recover</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sendpayment_choose_orders</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">start_cj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">wallet</span><span class="p">,</span> <span class="n">cjamount</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">utxos</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">destaddr</span><span class="p">,</span> <span class="n">change_addr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">finishcallback</span><span class="p">,</span> <span class="n">choose_orders_recover</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PaymentThread.finishcallback"><a class="viewcode-back" href="../sendpayment.html#sendpayment.PaymentThread.finishcallback">[docs]</a>	<span class="k">def</span> <span class="nf">finishcallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coinjointx</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;When transaction construction completed,</span>
+<span class="sd">		either sign and push to the network, or retry</span>
+<span class="sd">		if some makers did not respond.&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">coinjointx</span><span class="o">.</span><span class="n">all_responded</span><span class="p">:</span>
+			<span class="n">coinjointx</span><span class="o">.</span><span class="n">self_sign_and_push</span><span class="p">()</span>
+			<span class="n">debug</span><span class="p">(</span><span class="s">&#39;created fully signed tx, ending&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+			<span class="k">return</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">+=</span> <span class="n">coinjointx</span><span class="o">.</span><span class="n">nonrespondants</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;recreating the tx, ignored_makers=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">create_tx</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="PaymentThread.sendpayment_choose_orders"><a class="viewcode-back" href="../sendpayment.html#sendpayment.PaymentThread.sendpayment_choose_orders">[docs]</a>	<span class="k">def</span> <span class="nf">sendpayment_choose_orders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">makercount</span><span class="p">,</span> <span class="n">nonrespondants</span><span class="o">=</span><span class="p">[],</span> <span class="n">active_nicks</span><span class="o">=</span><span class="p">[]):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">+=</span> <span class="n">nonrespondants</span>
+		<span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span> <span class="o">=</span> <span class="n">choose_orders</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">cj_amount</span><span class="p">,</span> <span class="n">makercount</span><span class="p">,</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">chooseOrdersFunc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span> <span class="o">+</span> <span class="n">active_nicks</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">orders</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">0</span>
+		<span class="k">print</span> <span class="s">&#39;chosen orders to fill &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; totalcjfee=&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_cj_fee</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">answeryes</span><span class="p">:</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ignored_makers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">noun</span> <span class="o">=</span> <span class="s">&#39;total&#39;</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">noun</span> <span class="o">=</span> <span class="s">&#39;additional&#39;</span>
+			<span class="n">total_fee_pc</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="n">total_cj_fee</span> <span class="o">/</span> <span class="n">cj_amount</span>
+			<span class="n">debug</span><span class="p">(</span><span class="n">noun</span> <span class="o">+</span> <span class="s">&#39; coinjoin fee = &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%.3g</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="n">total_fee_pc</span><span class="p">)))</span> <span class="o">+</span> <span class="s">&#39;%&#39;</span><span class="p">)</span>
+			<span class="n">check_high_fee</span><span class="p">(</span><span class="n">total_fee_pc</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nb">raw_input</span><span class="p">(</span><span class="s">&#39;send with these orders? (y/n):&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;y&#39;</span><span class="p">:</span>
+				<span class="n">debug</span><span class="p">(</span><span class="s">&#39;ending&#39;</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">msgchan</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+				<span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+		<span class="k">return</span> <span class="n">orders</span><span class="p">,</span> <span class="n">total_cj_fee</span>
+</div>
+<div class="viewcode-block" id="PaymentThread.run"><a class="viewcode-back" href="../sendpayment.html#sendpayment.PaymentThread.run">[docs]</a>	<span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">print</span> <span class="s">&#39;waiting for all orders to certainly arrive&#39;</span>
+		<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">taker</span><span class="o">.</span><span class="n">waittime</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">create_tx</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="SendPayment"><a class="viewcode-back" href="../sendpayment.html#sendpayment.SendPayment">[docs]</a><span class="k">class</span> <span class="nc">SendPayment</span><span class="p">(</span><span class="n">takermodule</span><span class="o">.</span><span class="n">Taker</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;A Taker for initiating and carrying out </span>
+<span class="sd">	a single coinjoin transaction using a JoinMarket wallet.&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">,</span> <span class="n">wallet</span><span class="p">,</span> <span class="n">destaddr</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">makercount</span><span class="p">,</span> <span class="n">txfee</span><span class="p">,</span> <span class="n">waittime</span><span class="p">,</span> <span class="n">mixdepth</span><span class="p">,</span> <span class="n">answeryes</span><span class="p">,</span> <span class="n">chooseOrdersFunc</span><span class="p">):</span>
+		<span class="n">takermodule</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msgchan</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">wallet</span> <span class="o">=</span> <span class="n">wallet</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">destaddr</span> <span class="o">=</span> <span class="n">destaddr</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">=</span> <span class="n">amount</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">makercount</span> <span class="o">=</span> <span class="n">makercount</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">txfee</span> <span class="o">=</span> <span class="n">txfee</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">waittime</span> <span class="o">=</span> <span class="n">waittime</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">mixdepth</span> <span class="o">=</span> <span class="n">mixdepth</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">answeryes</span> <span class="o">=</span> <span class="n">answeryes</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">chooseOrdersFunc</span> <span class="o">=</span> <span class="n">chooseOrdersFunc</span>
+
+<div class="viewcode-block" id="SendPayment.on_welcome"><a class="viewcode-back" href="../sendpayment.html#sendpayment.SendPayment.on_welcome">[docs]</a>	<span class="k">def</span> <span class="nf">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">takermodule</span><span class="o">.</span><span class="n">Taker</span><span class="o">.</span><span class="n">on_welcome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">PaymentThread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../sendpayment.html#sendpayment.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+	<span class="n">parser</span> <span class="o">=</span> <span class="n">OptionParser</span><span class="p">(</span><span class="n">usage</span><span class="o">=</span><span class="s">&#39;usage: %prog [options] [wallet file / fromaccount] [amount] [destaddr]&#39;</span><span class="p">,</span>
+		<span class="n">description</span><span class="o">=</span><span class="s">&#39;Sends a single payment from a given mixing depth of your &#39;</span> <span class="o">+</span>
+			<span class="s">&#39;wallet to an given address using coinjoin and then switches off. Also sends from bitcoinqt. &#39;</span> <span class="o">+</span>
+			<span class="s">&#39;Setting amount to zero will do a sweep, where the entire mix depth is emptied&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-f&#39;</span><span class="p">,</span> <span class="s">&#39;--txfee&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;txfee&#39;</span><span class="p">,</span>
+		<span class="n">default</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&#39;total miner fee in satoshis, default=10000&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-w&#39;</span><span class="p">,</span> <span class="s">&#39;--wait-time&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;waittime&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;wait time in seconds to allow orders to arrive, default=5&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-N&#39;</span><span class="p">,</span> <span class="s">&#39;--makercount&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;makercount&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;how many makers to coinjoin with, default=2&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-C&#39;</span><span class="p">,</span><span class="s">&#39;--choose-cheapest&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;choosecheapest&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;override weightened offers picking and choose cheapest&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-P&#39;</span><span class="p">,</span><span class="s">&#39;--pick-orders&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;pickorders&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;manually pick which orders to take. doesn</span><span class="se">\&#39;</span><span class="s">t work while sweeping.&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--mixdepth&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mixdepth&#39;</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;mixing depth to spend from, default=0&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--yes&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;answeryes&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;answer yes to everything&#39;</span><span class="p">)</span>
+	<span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s">&#39;--rpcwallet&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;userpcwallet&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+		<span class="n">help</span><span class="o">=</span><span class="s">&#39;Use the Bitcoin Core wallet through json rpc, instead of the internal joinmarket &#39;</span> <span class="o">+</span>
+			<span class="s">&#39;wallet. Requires blockchain_source=json-rpc&#39;</span><span class="p">)</span>
+	<span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+		<span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;Needs a wallet, amount and destination address&#39;</span><span class="p">)</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+	<span class="n">wallet_name</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+	<span class="n">destaddr</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+	
+	<span class="n">load_program_config</span><span class="p">()</span>
+	<span class="n">addr_valid</span><span class="p">,</span> <span class="n">errormsg</span> <span class="o">=</span> <span class="n">validate_address</span><span class="p">(</span><span class="n">destaddr</span><span class="p">)</span>
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">addr_valid</span><span class="p">:</span>
+		<span class="k">print</span> <span class="s">&#39;ERROR: Address invalid. &#39;</span> <span class="o">+</span> <span class="n">errormsg</span>
+		<span class="k">return</span>
+
+	<span class="n">chooseOrdersFunc</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">pickorders</span> <span class="ow">and</span> <span class="n">amount</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span> <span class="c">#cant use for sweeping</span>
+		<span class="n">chooseOrdersFunc</span> <span class="o">=</span> <span class="n">pick_order</span>
+	<span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">choosecheapest</span><span class="p">:</span>
+		<span class="n">chooseOrdersFunc</span> <span class="o">=</span> <span class="n">cheapest_order_choose</span>
+	<span class="k">else</span><span class="p">:</span> <span class="c">#choose randomly (weighted)</span>
+		<span class="n">chooseOrdersFunc</span> <span class="o">=</span> <span class="n">weighted_order_choose</span>
+	
+	<span class="n">common</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">random_nick</span><span class="p">()</span>
+	<span class="n">debug</span><span class="p">(</span><span class="s">&#39;starting sendpayment&#39;</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">userpcwallet</span><span class="p">:</span>
+		<span class="n">wallet</span> <span class="o">=</span> <span class="n">Wallet</span><span class="p">(</span><span class="n">wallet_name</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">wallet</span> <span class="o">=</span> <span class="n">BitcoinCoreWallet</span><span class="p">(</span><span class="n">fromaccount</span> <span class="o">=</span> <span class="n">wallet_name</span><span class="p">)</span>
+	<span class="n">common</span><span class="o">.</span><span class="n">bc_interface</span><span class="o">.</span><span class="n">sync_wallet</span><span class="p">(</span><span class="n">wallet</span><span class="p">)</span>
+
+	<span class="n">irc</span> <span class="o">=</span> <span class="n">IRCMessageChannel</span><span class="p">(</span><span class="n">common</span><span class="o">.</span><span class="n">nickname</span><span class="p">)</span>
+	<span class="n">taker</span> <span class="o">=</span> <span class="n">SendPayment</span><span class="p">(</span><span class="n">irc</span><span class="p">,</span> <span class="n">wallet</span><span class="p">,</span> <span class="n">destaddr</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">makercount</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">txfee</span><span class="p">,</span>
+		<span class="n">options</span><span class="o">.</span><span class="n">waittime</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mixdepth</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">answeryes</span><span class="p">,</span> <span class="n">chooseOrdersFunc</span><span class="p">)</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;starting irc&#39;</span><span class="p">)</span>
+		<span class="n">irc</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+	<span class="k">except</span><span class="p">:</span>
+		<span class="n">debug</span><span class="p">(</span><span class="s">&#39;CRASHING, DUMPING EVERYTHING&#39;</span><span class="p">)</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">wallet</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;addr_cache&#39;</span><span class="p">,</span> <span class="s">&#39;keys&#39;</span><span class="p">,</span> <span class="s">&#39;wallet_name&#39;</span><span class="p">,</span> <span class="s">&#39;seed&#39;</span><span class="p">])</span>
+		<span class="n">debug_dump_object</span><span class="p">(</span><span class="n">taker</span><span class="p">)</span>
+		<span class="kn">import</span> <span class="nn">traceback</span>
+		<span class="n">debug</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+	<span class="n">main</span><span class="p">()</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;done&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

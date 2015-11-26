@@ -1,0 +1,681 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bitcoin.secp256k1 &mdash; JoinMarket 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="JoinMarket 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bitcoin.secp256k1</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+
+<span class="kn">from</span> <span class="nn">_libsecp256k1</span> <span class="kn">import</span> <span class="n">ffi</span><span class="p">,</span> <span class="n">lib</span>
+<span class="kn">import</span> <span class="nn">_noncefunc</span>
+
+<span class="n">EC_COMPRESSED</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">SECP256K1_EC_COMPRESSED</span>
+<span class="n">EC_UNCOMPRESSED</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">SECP256K1_EC_UNCOMPRESSED</span>
+
+<span class="n">FLAG_SIGN</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">SECP256K1_CONTEXT_SIGN</span>
+<span class="n">FLAG_VERIFY</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">SECP256K1_CONTEXT_VERIFY</span>
+<span class="n">ALL_FLAGS</span> <span class="o">=</span> <span class="n">FLAG_SIGN</span> <span class="o">|</span> <span class="n">FLAG_VERIFY</span>
+<span class="n">NO_FLAGS</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">SECP256K1_CONTEXT_NONE</span>
+
+<span class="n">gctx</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_context_create</span><span class="p">(</span><span class="n">ALL_FLAGS</span><span class="p">)</span>
+
+<span class="n">HAS_RECOVERABLE</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">lib</span><span class="p">,</span> <span class="s">&#39;secp256k1_ecdsa_sign_recoverable&#39;</span><span class="p">)</span>
+<span class="n">HAS_SCHNORR</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">lib</span><span class="p">,</span> <span class="s">&#39;secp256k1_schnorr_sign&#39;</span><span class="p">)</span>
+<span class="n">HAS_ECDH</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">lib</span><span class="p">,</span> <span class="s">&#39;secp256k1_ecdh&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Base"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.Base">[docs]</a><span class="k">class</span> <span class="nc">Base</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">flags</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_destroy</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">ctx</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">flags</span> <span class="ow">in</span> <span class="p">(</span><span class="n">NO_FLAGS</span><span class="p">,</span> <span class="n">FLAG_SIGN</span><span class="p">,</span> <span class="n">FLAG_VERIFY</span><span class="p">,</span> <span class="n">ALL_FLAGS</span><span class="p">)</span>
+            <span class="n">ctx</span> <span class="o">=</span> <span class="n">gctx</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_destroy</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_context_destroy</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">flags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span> <span class="o">=</span> <span class="n">ctx</span>
+
+</div>
+<div class="viewcode-block" id="ECDSA"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA">[docs]</a><span class="k">class</span> <span class="nc">ECDSA</span><span class="p">:</span>  <span class="c"># Use as a mixin; instance.ctx is assumed to exist.</span>
+
+<div class="viewcode-block" id="ECDSA.ecdsa_serialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_serialize">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">):</span>
+        <span class="n">len_sig</span> <span class="o">=</span> <span class="mi">74</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;unsigned char[</span><span class="si">%d</span><span class="s">]&#39;</span> <span class="o">%</span> <span class="n">len_sig</span><span class="p">)</span>
+        <span class="n">outputlen</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;size_t *&#39;</span><span class="p">,</span> <span class="n">len_sig</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_signature_serialize_der</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">outputlen</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">outputlen</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_deserialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ser_sig</span><span class="p">):</span>
+        <span class="n">raw_sig</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_signature *&#39;</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_signature_parse_der</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">ser_sig</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ser_sig</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">raw_sig</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_serialize_compact"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_serialize_compact">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_serialize_compact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">):</span>
+        <span class="n">len_sig</span> <span class="o">=</span> <span class="mi">64</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;unsigned char[</span><span class="si">%d</span><span class="s">]&#39;</span> <span class="o">%</span> <span class="n">len_sig</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_signature_serialize_compact</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">len_sig</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_deserialize_compact"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_deserialize_compact">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_deserialize_compact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ser_sig</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ser_sig</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">64</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid signature length&quot;</span><span class="p">)</span>
+
+        <span class="n">raw_sig</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_signature *&#39;</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_signature_parse_compact</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">ser_sig</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">raw_sig</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_signature_normalize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_signature_normalize">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_signature_normalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">check_only</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check and optionally convert a signature to a normalized lower-S form.</span>
+<span class="sd">        If check_only is True then the normalized signature is not returned.</span>
+
+<span class="sd">        This function always return a tuple containing a boolean (True if</span>
+<span class="sd">        not previously normalized or False if signature was already</span>
+<span class="sd">        normalized), and the normalized signature. When check_only is True,</span>
+<span class="sd">        the normalized signature returned is always None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">check_only</span><span class="p">:</span>
+            <span class="n">sigout</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sigout</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_signature *&#39;</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_signature_normalize</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">sigout</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="n">sigout</span> <span class="k">if</span> <span class="n">sigout</span> <span class="o">!=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span> <span class="k">else</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_recover"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_recover">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_recover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_RECOVERABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_recovery not enabled&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">ALL_FLAGS</span> <span class="o">!=</span> <span class="n">ALL_FLAGS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;instance not configured for ecdsa recover&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">pubkey</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+
+        <span class="n">recovered</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_recover</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">,</span> <span class="n">msg32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">recovered</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pubkey</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;failed to recover ECDSA public key&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_recoverable_serialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_recoverable_serialize">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_recoverable_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_RECOVERABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_recovery not enabled&quot;</span><span class="p">)</span>
+
+        <span class="n">outputlen</span> <span class="o">=</span> <span class="mi">64</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;unsigned char[</span><span class="si">%d</span><span class="s">]&#39;</span> <span class="o">%</span> <span class="n">outputlen</span><span class="p">)</span>
+        <span class="n">recid</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;int *&#39;</span><span class="p">)</span>
+
+        <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_recoverable_signature_serialize_compact</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">recid</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">outputlen</span><span class="p">)),</span> <span class="n">recid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_recoverable_deserialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_recoverable_deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_recoverable_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ser_sig</span><span class="p">,</span> <span class="n">rec_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_RECOVERABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_recovery not enabled&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rec_id</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rec_id</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid rec_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ser_sig</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">64</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid signature length&quot;</span><span class="p">)</span>
+
+        <span class="n">recover_sig</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_recoverable_signature *&#39;</span><span class="p">)</span>
+
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_recoverable_signature_parse_compact</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">,</span> <span class="n">ser_sig</span><span class="p">,</span> <span class="n">rec_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">parsed</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">recover_sig</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;failed to parse ECDSA compact sig&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ECDSA.ecdsa_recoverable_convert"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.ECDSA.ecdsa_recoverable_convert">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_recoverable_convert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_RECOVERABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_recovery not enabled&quot;</span><span class="p">)</span>
+
+        <span class="n">normal_sig</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_signature *&#39;</span><span class="p">)</span>
+
+        <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_recoverable_signature_convert</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">normal_sig</span><span class="p">,</span> <span class="n">recover_sig</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">normal_sig</span>
+
+</div></div>
+<div class="viewcode-block" id="Schnorr"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.Schnorr">[docs]</a><span class="k">class</span> <span class="nc">Schnorr</span><span class="p">:</span>  <span class="c"># Use as a mixin; instance.ctx is assumed to exist.</span>
+
+<div class="viewcode-block" id="Schnorr.schnorr_recover"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.Schnorr.schnorr_recover">[docs]</a>    <span class="k">def</span> <span class="nf">schnorr_recover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">schnorr_sig</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_SCHNORR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_schnorr not enabled&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">FLAG_VERIFY</span> <span class="o">!=</span> <span class="n">FLAG_VERIFY</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;instance not configured for sig verification&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">pubkey</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+
+        <span class="n">recovered</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_schnorr_recover</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">schnorr_sig</span><span class="p">,</span> <span class="n">msg32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">recovered</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pubkey</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;failed to recover public key&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Schnorr.schnorr_partial_combine"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.Schnorr.schnorr_partial_combine">[docs]</a>    <span class="k">def</span> <span class="nf">schnorr_partial_combine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schnorr_sigs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Combine multiple Schnorr partial signatures.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_SCHNORR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_schnorr not enabled&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">schnorr_sigs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="n">sig64</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [64]&#39;</span><span class="p">)</span>
+        <span class="n">sig64sin</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sig</span> <span class="ow">in</span> <span class="n">schnorr_sigs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;expected bytes, got {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">sig</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">64</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;invalid signature length&#39;</span><span class="p">)</span>
+            <span class="n">sig64sin</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char []&#39;</span><span class="p">,</span> <span class="n">sig</span><span class="p">))</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_schnorr_partial_combine</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">sig64</span><span class="p">,</span> <span class="n">sig64sin</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sig64sin</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;failed to combine signatures ({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">sig64</span><span class="p">,</span> <span class="mi">64</span><span class="p">))</span>
+
+</div></div>
+<div class="viewcode-block" id="PublicKey"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey">[docs]</a><span class="k">class</span> <span class="nc">PublicKey</span><span class="p">(</span><span class="n">Base</span><span class="p">,</span> <span class="n">ECDSA</span><span class="p">,</span> <span class="n">Schnorr</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pubkey</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">FLAG_VERIFY</span><span class="p">,</span> <span class="n">ctx</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">Base</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pubkey</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raw</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pubkey</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;raw pubkey must be bytes&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">pubkey</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pubkey</span><span class="p">,</span> <span class="n">ffi</span><span class="o">.</span><span class="n">CData</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;pubkey must be an internal object&#39;</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="n">ffi</span><span class="o">.</span><span class="n">typeof</span><span class="p">(</span><span class="n">pubkey</span><span class="p">)</span> <span class="ow">is</span> <span class="n">ffi</span><span class="o">.</span><span class="n">typeof</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span> <span class="o">=</span> <span class="n">pubkey</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="PublicKey.serialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.serialize">[docs]</a>    <span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">compressed</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="s">&quot;No public key defined&quot;</span>
+
+        <span class="n">len_compressed</span> <span class="o">=</span> <span class="mi">33</span> <span class="k">if</span> <span class="n">compressed</span> <span class="k">else</span> <span class="mi">65</span>
+        <span class="n">res_compressed</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [</span><span class="si">%d</span><span class="s">]&#39;</span> <span class="o">%</span> <span class="n">len_compressed</span><span class="p">)</span>
+        <span class="n">outlen</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;size_t *&#39;</span><span class="p">,</span> <span class="n">len_compressed</span><span class="p">)</span>
+	<span class="n">compflag</span> <span class="o">=</span> <span class="n">EC_COMPRESSED</span> <span class="k">if</span> <span class="n">compressed</span> <span class="k">else</span> <span class="n">EC_UNCOMPRESSED</span>
+
+        <span class="n">serialized</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_pubkey_serialize</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">res_compressed</span><span class="p">,</span> <span class="n">outlen</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="n">compflag</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">serialized</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">res_compressed</span><span class="p">,</span> <span class="n">len_compressed</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="PublicKey.deserialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pubkey_ser</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pubkey_ser</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">33</span><span class="p">,</span> <span class="mi">65</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;unknown public key size (expected 33 or 65)&quot;</span><span class="p">)</span>
+
+        <span class="n">pubkey</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_pubkey_parse</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">pubkey</span><span class="p">,</span> <span class="n">pubkey_ser</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">pubkey_ser</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid public key&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span> <span class="o">=</span> <span class="n">pubkey</span>
+        <span class="k">return</span> <span class="n">pubkey</span>
+</div>
+<div class="viewcode-block" id="PublicKey.combine"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.combine">[docs]</a>    <span class="k">def</span> <span class="nf">combine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pubkeys</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a number of public keys together.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">pubkeys</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="n">outpub</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">pubkeys</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">ffi</span><span class="o">.</span><span class="n">typeof</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="ow">is</span> <span class="n">ffi</span><span class="o">.</span><span class="n">typeof</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_pubkey_combine</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">outpub</span><span class="p">,</span> <span class="n">pubkeys</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">pubkeys</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;failed to combine public keys&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span> <span class="o">=</span> <span class="n">outpub</span>
+        <span class="k">return</span> <span class="n">outpub</span>
+</div>
+<div class="viewcode-block" id="PublicKey.tweak_mul"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.tweak_mul">[docs]</a>    <span class="k">def</span> <span class="nf">tweak_mul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalar</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Multiply pubkey by 32 byte scalar.</span>
+<span class="sd">        Return new public key object.&#39;&#39;&#39;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="s">&quot;No public key defined.&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scalar</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">scalar</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">32</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;scalar must be composed of 32 bytes&#39;</span><span class="p">)</span>
+        <span class="c">#create distinct Pubkey object</span>
+        <span class="n">newpub</span> <span class="o">=</span> <span class="n">PublicKey</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serialize</span><span class="p">(),</span> <span class="n">raw</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_pubkey_tweak_mul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">newpub</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="n">scalar</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Failed to multiply&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">newpub</span>
+    </div>
+<div class="viewcode-block" id="PublicKey.ecdsa_verify"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.ecdsa_verify">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="s">&quot;No public key defined&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">FLAG_VERIFY</span> <span class="o">!=</span> <span class="n">FLAG_VERIFY</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;instance not configured for sig verification&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+
+        <span class="n">verified</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_verify</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">verified</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PublicKey.schnorr_verify"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.schnorr_verify">[docs]</a>    <span class="k">def</span> <span class="nf">schnorr_verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">schnorr_sig</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                       <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="s">&quot;No public key defined&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_SCHNORR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_schnorr not enabled&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">FLAG_VERIFY</span> <span class="o">!=</span> <span class="n">FLAG_VERIFY</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;instance not configured for sig verification&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+
+        <span class="n">verified</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_schnorr_verify</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">schnorr_sig</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">verified</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PublicKey.ecdh"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PublicKey.ecdh">[docs]</a>    <span class="k">def</span> <span class="nf">ecdh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalar</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="s">&quot;No public key defined&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_ECDH</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_ecdh not enabled&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scalar</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">scalar</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">32</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;scalar must be composed of 32 bytes&#39;</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [32]&#39;</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdh</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="n">scalar</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;invalid scalar ({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="mi">32</span><span class="p">))</span>
+
+</div></div>
+<div class="viewcode-block" id="PrivateKey"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey">[docs]</a><span class="k">class</span> <span class="nc">PrivateKey</span><span class="p">(</span><span class="n">Base</span><span class="p">,</span> <span class="n">ECDSA</span><span class="p">,</span> <span class="n">Schnorr</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">privkey</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">ALL_FLAGS</span><span class="p">,</span> <span class="n">ctx</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">flags</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ALL_FLAGS</span><span class="p">,</span> <span class="n">FLAG_SIGN</span><span class="p">)</span>
+
+        <span class="n">Base</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pubkey</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">privkey</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_raw_privkey</span><span class="p">(</span><span class="n">_gen_private_key</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raw</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">privkey</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">privkey</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">32</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;privkey must be composed of 32 bytes&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_raw_privkey</span><span class="p">(</span><span class="n">privkey</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">privkey</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_update_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">public_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gen_public_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pubkey</span> <span class="o">=</span> <span class="n">PublicKey</span><span class="p">(</span>
+            <span class="n">public_key</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">ctx</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">flags</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PrivateKey.set_raw_privkey"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.set_raw_privkey">[docs]</a>    <span class="k">def</span> <span class="nf">set_raw_privkey</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">privkey</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_seckey_verify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">privkey</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid private key&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span> <span class="o">=</span> <span class="n">privkey</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_public_key</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="PrivateKey.tweak_add"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.tweak_add">[docs]</a>    <span class="k">def</span> <span class="nf">tweak_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalar</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Add a 32 byte scalar to this private key and return the</span>
+<span class="sd">        result, ensuring that the result is a valid private key also.</span>
+<span class="sd">        Result is returned as 32 byte raw/scalar.&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scalar</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">scalar</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">32</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;scalar must be composed of 32 bytes&#39;</span><span class="p">)</span>
+        <span class="n">newpriv</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [32]&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_privkey_tweak_add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">newpriv</span><span class="p">,</span> <span class="n">scalar</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Failed to add private keys&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_seckey_verify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">newpriv</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid private key resulted from addition.&quot;</span><span class="p">)</span>        
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">newpriv</span><span class="p">,</span><span class="mi">32</span><span class="p">))</span>
+    </div>
+<div class="viewcode-block" id="PrivateKey.serialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.serialize">[docs]</a>    <span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">compressed</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+	<span class="n">hexkey</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">compressed</span><span class="p">:</span>
+		<span class="n">hexkey</span> <span class="o">+=</span> <span class="s">&#39;01&#39;</span>
+        <span class="k">return</span> <span class="n">hexkey</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf8&#39;</span><span class="p">)</span> 
+</div>
+<div class="viewcode-block" id="PrivateKey.deserialize"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">privkey_ser</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">privkey_ser</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span><span class="mi">66</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid private key&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">privkey_ser</span><span class="p">)</span><span class="o">==</span><span class="mi">66</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">privkey_ser</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span> <span class="o">!=</span> <span class="s">&#39;01&#39;</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;invalid private key&quot;</span><span class="p">)</span>
+		<span class="n">privkey_ser</span> <span class="o">=</span> <span class="n">privkey_ser</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">rawkey</span> <span class="o">=</span> <span class="n">binascii</span><span class="o">.</span><span class="n">unhexlify</span><span class="p">(</span><span class="n">privkey_ser</span><span class="p">)</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_raw_privkey</span><span class="p">(</span><span class="n">rawkey</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span>
+</div>
+    <span class="k">def</span> <span class="nf">_gen_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">privkey</span><span class="p">):</span>
+        <span class="n">pubkey_ptr</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+
+        <span class="n">created</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ec_pubkey_create</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">pubkey_ptr</span><span class="p">,</span> <span class="n">privkey</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">created</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">pubkey_ptr</span>
+
+<div class="viewcode-block" id="PrivateKey.ecdsa_sign"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.ecdsa_sign">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_sign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">,</span> <span class="n">randnonce</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">raw_sig</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_signature *&#39;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">randnonce</span><span class="p">:</span>
+	    <span class="n">nf</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">addressof</span><span class="p">(</span><span class="n">_noncefunc</span><span class="o">.</span><span class="n">lib</span><span class="p">,</span> <span class="s">&quot;nonce_function_rand&quot;</span><span class="p">)</span>
+	    <span class="n">ndata</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&quot;char [32]&quot;</span><span class="p">,</span> <span class="n">randnonce</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+	    <span class="n">nf</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span>
+	    <span class="n">ndata</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span>
+
+        <span class="n">signed</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_sign</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">,</span> <span class="n">nf</span><span class="p">,</span> <span class="n">ndata</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">signed</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">raw_sig</span>
+</div>
+<div class="viewcode-block" id="PrivateKey.ecdsa_sign_recoverable"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.ecdsa_sign_recoverable">[docs]</a>    <span class="k">def</span> <span class="nf">ecdsa_sign_recoverable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_RECOVERABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_recovery not enabled&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">raw_sig</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_ecdsa_recoverable_signature *&#39;</span><span class="p">)</span>
+
+        <span class="n">signed</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_ecdsa_sign_recoverable</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">raw_sig</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">,</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">,</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">signed</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">raw_sig</span>
+</div>
+<div class="viewcode-block" id="PrivateKey.schnorr_sign"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.schnorr_sign">[docs]</a>    <span class="k">def</span> <span class="nf">schnorr_sign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_SCHNORR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_schnorr not enabled&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">sig64</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [64]&#39;</span><span class="p">)</span>
+
+        <span class="n">signed</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_schnorr_sign</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">sig64</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">,</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">,</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">signed</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">sig64</span><span class="p">,</span> <span class="mi">64</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="PrivateKey.schnorr_generate_nonce_pair"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.schnorr_generate_nonce_pair">[docs]</a>    <span class="k">def</span> <span class="nf">schnorr_generate_nonce_pair</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                                    <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a nonce pair deterministically for use with</span>
+<span class="sd">        schnorr_partial_sign.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_SCHNORR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_schnorr not enabled&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">pubnonce</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;secp256k1_pubkey *&#39;</span><span class="p">)</span>
+        <span class="n">privnonce</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [32]&#39;</span><span class="p">)</span>
+
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_schnorr_generate_nonce_pair</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">pubnonce</span><span class="p">,</span> <span class="n">privnonce</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">,</span>
+            <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">,</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">valid</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">pubnonce</span><span class="p">,</span> <span class="n">privnonce</span>
+</div>
+<div class="viewcode-block" id="PrivateKey.schnorr_partial_sign"><a class="viewcode-back" href="../../bitcoin.html#bitcoin.secp256k1.PrivateKey.schnorr_partial_sign">[docs]</a>    <span class="k">def</span> <span class="nf">schnorr_partial_sign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">privnonce</span><span class="p">,</span> <span class="n">pubnonce_others</span><span class="p">,</span>
+                             <span class="n">raw</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Produce a partial Schnorr signature, which can be combined using</span>
+<span class="sd">        schnorr_partial_combine to end up with a full signature that is</span>
+<span class="sd">        verifiable using PublicKey.schnorr_verify.</span>
+
+<span class="sd">        To combine pubnonces, use PublicKey.combine.</span>
+
+<span class="sd">        Do not pass the pubnonce produced for the respective privnonce;</span>
+<span class="sd">        combine the pubnonces from other signers and pass that instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_SCHNORR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;secp256k1_schnorr not enabled&quot;</span><span class="p">)</span>
+
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">)</span>
+        <span class="n">sig64</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s">&#39;char [64]&#39;</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">secp256k1_schnorr_partial_sign</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="p">,</span> <span class="n">sig64</span><span class="p">,</span> <span class="n">msg32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="p">,</span>
+            <span class="n">pubnonce_others</span><span class="p">,</span> <span class="n">privnonce</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;failed to partially sign ({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">ffi</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">sig64</span><span class="p">,</span> <span class="mi">64</span><span class="p">))</span>
+
+</div></div>
+<span class="k">def</span> <span class="nf">_hash32</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">digest</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">digest</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg32</span> <span class="o">=</span> <span class="n">msg</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg32</span><span class="p">)</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">!=</span> <span class="mi">256</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;digest function must produce 256 bits&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">msg32</span>
+
+
+<span class="k">def</span> <span class="nf">_gen_private_key</span><span class="p">():</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">key</span>
+
+
+<span class="k">def</span> <span class="nf">_main_cli</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&#39;utf-8&#39;</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">binascii</span>
+
+    <span class="k">def</span> <span class="nf">show_public</span><span class="p">(</span><span class="n">public_key</span><span class="p">):</span>
+        <span class="n">rawp</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">serialize</span><span class="p">()</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">u&quot;Public key: {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">rawp</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">sign</span><span class="p">(</span><span class="n">funcname</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">private_key</span><span class="p">))</span>
+        <span class="n">priv</span> <span class="o">=</span> <span class="n">PrivateKey</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">priv</span><span class="p">,</span> <span class="n">funcname</span><span class="p">)</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">priv</span><span class="p">,</span> <span class="n">sig</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;privkey&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">private_key</span><span class="p">:</span>
+            <span class="n">rawkey</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">private_key</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rawkey</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">priv</span> <span class="o">=</span> <span class="n">PrivateKey</span><span class="p">(</span><span class="n">rawkey</span><span class="p">)</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">priv</span><span class="o">.</span><span class="n">private_key</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">u&quot;{}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">show_pubkey</span><span class="p">:</span>
+            <span class="n">show_public</span><span class="p">(</span><span class="n">priv</span><span class="o">.</span><span class="n">pubkey</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;sign&#39;</span><span class="p">:</span>
+        <span class="n">priv</span><span class="p">,</span> <span class="n">sig_raw</span> <span class="o">=</span> <span class="n">sign</span><span class="p">(</span><span class="s">&#39;ecdsa_sign&#39;</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">priv</span><span class="o">.</span><span class="n">ecdsa_serialize</span><span class="p">(</span><span class="n">sig_raw</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">u&quot;{}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">show_pubkey</span><span class="p">:</span>
+            <span class="n">show_public</span><span class="p">(</span><span class="n">priv</span><span class="o">.</span><span class="n">pubkey</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;checksig&#39;</span><span class="p">:</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">public_key</span><span class="p">))</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">signature</span><span class="p">))</span>
+        <span class="n">pub</span> <span class="o">=</span> <span class="n">PublicKey</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sig_raw</span> <span class="o">=</span> <span class="n">pub</span><span class="o">.</span><span class="n">ecdsa_deserialize</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+            <span class="n">good</span> <span class="o">=</span> <span class="n">pub</span><span class="o">.</span><span class="n">ecdsa_verify</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="n">sig_raw</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">good</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">u&quot;{}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">good</span><span class="p">))</span>
+        <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">good</span> <span class="k">else</span> <span class="mi">1</span>
+
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;signrec&#39;</span><span class="p">:</span>
+        <span class="n">priv</span><span class="p">,</span> <span class="n">sig</span> <span class="o">=</span> <span class="n">sign</span><span class="p">(</span><span class="s">&#39;ecdsa_sign_recoverable&#39;</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+        <span class="n">sig</span><span class="p">,</span> <span class="n">recid</span> <span class="o">=</span> <span class="n">priv</span><span class="o">.</span><span class="n">ecdsa_recoverable_serialize</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">u&quot;{} {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">binascii</span><span class="o">.</span><span class="n">hexlify</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">),</span> <span class="n">recid</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">show_pubkey</span><span class="p">:</span>
+            <span class="n">show_public</span><span class="p">(</span><span class="n">priv</span><span class="o">.</span><span class="n">pubkey</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;recpub&#39;</span><span class="p">:</span>
+        <span class="n">empty</span> <span class="o">=</span> <span class="n">PublicKey</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="n">ALL_FLAGS</span><span class="p">)</span>
+        <span class="n">sig_raw</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">signature</span><span class="p">))</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">empty</span><span class="o">.</span><span class="n">ecdsa_recoverable_deserialize</span><span class="p">(</span><span class="n">sig_raw</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">recid</span><span class="p">)</span>
+        <span class="n">pubkey</span> <span class="o">=</span> <span class="n">empty</span><span class="o">.</span><span class="n">ecdsa_recover</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="n">show_public</span><span class="p">(</span><span class="n">PublicKey</span><span class="p">(</span><span class="n">pubkey</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="mi">0</span>
+
+
+<span class="k">def</span> <span class="nf">_parse_cli</span><span class="p">():</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">from</span> <span class="nn">argparse</span> <span class="kn">import</span> <span class="n">ArgumentParser</span>
+
+    <span class="n">py2</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="o">.</span><span class="n">major</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="n">enc</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">getfilesystemencoding</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">bytes_input</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">s</span> <span class="k">if</span> <span class="n">py2</span> <span class="k">else</span> <span class="n">s</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">enc</span><span class="p">)</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">subparser</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="s">&#39;action&#39;</span><span class="p">)</span>
+
+    <span class="n">genparser</span> <span class="o">=</span> <span class="n">subparser</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s">&#39;privkey&#39;</span><span class="p">)</span>
+    <span class="n">genparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-p&#39;</span><span class="p">,</span> <span class="s">&#39;--show-pubkey&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">)</span>
+    <span class="n">genparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-k&#39;</span><span class="p">,</span> <span class="s">&#39;--private_key&#39;</span><span class="p">)</span>
+
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">subparser</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s">&#39;sign&#39;</span><span class="p">)</span>
+    <span class="n">sign</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-k&#39;</span><span class="p">,</span> <span class="s">&#39;--private-key&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">sign</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--message&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">bytes_input</span><span class="p">)</span>
+    <span class="n">sign</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-p&#39;</span><span class="p">,</span> <span class="s">&#39;--show-pubkey&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">)</span>
+
+    <span class="n">signrec</span> <span class="o">=</span> <span class="n">subparser</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s">&#39;signrec&#39;</span><span class="p">)</span>
+    <span class="n">signrec</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-k&#39;</span><span class="p">,</span> <span class="s">&#39;--private-key&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">signrec</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--message&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">bytes_input</span><span class="p">)</span>
+    <span class="n">signrec</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-p&#39;</span><span class="p">,</span> <span class="s">&#39;--show-pubkey&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">)</span>
+
+    <span class="n">check</span> <span class="o">=</span> <span class="n">subparser</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s">&#39;checksig&#39;</span><span class="p">)</span>
+    <span class="n">check</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-p&#39;</span><span class="p">,</span> <span class="s">&#39;--public-key&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">check</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--message&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">bytes_input</span><span class="p">)</span>
+    <span class="n">check</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-s&#39;</span><span class="p">,</span> <span class="s">&#39;--signature&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="n">recpub</span> <span class="o">=</span> <span class="n">subparser</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span><span class="s">&#39;recpub&#39;</span><span class="p">)</span>
+    <span class="n">recpub</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="s">&#39;--message&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">bytes_input</span><span class="p">)</span>
+    <span class="n">recpub</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-i&#39;</span><span class="p">,</span> <span class="s">&#39;--recid&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">recpub</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-s&#39;</span><span class="p">,</span> <span class="s">&#39;--signature&#39;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parser</span><span class="p">,</span> <span class="n">enc</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="n">parser</span><span class="p">,</span> <span class="n">enc</span> <span class="o">=</span> <span class="n">_parse_cli</span><span class="p">()</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">_main_cli</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">enc</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">JoinMarket 0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, JoinMarket developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
