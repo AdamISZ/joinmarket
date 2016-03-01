@@ -8,6 +8,7 @@ from .support import get_log, calc_cj_fee, debug_dump_object, \
     rand_norm_array, rand_pow_array, rand_exp_array, joinmarket_alert, core_alert
 from .enc_wrapper import decode_decrypt, encrypt_encode, get_pubkey
 from .irc import IRCMessageChannel, random_nick
+from .hsmc import JMHSPeer
 from .jsonrpc import JsonRpcError, JsonRpcConnectionError, JsonRpc
 from .maker import Maker
 from .message_channel import MessageChannel
