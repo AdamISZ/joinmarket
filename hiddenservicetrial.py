@@ -45,7 +45,7 @@ from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 from twisted.internet import task
 
-
+log = get_log()
 # thread which does the buy-side algorithm
 # chooses which coinjoins to initiate and when
 class PT(object):
@@ -234,9 +234,10 @@ class YieldGenerator(Maker):
         self.log_statement([timestamp, '', '', '', '', '', '', 'Connected'])
 
     def create_my_orders(self):
+        print("starting create my orders")
         mix_balance = self.wallet.get_balance_by_mixdepth()
         if len([b for m, b in mix_balance.iteritems() if b > 0]) == 0:
-            log.debug('do not have any coins left')
+            print('do not have any coins left')
             return []
 
         # print mix_balance
@@ -247,6 +248,8 @@ class YieldGenerator(Maker):
                  'maxsize': mix_balance[max_mix] - jm_single().DUST_THRESHOLD,
                  'txfee': txfee,
                  'cjfee': cjfee}
+        print("got this order: ")
+        print(str(order))
 
         # sanity check
         assert order['minsize'] >= 0
@@ -325,7 +328,7 @@ def updates(prog, tag, summary):
 
 def setup_complete(config, i, proto):
     print("Protocol completed")
-
+    peers[i].tor_is_ready = True
     onion_address = config.HiddenServices[i].hostname
 
     print("I have a hidden (web) service running at:")
@@ -366,11 +369,79 @@ def make_wallets(n, wallet_structures=None, mean_amt=1, sdev_amt=0, start_index=
                     wallets[i+start_index]['wallet'].get_external_addr(j), amt)
     return wallets
 
-Npeers = 5
+def init_peers(result):
+    print("Starting init peers")
+    task.deferLater(reactor, 1, peers[0].hspeer_run, [], config, 0)
+    task.deferLater(reactor, 3, peers[1].hspeer_run,
+                        [("SEED1", hs_public_ports[0])], config, 1)
+    task.deferLater(reactor, 3, peers[2].hspeer_run,
+                            [("SEED1", hs_public_ports[0])], config, 2)     
+    
+def start_jm(result):
+
+    if isinstance(jm_single().bc_interface, BlockrInterface):
+        c = ('\nYou are running a yield generator by polling the blockr.io '
+             'website. This is quite bad for privacy. That site is owned by '
+             'coinbase.com Also your bot will run faster and more efficently, '
+             'you can be immediately notified of new bitcoin network '
+             'information so your money will be working for you as hard as '
+             'possibleLearn how to setup JoinMarket with Bitcoin Core: '
+             'https://github.com/chris-belcher/joinmarket/wiki/Running'
+             '-JoinMarket-with-Bitcoin-Core-full-node')
+        print(c)
+        ret = raw_input('\nContinue? (y/n):')
+        if ret[0] != 'y':
+            exit(0)
+    
+    wallet_structures = [[1, 0, 0, 0, 0]] * (Npeers-1)
+    wallets = make_wallets(Npeers-1,wallet_structures=wallet_structures,
+                                            mean_amt=10)
+    
+    for k, v in wallets.iteritems():
+        log.debug('starting yield generator')
+        jm_single().bc_interface.sync_wallet(wallets[k]['wallet'])
+        jm_single().bc_interface.sync_wallet(wallets[k]['wallet'])
+    
+    
+    
+    for i in range(1, Npeers):#EDITED HERE
+        maker = YieldGenerator(peers[i], wallets[i-1]['wallet'])
+
+    dest_address = btc.privkey_to_address(os.urandom(32), get_p2pk_vbyte())
+    addr_valid, errormsg = validate_address(dest_address)
+    amount = 100000000
+    if not addr_valid:
+        print('ERROR: Address invalid. ' + errormsg)
+        reactor.stop()
+    
+    chooseOrdersFunc = weighted_order_choose
+    
+    log.debug('starting sendpayment')
+    
+    #taker = SendPayment(peers[-1], wallets[Npeers-2]['wallet'], dest_address, amount, 3,
+    #                    5000, 30, 0,
+    #                    True, chooseOrdersFunc)
+    
+    #pt = PT(taker)
+    #task.deferLater(reactor, 25, pt.run)
+
+Npeers = 3
 hs_port_start = 9876
 hs_ports = []
 hs_public_ports = []
 hs_temps = []
+
+txfee = 1000
+cjfee = '0.002'  # 0.2% fee
+jm_single().nickname = random_nick()
+
+# minimum size is such that you always net profit at least 20% of the miner fee
+minsize = int(1.2 * txfee / float(cjfee))
+
+mix_levels = 5
+
+load_program_config()
+
 for i in range(Npeers):
     hs_ports.append(hs_port_start+i)
     hs_public_ports.append(8080+i)
@@ -394,7 +465,7 @@ for i in range(Npeers):
 # The launch_tor method adds other needed config directives to give
 # us a minimal config.
 config = txtorcon.TorConfig()
-config.SOCKSPort = 0
+config.SOCKSPort = 9150
 config.ORPort = 9089
 for i in range(Npeers):
     config.HiddenServices.append(
@@ -408,13 +479,13 @@ config.save()
 
 peers = []
 #Set up a static seed node peer
-peers.append(JMHSPeer(hs_ports[0], [], fixed_name="SEED1"))
-task.deferLater(reactor, 15, peers[0].hspeer_run, [], config, 0)
+peers.append(JMHSPeer(hs_public_ports[0], [], fixed_name="SEED1"))
+#task.deferLater(reactor, 15, peers[0].hspeer_run, [], config, 0)
 
 for i in range(1, Npeers):
-    peers.append(JMHSPeer(hs_ports[i], []))
-    task.deferLater(reactor, 18, peers[i].hspeer_run,
-                    [("SEED1", hs_ports[0])], config, i)
+    peers.append(JMHSPeer(hs_public_ports[i], []))
+    #task.deferLater(reactor, 18, peers[i].hspeer_run,
+    #                [("SEED1", hs_public_ports[0])], config, i)
 # next we set up our service to listen on hs_port which is forwarded
 # (via the HiddenService options) from the hidden service address on
 # port hs_public_port
@@ -429,68 +500,16 @@ for i in range(Npeers):
 # (i.e. let the Web server do its thing). Note that the way we've set
 # up the slave Tor process, when we close the connection to it tor
 # will exit.
-
 d = txtorcon.launch_tor(config, reactor, progress_updates=updates)
+#d.addCallback(setup_complete, config, 0)
+#d.addErrback(setup_failed)
+#d.addCallback(peers[0].hspeer_run, [], config, 0)
+#d.addCallback(peers[1].hspeer_run, [("SEED1", hs_public_ports[0])], config, 1)
 for i in range(Npeers):
     d.addCallback(functools.partial(setup_complete, config, i))
     d.addErrback(setup_failed)
 
+d.addCallback(init_peers)
+d.addCallback(start_jm)
 tlog.startLogging(open('hsexptlog0.txt', 'w'))
-
-txfee = 1000
-cjfee = '0.002'  # 0.2% fee
-jm_single().nickname = random_nick()
-
-# minimum size is such that you always net profit at least 20% of the miner fee
-minsize = int(1.2 * txfee / float(cjfee))
-
-mix_levels = 5
-
-log = get_log()
-
-load_program_config()
-
-if isinstance(jm_single().bc_interface, BlockrInterface):
-    c = ('\nYou are running a yield generator by polling the blockr.io '
-         'website. This is quite bad for privacy. That site is owned by '
-         'coinbase.com Also your bot will run faster and more efficently, '
-         'you can be immediately notified of new bitcoin network '
-         'information so your money will be working for you as hard as '
-         'possibleLearn how to setup JoinMarket with Bitcoin Core: '
-         'https://github.com/chris-belcher/joinmarket/wiki/Running'
-         '-JoinMarket-with-Bitcoin-Core-full-node')
-    print(c)
-    ret = raw_input('\nContinue? (y/n):')
-    if ret[0] != 'y':
-        exit(0)
-
-wallet_structures = [[1, 0, 0, 0, 0]] * (Npeers-1)
-wallets = make_wallets(Npeers-1,wallet_structures=wallet_structures,
-                                        mean_amt=10)
-for k, v in wallets.iteritems():
-    log.debug('starting yield generator')
-    jm_single().bc_interface.sync_wallet(wallets[k]['wallet'])
-    jm_single().bc_interface.sync_wallet(wallets[k]['wallet'])
-
-time.sleep(15)
-for i in range(1, Npeers-1):
-    maker = YieldGenerator(peers[i], wallets[i-1]['wallet'])
- 
-dest_address = btc.privkey_to_address(os.urandom(32), get_p2pk_vbyte())
-addr_valid, errormsg = validate_address(dest_address)
-amount = 100000000
-if not addr_valid:
-    print('ERROR: Address invalid. ' + errormsg)
-    exit(0)
-
-chooseOrdersFunc = weighted_order_choose
-
-log.debug('starting sendpayment')
-
-taker = SendPayment(peers[-1], wallets[Npeers-2]['wallet'], dest_address, amount, 3,
-                    5000, 30, 0,
-                    True, chooseOrdersFunc)
-
-pt = PT(taker)
-task.deferLater(reactor, 25, pt.run)
 reactor.run()

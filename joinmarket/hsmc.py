@@ -15,13 +15,14 @@ from hashlib import sha1
 import binascii
 
 from StringIO import StringIO
-from twisted.internet import reactor
-from twisted.internet.endpoints import TCP4ServerEndpoint
+from twisted.internet import reactor, defer
+from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint
 from twisted.web import server, resource
 from twisted.python import log as tlog
 
 import random
 import txtorcon
+from txsocksx.http import SOCKS5Agent
 
 from pprint import pformat
 
@@ -36,6 +37,33 @@ from hashlib import sha256
 from joinmarket.support import get_log, chunks
 
 openssl_path = 'openssl'
+
+#utility functions
+
+def retry(times, func, *args, **kwargs):
+    """retry a defer function
+    @param times: how many times to retry
+    @param func: defer function
+    """
+    errorList = []
+    deferred = defer.Deferred()
+    def run():
+        print('Trying: ', func.__name__)
+        d = func(*args, **kwargs)
+        d.addCallbacks(deferred.callback, error)
+    def error(error):
+        errorList.append(error)
+        print(str(error))
+        print('Failed: ', func.__name__, ':', len(errorList), 'times')
+        # Retry
+        if len(errorList) < times:
+            reactor.callLater(10, run)
+        # Fail
+        else:
+            print('Giving up.')
+            deferred.errback(errorList)
+    run()
+    return deferred
 
 class HSPeer(resource.Resource):
     '''A class implementing a HS P2P network of
@@ -98,14 +126,17 @@ class HSPeer(resource.Resource):
         to avoid the complexities of super() calls with 
         multiple inheritance.'''
         self.port = port
+        self.tor_is_ready = False
         self.host = None #will be set after init
         self.peerid = None
         self.peername = random_nick() if not fixed_name else fixed_name
         self.current_peers = []
-        self.heartbeat = 3
+        self.heartbeat = 5
         self.updates = {}
         self.add_peers(seedpeers)
-        self.agent = Agent(reactor)
+        self.torEndpoint = TCP4ClientEndpoint(reactor, '127.0.0.1', 9150)
+        self.agent = SOCKS5Agent(reactor, proxyEndpoint=self.torEndpoint)        
+        #self.agent = Agent(reactor)
        
     def check_received(self, server_response, msgtype, u, peer):
         '''Called when peer responds to request.
@@ -150,9 +181,9 @@ class HSPeer(resource.Resource):
                 #print 'adding new peer: ' + str(x)
         #       self.add_peers([x])
         
-        #self.log("Here is my orderbook: ")
-        #self.log("*********************")
-        #self.log(pformat(self.orderbook))
+        self.log("Here is my orderbook: ")
+        self.log("*********************")
+        self.log(pformat(self.orderbook))
 
     def cbRequest(self, response, url):
         '''HTTP request callback; read the
@@ -202,19 +233,37 @@ class HSPeer(resource.Resource):
         #TODO toconsider: rsa sign is slow(ish). issue - but not so much with 1024!
         auth_sig = self.hs_sign_message(self.peerid + body_string)
         body = FileBodyProducer(StringIO(body_string))
-        d = self.agent.request(
-            'POST', url,
-            Headers({'User-Agent': ['Twisted Web Client Example'],
+        #duckduckgo HS for testing:
+        #url = 'http://3g2upl4pq6kufc4m.onion:80'
+        self.log("Requesting with url: "+ url)
+        #d = self.agent.request(
+        #    'POST', url,
+        #    Headers({'User-Agent': ['Twisted Web Client Example'],
+        #             'Content-Type': ['application/json'],
+        #             'Onion-Host': [self.host],
+        #             'Nickname': [self.peername],
+        #             'Serving-Port': [str(self.port)],
+        #            'Peer-Id': [self.peerid],
+        #             'Pubkey': [binascii.hexlify(self.hs_pubkey)],
+        #             'Peer-Auth': [binascii.hexlify(auth_sig)]}),
+        #    body)
+        headers = Headers({'User-Agent': ['Twisted Web Client Example'],
                      'Content-Type': ['application/json'],
                      'Onion-Host': [self.host],
                      'Nickname': [self.peername],
                      'Serving-Port': [str(self.port)],
                      'Peer-Id': [self.peerid],
                      'Pubkey': [binascii.hexlify(self.hs_pubkey)],
-                     'Peer-Auth': [binascii.hexlify(auth_sig)]}),
-            body)
+                     'Peer-Auth': [binascii.hexlify(auth_sig)]})
+        
+        d = retry(25, self.agent.request, 'POST', url, headers, body)
         d.addCallback(self.cbRequest, url)
+        d.addErrback(self.handle_failed_client_request, url, data)
         return d
+
+    def handle_failed_client_request(self, failure, url, data):
+        self.log("In handle failed request for url: "+url)
+        self.log(str(failure))
 
     def hspeer_run(self, seedpeers=None, config=None, i=None):
         '''Main loop for the peer.
@@ -224,60 +273,62 @@ class HSPeer(resource.Resource):
         them out to the relevant peer.'''
         #This completion of setup is deferred until run-start
         #since HS setup takes a while
-        if i is not None:
-            self.log('seed HS is: '+config.HiddenServices[0].hostname)
-            self.log('my HS is: '+config.HiddenServices[i].hostname)
-            self.log('my HS privkey is at : ' + os.path.join(
-                config.HiddenServices[i].dir, 'private_key'))
-            self.hs_private_key_location = os.path.join(
-                config.HiddenServices[i].dir, 'private_key')
-            self.hs_pubkey = self.hs_get_pubkeyDER()
-            self.set_host(config.HiddenServices[i].hostname)
+        if self.tor_is_ready:
+            if i is not None:
+                self.log('seed HS is: '+config.HiddenServices[0].hostname)
+                self.log('my HS is: '+config.HiddenServices[i].hostname)
+                self.log('my HS privkey is at : ' + os.path.join(
+                    config.HiddenServices[i].dir, 'private_key'))
+                self.hs_private_key_location = os.path.join(
+                    config.HiddenServices[i].dir, 'private_key')
+                self.hs_pubkey = self.hs_get_pubkeyDER()
+                self.set_host(config.HiddenServices[i].hostname)
+                
+                if seedpeers:
+                    seedpeers = [(seedpeers[0][0], config.HiddenServices[0].hostname,
+                                  seedpeers[0][1])]
+                    self.add_peers(seedpeers)
+    
+            #NOTE we are using localhost for testing, can switch to sp[1] for hostname
+            #TODO investigate better algorithms, this way is too "floody" to scale.
+            for sp in self.current_peers:
+                #self.log("Looking at peer: "+','.join([str(_) for _ in sp]))
+                pid = self.get_peer_id(*sp)
+                for msgtype, u in self.updates[pid].iteritems():
+                    self.log("making request to : "+str(
+                        sp[0]) + " for msgtype: "+str(msgtype))
+                    d2 = self.make_peer_request(
+                        'http://' + str(sp[1]) + ':' + str(sp[2]), [msgtype, u])
+                    d2.addCallback(self.check_received, msgtype, u, sp)
+                
+                #see detailed comment in self.check_received; only make req. once.
+                msgtypes = self.updates[pid].keys()
+                #self.log("Looking to delete uqe for peer: "+str(
+                #    sp[0]) + " , msgtypes is: "+str(msgtypes))
+                for mt in msgtypes:
+                    #self.log("Deleting message type: "+str(mt))
+                    del self.updates[pid][mt]
+    
+                base_request = ['announce', self.peername, self.host, self.port]
+                d = self.make_peer_request(
+                    'http://' + str(sp[1]) + ':' + str(sp[2]), base_request)
+                d.addCallback(self.process_heartbeat_response)
             
-            if seedpeers:
-                seedpeers = [(seedpeers[0][0], config.HiddenServices[0].hostname,
-                              seedpeers[0][1])]
-                self.add_peers(seedpeers)
-
-        #NOTE we are using localhost for testing, can switch to sp[1] for hostname
-        #TODO investigate better algorithms, this way is too "floody" to scale.
-        for sp in self.current_peers:
-            #self.log("Looking at peer: "+','.join([str(_) for _ in sp]))
-            pid = self.get_peer_id(*sp)
-            for msgtype, u in self.updates[pid].iteritems():
-                self.log("making request to : "+str(
-                    sp[0]) + " for msgtype: "+str(msgtype))
-                d2 = self.make_peer_request(
-                    'http://localhost:'+str(sp[2]), [msgtype, u])
-                d2.addCallback(self.check_received, msgtype, u, sp)
+            #for testing; sometimes send a fill to a peer at random
+            '''
+            r = random.randint(1,100)
+            if not r%5:
+                if len(self.current_peers) > 0:
+                    self.log("Sending to peer: "+str(self.current_peers[0]))
+                    self.fill_orders({self.current_peers[0][0]:{'oid':0}}, 36000, 'abcdef')
+                    #self.send_message(self.current_peers[0][0], "hello peer")
+            '''
             
-            #see detailed comment in self.check_received; only make req. once.
-            msgtypes = self.updates[pid].keys()
-            #self.log("Looking to delete uqe for peer: "+str(
-            #    sp[0]) + " , msgtypes is: "+str(msgtypes))
-            for mt in msgtypes:
-                #self.log("Deleting message type: "+str(mt))
-                del self.updates[pid][mt]
-
-            base_request = ['announce', self.peername, self.host, self.port]
-            d = self.make_peer_request('http://localhost:'+str(sp[2]), base_request)
-            d.addCallback(self.process_heartbeat_response)
-        
-        #for testing; sometimes send a fill to a peer at random
-        '''
-        r = random.randint(1,100)
-        if not r%5:
-            if len(self.current_peers) > 0:
-                self.log("Sending to peer: "+str(self.current_peers[0]))
-                self.fill_orders({self.current_peers[0][0]:{'oid':0}}, 36000, 'abcdef')
-                #self.send_message(self.current_peers[0][0], "hello peer")
-        '''
+            #Trigger on_welcome event (hangover from IRC) once only on first arrival.
+            if self.on_welcome and not self.on_welcome_sent:
+                self.on_welcome()
+                self.on_welcome_sent = True
         task.deferLater(reactor, self.heartbeat, self.hspeer_run)
-        
-        #Trigger on_welcome event (hangover from IRC) once only on first arrival.
-        if self.on_welcome and not self.on_welcome_sent:
-            self.on_welcome()
-            self.on_welcome_sent = True
 
     def broadcast(self, peers, data):
         self.log("Working with peers: " + str(peers))
@@ -288,7 +339,7 @@ class HSPeer(resource.Resource):
         for peer in peers:
             #TODO this will change to onion host
             #for non-testing
-            url = 'http://localhost:'+str(peer[2])
+            url = 'http://' + peer[1] + ':' + str(peer[2])
             self.make_peer_request(url, data)
 
     def parseRequestHeaders(self, headers, server=False):
@@ -298,7 +349,7 @@ class HSPeer(resource.Resource):
         If these requests come from "server" (incoming from HS),
         we dont need to do auth.'''
         #This fairly disgusting syntax is a result of the weird way headers
-        #are stored        
+        #are stored 
         peerid = filter(lambda x: x[0]=='Peer-Id', headers)[0][1][0]
         host = filter(lambda x: x[0]=='Onion-Host', headers)[0][1][0]
         peername = filter(lambda x: x[0]=='Nickname', headers)[0][1][0]
