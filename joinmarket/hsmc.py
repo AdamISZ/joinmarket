@@ -289,7 +289,6 @@ class HSPeer(resource.Resource):
                                   seedpeers[0][1])]
                     self.add_peers(seedpeers)
     
-            #NOTE we are using localhost for testing, can switch to sp[1] for hostname
             #TODO investigate better algorithms, this way is too "floody" to scale.
             for sp in self.current_peers:
                 #self.log("Looking at peer: "+','.join([str(_) for _ in sp]))
@@ -339,7 +338,7 @@ class HSPeer(resource.Resource):
         for peer in peers:
             #TODO this will change to onion host
             #for non-testing
-            url = 'http://' + peer[1] + ':' + str(peer[2])
+            url = 'http://' + str(peer[1]) + ':' + str(peer[2])
             self.make_peer_request(url, data)
 
     def parseRequestHeaders(self, headers, server=False):
@@ -600,7 +599,9 @@ class JMHSPeer(MessageChannel, HSPeer):
         dummy orders. Note that additions to the
         locally stored orderbook occur here and here only.'''
         if not orders:
-            orders = self.create_dummy_order()
+            #Can be useful for testing:
+            #orders = self.create_dummy_order()
+            return
         o_json = json.loads(orders)
         for k, v in o_json.iteritems():
             #recognize new orders from other peers

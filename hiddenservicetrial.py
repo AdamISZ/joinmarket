@@ -372,11 +372,10 @@ def make_wallets(n, wallet_structures=None, mean_amt=1, sdev_amt=0, start_index=
 def init_peers(result):
     print("Starting init peers")
     task.deferLater(reactor, 1, peers[0].hspeer_run, [], config, 0)
-    task.deferLater(reactor, 3, peers[1].hspeer_run,
-                        [("SEED1", hs_public_ports[0])], config, 1)
-    task.deferLater(reactor, 3, peers[2].hspeer_run,
-                            [("SEED1", hs_public_ports[0])], config, 2)     
-    
+    for i in range(1, Npeers):
+        task.deferLater(reactor, 3, peers[i].hspeer_run,
+                            [("SEED1", hs_public_ports[0])], config, i)
+
 def start_jm(result):
 
     if isinstance(jm_single().bc_interface, BlockrInterface):
@@ -404,7 +403,7 @@ def start_jm(result):
     
     
     
-    for i in range(1, Npeers):#EDITED HERE
+    for i in range(1, Npeers-1):
         maker = YieldGenerator(peers[i], wallets[i-1]['wallet'])
 
     dest_address = btc.privkey_to_address(os.urandom(32), get_p2pk_vbyte())
@@ -418,14 +417,14 @@ def start_jm(result):
     
     log.debug('starting sendpayment')
     
-    #taker = SendPayment(peers[-1], wallets[Npeers-2]['wallet'], dest_address, amount, 3,
-    #                    5000, 30, 0,
-    #                    True, chooseOrdersFunc)
+    taker = SendPayment(peers[-1], wallets[Npeers-2]['wallet'], dest_address, amount, 3,
+                        5000, 1, 0,
+                        True, chooseOrdersFunc)
     
-    #pt = PT(taker)
-    #task.deferLater(reactor, 25, pt.run)
+    pt = PT(taker)
+    task.deferLater(reactor, 45, pt.run)
 
-Npeers = 3
+Npeers = 5
 hs_port_start = 9876
 hs_ports = []
 hs_public_ports = []
@@ -448,6 +447,9 @@ for i in range(Npeers):
     hs_temps.append(tempfile.mkdtemp(prefix='torhiddenservice'))
 
     # register something to clean up our tempdir
+    # TODO address whether having the HS entirely 'ephemeral' like
+    # this could be sub-optimal somehow, although we expect users
+    # not to use static HSs.
     reactor.addSystemEventTrigger(
         'before', 'shutdown',
         functools.partial(
@@ -456,14 +458,7 @@ for i in range(Npeers):
         )
     )
 
-# configure the hidden service we want.
-# obviously, we'd want a more-persistent place to keep the hidden
-# service directory for a "real" setup. If the directory is empty at
-# startup as here, Tor creates new keys etcetera (which IS the .onion
-# address). That is, every time you run this script you get a new
-# hidden service URI, which is probably not what you want.
-# The launch_tor method adds other needed config directives to give
-# us a minimal config.
+# HS configuration
 config = txtorcon.TorConfig()
 config.SOCKSPort = 9150
 config.ORPort = 9089
@@ -480,36 +475,24 @@ config.save()
 peers = []
 #Set up a static seed node peer
 peers.append(JMHSPeer(hs_public_ports[0], [], fixed_name="SEED1"))
-#task.deferLater(reactor, 15, peers[0].hspeer_run, [], config, 0)
 
 for i in range(1, Npeers):
     peers.append(JMHSPeer(hs_public_ports[i], []))
-    #task.deferLater(reactor, 18, peers[i].hspeer_run,
-    #                [("SEED1", hs_public_ports[0])], config, i)
-# next we set up our service to listen on hs_port which is forwarded
-# (via the HiddenService options) from the hidden service address on
-# port hs_public_port
+
+# set up HS servers, start Tor
 for i in range(Npeers):
     site = server.Site(peers[i])
     hs_endpoint = TCP4ServerEndpoint(reactor, hs_ports[i], interface='127.0.0.1')
     hs_endpoint.listen(site)
-
-# we've got our Twisted service listening locally and our options
-# ready to go, so we now launch Tor. Once it's done (see above
-# callbacks) we print out the .onion URI and then do "nothing"
-# (i.e. let the Web server do its thing). Note that the way we've set
-# up the slave Tor process, when we close the connection to it tor
-# will exit.
 d = txtorcon.launch_tor(config, reactor, progress_updates=updates)
-#d.addCallback(setup_complete, config, 0)
-#d.addErrback(setup_failed)
-#d.addCallback(peers[0].hspeer_run, [], config, 0)
-#d.addCallback(peers[1].hspeer_run, [("SEED1", hs_public_ports[0])], config, 1)
+#add chain of callbacks for actions after Tor is set up correctly.
 for i in range(Npeers):
     d.addCallback(functools.partial(setup_complete, config, i))
     d.addErrback(setup_failed)
-
 d.addCallback(init_peers)
 d.addCallback(start_jm)
+
+
 tlog.startLogging(open('hsexptlog0.txt', 'w'))
+
 reactor.run()
