@@ -235,18 +235,7 @@ class HSPeer(resource.Resource):
         body = FileBodyProducer(StringIO(body_string))
         #duckduckgo HS for testing:
         #url = 'http://3g2upl4pq6kufc4m.onion:80'
-        self.log("Requesting with url: "+ url)
-        #d = self.agent.request(
-        #    'POST', url,
-        #    Headers({'User-Agent': ['Twisted Web Client Example'],
-        #             'Content-Type': ['application/json'],
-        #             'Onion-Host': [self.host],
-        #             'Nickname': [self.peername],
-        #             'Serving-Port': [str(self.port)],
-        #            'Peer-Id': [self.peerid],
-        #             'Pubkey': [binascii.hexlify(self.hs_pubkey)],
-        #             'Peer-Auth': [binascii.hexlify(auth_sig)]}),
-        #    body)
+        #self.log("Requesting with url: "+ url)
         headers = Headers({'User-Agent': ['Twisted Web Client Example'],
                      'Content-Type': ['application/json'],
                      'Onion-Host': [self.host],
@@ -496,7 +485,7 @@ class JMHSPeer(MessageChannel, HSPeer):
 
         elif received[0]=='cancel':
             #construct key of to-be-deleted entry
-            obkey = ','.join([peername, str(received[1])])
+            obkey = ','.join([peername, str(received[1][0])])
             if obkey in self.orderbook.keys():
                 del self.orderbook[obkey]
             retval = 'ACK'
