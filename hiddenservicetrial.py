@@ -372,9 +372,12 @@ def make_wallets(n, wallet_structures=None, mean_amt=1, sdev_amt=0, start_index=
 def init_peers(result):
     print("Starting init peers")
     task.deferLater(reactor, 1, peers[0].hspeer_run, [], config, 0)
+    peers[0].hs_init_privkey(config.HiddenServices[0].dir)
+    seed_pubkey = binascii.hexlify(peers[0].hs_get_pubkeyDER())
+    print("Got seed pubkey: " + str(seed_pubkey))
     for i in range(1, Npeers):
         task.deferLater(reactor, 3, peers[i].hspeer_run,
-                            [("SEED1", hs_public_ports[0])], config, i)
+                            [("SEED1", hs_public_ports[0], seed_pubkey)], config, i)
 
 def start_jm(result):
 
@@ -422,7 +425,7 @@ def start_jm(result):
                         True, chooseOrdersFunc)
     
     pt = PT(taker)
-    task.deferLater(reactor, 45, pt.run)
+    task.deferLater(reactor, 85, pt.run)
 
 Npeers = 5
 hs_port_start = 9876

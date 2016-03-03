@@ -48,29 +48,30 @@ def retry(times, func, *args, **kwargs):
     errorList = []
     deferred = defer.Deferred()
     def run():
-        print('Trying: ', func.__name__)
+        #print('Trying: ', func.__name__)
         d = func(*args, **kwargs)
         d.addCallbacks(deferred.callback, error)
     def error(error):
         errorList.append(error)
         print(str(error))
-        print('Failed: ', func.__name__, ':', len(errorList), 'times')
+        #print('Failed: ', func.__name__, ':', len(errorList), 'times')
         # Retry
         if len(errorList) < times:
             reactor.callLater(10, run)
         # Fail
         else:
-            print('Giving up.')
+            print('Giving up, failed: ' + str(times) + ' times.')
             deferred.errback(errorList)
     run()
     return deferred
-
+        
 class HSPeer(resource.Resource):
     '''A class implementing a HS P2P network of
     nodes which share information (but not large datasets)
     and can request state updates over HTTP.
     All JM-specific application logic is deferred to class
-    JMHSPeer.'''
+    JMHSPeer.
+    '''
     isLeaf = True
 
     def hs_get_pubkeyDER(self):
@@ -78,7 +79,8 @@ class HSPeer(resource.Resource):
         hidden service in the required (DER) binary
         format for verifying with openssl; note that the
         firt 22 bytes of DER encoded ASN-1 are *not* included
-        in the onion hostname calculation.'''
+        in the onion hostname calculation.
+        '''
         return subprocess.check_output([openssl_path,
                                             'rsa', '-RSAPublicKey_out', '-in',
                                             self.hs_private_key_location,
@@ -86,7 +88,8 @@ class HSPeer(resource.Resource):
     
     def get_onion_for_pubkey(self, pubkey_DER, fmt='hex'):
         '''Given a DER encoded 1024 bit public key,
-        calculate the corresponding hidden service url.'''
+        calculate the corresponding hidden service url.
+        '''
         if fmt=='hex':
             pubkey_DER = binascii.unhexlify(pubkey_DER)
         
@@ -97,13 +100,14 @@ class HSPeer(resource.Resource):
         #print("Got hashed pubkey: "+binascii.hexlify(hashed_pubkey))
         onion_prefix = base64.b32encode(hashed_pubkey)
         #print("Got onion prefix: "+onion_prefix)
-        return onion_prefix.lower()+'.onion'
+        return onion_prefix.lower() + '.onion'
             
     def hs_verify_signature(self, sig, pubkey, msg):
         '''Openssl requires the pubkey in a specific 
         file format. Hence all the messing about in this
         function. TODO just junk all this openssl stuff and figure out
-        how to do the pubkey parsing and sig verif. myself.'''
+        how to do the pubkey parsing and sig verif. myself.
+        '''
         #Dump pubkey and sig to file for openssl's convenience.
         sigfile_name = sha256(msg + self.peerid).hexdigest()[:16]
         pubkeyfile_name = sha256(pubkey + self.peerid).hexdigest()[:16]
@@ -124,7 +128,8 @@ class HSPeer(resource.Resource):
     def hspeer_setup(self, port, seedpeers, fixed_name=None):
         '''This setup deferred to a distinct method rather than __init__
         to avoid the complexities of super() calls with 
-        multiple inheritance.'''
+        multiple inheritance.
+        '''
         self.port = port
         self.tor_is_ready = False
         self.host = None #will be set after init
@@ -140,7 +145,8 @@ class HSPeer(resource.Resource):
        
     def check_received(self, server_response, msgtype, u, peer):
         '''Called when peer responds to request.
-        Currently does nothing. TODO deal with rejection.'''
+        Currently does nothing. TODO deal with rejection.
+        '''
         if server_response == 'ACK':
             self.log("We received an ACK")
             #self.log(pformat(self.updates))
@@ -176,29 +182,29 @@ class HSPeer(resource.Resource):
         filtered_peers = [x for x in newpeers if x not in self.current_peers and \
                           self.get_peer_id(*x) != self.peerid]
         self.add_peers(filtered_peers)
-        #for x in newpeers:
-        #    if x not in self.current_peers and self.get_peer_id(*x) != self.peerid:
-                #print 'adding new peer: ' + str(x)
-        #       self.add_peers([x])
         
-        self.log("Here is my orderbook: ")
-        self.log("*********************")
-        self.log(pformat(self.orderbook))
+        #self.log("Here is my orderbook: ")
+        #self.log("*********************")
+        #self.log(pformat(self.orderbook))
 
     def cbRequest(self, response, url):
         '''HTTP request callback; read the
         response and return it to the caller.
-        TODO probably dont need the add_peer call here.'''
+        TODO probably dont need the add_peer call here.
+        '''
         #print 'Response version:', response.version
         #print 'Response code:', response.code
         #print 'Response phrase:', response.phrase
         #print 'Response headers:'
         #print pformat(list(response.headers.getAllRawHeaders()))
         headers = list(response.headers.getAllRawHeaders())
-        peerid, host, peername, port = self.parseRequestHeaders(headers, server=True)
+        peerid, host, peername, port, pubkey = self.parseRequestHeaders(
+            headers, server=True)
         if not peerid == self.get_peer_id(peername, host, port):
             raise Exception("Invalid peer ID")
-        self.add_peers([(peername, host, port)])
+        if not self.get_onion_for_pubkey(pubkey)== host:
+            raise Exception("Invalid pubkey or onion host")
+        self.add_peers([(peername, host, port, pubkey)])
         d = readBody(response)
         return d
 
@@ -206,7 +212,8 @@ class HSPeer(resource.Resource):
         '''Sign a string using the private key for the hidden
         service (this private key is stored in a file in the 
         hidden service temporary directory).
-        The sha256 hash of the string is the signed message.'''
+        The sha256 hash of the string is the message signed.
+        '''
         datafile_name = sha256(data + self.peerid).hexdigest()[:16]
         with open(datafile_name, 'wb') as f:
             f.write(sha256(data).digest())
@@ -220,15 +227,19 @@ class HSPeer(resource.Resource):
         os.remove(datafile_name)
         return data_sig
 
-    def make_peer_request(self, url, data):
+    def get_url_for_peer(self, peer):
+        return 'http://' + str(peer[1] + ':' + str(peer[2]))
+
+    def make_peer_request(self, peer, data):
         '''Bundle python object to be passed in the
         request POST body into a json string, then
-        make an HTTP POST to the given url with that
+        make an HTTP POST to the given peer with that
         json as the body, and adding custom headers
         for identification and authentication of this peer.
         '''
         #self.log("in get server data, got: ")
         #self.log(pformat(data))
+        url = self.get_url_for_peer(peer)
         body_string = json.dumps(data)
         #TODO toconsider: rsa sign is slow(ish). issue - but not so much with 1024!
         auth_sig = self.hs_sign_message(self.peerid + body_string)
@@ -251,15 +262,29 @@ class HSPeer(resource.Resource):
         return d
 
     def handle_failed_client_request(self, failure, url, data):
+        '''Error handling for failed http requests; this
+        is not expected to happen frequently, even
+        on initial HS setup - because we use a retry method. 
+        At the moment we do nothing, but will need to handle
+        the complete failure to access a peer TODO.'''
         self.log("In handle failed request for url: "+url)
         self.log(str(failure))
+    
+    def hs_init_privkey(self, directory):
+        '''Given the (temporary) location of the
+        hidden service config directory, store the
+        location of the private key file for signing.
+        '''
+        self.hs_private_key_location = os.path.join(
+                            directory, 'private_key')        
 
     def hspeer_run(self, seedpeers=None, config=None, i=None):
         '''Main loop for the peer.
-        Regularly ('heartbeat'), poll all peers for updated
+        Regularly ("heartbeat"), poll all peers for updated
         global state (e.g. orderbook for joinmarket).
         Also, if any updates are in update queue, push
-        them out to the relevant peer.'''
+        them out to the relevant peer.
+        '''
         #This completion of setup is deferred until run-start
         #since HS setup takes a while
         if self.tor_is_ready:
@@ -268,25 +293,23 @@ class HSPeer(resource.Resource):
                 self.log('my HS is: '+config.HiddenServices[i].hostname)
                 self.log('my HS privkey is at : ' + os.path.join(
                     config.HiddenServices[i].dir, 'private_key'))
-                self.hs_private_key_location = os.path.join(
-                    config.HiddenServices[i].dir, 'private_key')
+                self.hs_init_privkey(config.HiddenServices[i].dir)
                 self.hs_pubkey = self.hs_get_pubkeyDER()
                 self.set_host(config.HiddenServices[i].hostname)
                 
                 if seedpeers:
                     seedpeers = [(seedpeers[0][0], config.HiddenServices[0].hostname,
-                                  seedpeers[0][1])]
+                                  seedpeers[0][1], seedpeers[0][2])]
                     self.add_peers(seedpeers)
     
-            #TODO investigate better algorithms, this way is too "floody" to scale.
+            #TODO investigate better algorithms, this may be too "floody" to scale.
             for sp in self.current_peers:
                 #self.log("Looking at peer: "+','.join([str(_) for _ in sp]))
                 pid = self.get_peer_id(*sp)
                 for msgtype, u in self.updates[pid].iteritems():
                     self.log("making request to : "+str(
                         sp[0]) + " for msgtype: "+str(msgtype))
-                    d2 = self.make_peer_request(
-                        'http://' + str(sp[1]) + ':' + str(sp[2]), [msgtype, u])
+                    d2 = self.make_peer_request(sp, [msgtype, u])
                     d2.addCallback(self.check_received, msgtype, u, sp)
                 
                 #see detailed comment in self.check_received; only make req. once.
@@ -297,28 +320,22 @@ class HSPeer(resource.Resource):
                     #self.log("Deleting message type: "+str(mt))
                     del self.updates[pid][mt]
     
-                base_request = ['announce', self.peername, self.host, self.port]
-                d = self.make_peer_request(
-                    'http://' + str(sp[1]) + ':' + str(sp[2]), base_request)
+                base_request = ['announce', self.peername, self.host, self.port,
+                                binascii.hexlify(self.hs_pubkey)]
+                d = self.make_peer_request(sp, base_request)
                 d.addCallback(self.process_heartbeat_response)
-            
-            #for testing; sometimes send a fill to a peer at random
-            '''
-            r = random.randint(1,100)
-            if not r%5:
-                if len(self.current_peers) > 0:
-                    self.log("Sending to peer: "+str(self.current_peers[0]))
-                    self.fill_orders({self.current_peers[0][0]:{'oid':0}}, 36000, 'abcdef')
-                    #self.send_message(self.current_peers[0][0], "hello peer")
-            '''
             
             #Trigger on_welcome event (hangover from IRC) once only on first arrival.
             if self.on_welcome and not self.on_welcome_sent:
                 self.on_welcome()
                 self.on_welcome_sent = True
+
         task.deferLater(reactor, self.heartbeat, self.hspeer_run)
 
     def broadcast(self, peers, data):
+        '''Send client request with payload "data"
+        to all peers in the list "peers".
+        '''
         self.log("Working with peers: " + str(peers))
         self.log("Working with current peers: "+str(self.current_peers))
         if not set(peers).issubset(set(self.current_peers)):
@@ -327,52 +344,57 @@ class HSPeer(resource.Resource):
         for peer in peers:
             #TODO this will change to onion host
             #for non-testing
-            url = 'http://' + str(peer[1]) + ':' + str(peer[2])
-            self.make_peer_request(url, data)
+            self.make_peer_request(peer, data)
 
     def parseRequestHeaders(self, headers, server=False):
         '''Request headers for all requests are required
         to contain this identifying information in custom
-        headers. (TODO auth will be added here.)
+        headers.
         If these requests come from "server" (incoming from HS),
-        we dont need to do auth.'''
+        we dont need to do auth.
+        '''
         #This fairly disgusting syntax is a result of the weird way headers
         #are stored 
         peerid = filter(lambda x: x[0]=='Peer-Id', headers)[0][1][0]
         host = filter(lambda x: x[0]=='Onion-Host', headers)[0][1][0]
         peername = filter(lambda x: x[0]=='Nickname', headers)[0][1][0]
         port = int(filter(lambda x: x[0]=='Serving-Port', headers)[0][1][0])
+        pubkey = filter(lambda x: x[0]=='Pubkey', headers)[0][1][0]
         if not server:
-            pubkey = filter(lambda x: x[0]=='Pubkey', headers)[0][1][0]
             auth_sig = filter(lambda x: x[0]=='Peer-Auth', headers)[0][1][0]
             return (peerid, host, peername, port, pubkey, auth_sig)
         
-        return (peerid, host, peername, port)
+        return (peerid, host, peername, port, pubkey)
 
 
     def log(self, msg):
-        '''This is a twisted specific logging mechanism.'''
+        '''This is a twisted specific logging mechanism.
+        '''
         tlog.msg('Peer ' + self.peername + ': ' + msg)
 
     def update_queue_add(self, peerid, msgtype, msg):
-        '''TODO need to address peername/nick confusion'''
+        '''Adds request messages to be sent to other
+        peers as scheduled in the peer_run method.
+        '''
         if peerid not in self.updates.keys():
             self.updates[peerid] = {}
         self.updates[peerid][msgtype] = msg
 
     def close(self):
         '''Handling shutdown gracefully in twister
-        needs some attention (error handling in deferreds)'''
+        needs some attention (error handling in deferreds).
+        Stopping the reactor may be correct, but causes problems
+        for tests of multiple bots.'''
         reactor.stop()
 
     def authorize_peer(self, peerid, host, peername, port, pubkey, auth_sig,
                        rs):
-        ''' For incoming requests from "clients", check
+        ''' For incoming requests from "clients", checks
         the onion address and associated details, and the message
         sent is authenticated against that pubkey.
         1 Verify the peer id (this is really a sanity check)
         2 construct the message signed as peerid + received string (rs)
-        3 retrieve the correct pubkey from the hostname
+        3 retrieve the correct hostname from the pubkey and cross check.
         4 use openssl to rsa verify (pubkey, message, auth_sig)
         '''
         if not peerid == self.get_peer_id(peername, host, str(port)):
@@ -395,10 +417,12 @@ class HSPeer(resource.Resource):
         be interpreted by application level object.
         The request/instruction/update will be authorized
         by authenticating the payload against the peer pubkey
-        using a digital signature.'''
-        req_string = str(request.path.strip("/"))
-        #Uncomment to examine incoming headers
+        using a digital signature.
+        '''
+        #May be useful for testing.
+        #req_string = str(request.path.strip("/"))
         #self.log(pformat(list(request.requestHeaders.getAllRawHeaders())))
+        
         received_headers = list(request.requestHeaders.getAllRawHeaders())
         peerid, host, peername, port, pubkey, auth_sig = self.parseRequestHeaders(
             received_headers)
@@ -418,7 +442,7 @@ class HSPeer(resource.Resource):
         
         if retval and retval != 'NACK':
             #"server" side of communication does
-            #not need the two authenticating headers (Pubkey, Peer-Auth)
+            #not need the authenticating header (Peer-Auth)
             #since its hostname provides authentication.
             request.setResponseCode(200)
             request.setHeader('User-Agent', 'Twisted Web Server Example')
@@ -426,6 +450,7 @@ class HSPeer(resource.Resource):
             request.setHeader('Nickname', self.peername)
             request.setHeader('Serving-Port', str(self.port))
             request.setHeader('Peer-Id', self.peerid)
+            request.setHeader('Pubkey', binascii.hexlify(self.hs_pubkey))
         else:
             request.setResponseCode(400)
         return retval
@@ -436,23 +461,34 @@ class HSPeer(resource.Resource):
         self.host = host
         self.peerid = self.get_peer_id(self.peername, self.host, self.port)
     
-    def get_peer_id(self, readable_name, host=None, port=None):
+    def get_peer_from_name(self, peername):
+        '''Retrieve entire tuple for a peer from
+        only its readable name, assuming it is already
+        known by this peer. If no such peer is found,
+        return None.
+        '''
+        peers = [x for x in self.current_peers if x[0]==peername]
+        if len(peers) != 1:
+            self.log("Failed to find distinct peer")
+            self.log("Peers was: " + str(peers))
+            self.log("Current peers was: " + str(self.current_peers))
+            self.log("Peername was; " + str(peername))
+            return None
+        return peers[0]
+
+    def get_peer_id(self, readable_name, host=None, port=None, pubkey=None):
         '''Unique ID of peer is used as key for table of potential
         state updates. ID is formed as sha256(nickname|hostname|port)
         '''
         if not host:
-            self.log("Trying with readable name: "+readable_name)
-            self.log("Current peers is currently: "+str(self.current_peers))
-            peers = [x for x in self.current_peers if x[0]==readable_name]
-            if len(peers) != 1:
-                raise Exception("Failed to find distinct peer")
-            host = peers[0][1]
-            port = peers[0][2]
+            peer = self.get_peer_from_name(readable_name)
+            host = peer[1]
+            port = peer[2]
         return sha256(readable_name + host + str(port)).hexdigest()[:20]    
     
     def add_peers(self, peers):
         '''Peers have format tuple: 
-        (<peer readable name>, <hostname>, <serving port>)
+        (<peer readable name>, <hostname>, <serving port>, <pubkey>)
         '''
         #self.log("Current peers: "+str(self.current_peers))
         #self.log("Were looking to add: "+ str(peers))
@@ -468,27 +504,41 @@ class HSPeer(resource.Resource):
             self.updates[peerid] = {}    
         
 class JMHSPeer(MessageChannel, HSPeer):
-    """A class implementing JoinMarket's
+    '''A class implementing JoinMarket's
     MessageChannel interface using the HSPeer
-    hidden service peer to peer network class."""
+    hidden service peer to peer network class.
+    '''
     isLeaf = True
 
     def parse_request_payload(self, received, peerid, host, peername, port):
         '''Takes as argument the decoded json object received
         The received object always takes the form: [request type, [parameters]]
-        as the body of the HTTP POST request and applies JM logic.'''
+        as the body of the HTTP POST request and applies JM logic.
+        '''
         
         if received[0]=='announce':
-            self.add_peers([(received[1],received[2], received[3])])
+            self.add_peers([(received[1],received[2], received[3], received[4])])
             retval = '\n'.join([json.dumps(self.current_peers),
                               self.get_orderbook()])
 
         elif received[0]=='cancel':
             #construct key of to-be-deleted entry
             obkey = ','.join([peername, str(received[1][0])])
-            if obkey in self.orderbook.keys():
-                del self.orderbook[obkey]
-            retval = 'ACK'
+            #verify this cancellation before taking action
+            if not self.hs_verify_signature(received[2], pubkey,
+                                    ','.join(received[0], str(received[1][0]))):
+                retval = 'NACK'
+            else:
+                if obkey in self.orderbook.keys():
+                    del self.orderbook[obkey]
+                    #Authenticated cancels are propagated aggressively;
+                    #note we propagate the same exact message, which contains
+                    #a signature. Note also we only re-broadcast if the
+                    #cancelled order was still here, otherwise remain silent
+                    #to avoid infinite rebroadcast.
+                    for peer in self.current_peers:
+                        self.make_peer_request(peer, received)
+                retval = 'ACK'
         
         elif received[0]=='sig':
             sig_list = received[1]
@@ -564,10 +614,15 @@ class JMHSPeer(MessageChannel, HSPeer):
 
     def shutdown(self):
         '''Not sure the distinction between shutdown
-        and close is needed here.'''
+        and close is needed here.
+        '''
         self.close()
 
     def getoid(self):
+        '''Primitive order id number
+        assignment. TODO consider if need
+        to reuse old orderids, as current
+        JM code does.'''
         self.oid_ctr += 1
         return self.oid_ctr
 
@@ -580,13 +635,15 @@ class JMHSPeer(MessageChannel, HSPeer):
         sending requests to all peers, or a specified subset,
         for an updated state, since this will be resource
         heavy. If we dont do it, we will need to consider
-        out-of-syncness and make sure its handled correctly.'''
+        out-of-syncness and make sure its handled correctly.
+        '''
         self.log("Orderbook requests not needed for HSmc")
 
     def add_orders(self, orders=None):
         '''None parameter is for testing, to create
         dummy orders. Note that additions to the
-        locally stored orderbook occur here and here only.'''
+        locally stored orderbook occur here and here only.
+        '''
         if not orders:
             #Can be useful for testing:
             #orders = self.create_dummy_order()
@@ -594,52 +651,103 @@ class JMHSPeer(MessageChannel, HSPeer):
         o_json = json.loads(orders)
         for k, v in o_json.iteritems():
             #recognize new orders from other peers
-            if k not in self.orderbook.keys():
-                peer = k.split(',')[0]
-                if peer != self.peername:
-                    if self.on_order_seen:
-                        self.on_order_seen(peer, k.split(',')[1],
-                                           v['otype'], v['minsize'], v['maxsize'],
-                                           v['txfee'], v['cjfee'])
-            self.orderbook[k] = v
+            peer = k.split(',')[0]
+            if peer != self.peername:
+                p = self.get_peer_from_name(peer)
+                if not p:
+                    self.log("Unrecognized peer: " + peer)
+                    continue
+                p_pubkey = p[3]
+                order_for_verifying = v.copy()
+                order_for_verifying.pop('sig')
+                #self.log("Going to validate against this signature: " + v['sig'])
+                #self.log("With this pubkey: " + p_pubkey)
+                #self.log("And this message: " + json.dumps(order_for_verifying, sort_keys=True))
+                if not self.hs_verify_signature(v['sig'], 
+                                                p_pubkey, 
+                                                json.dumps(order_for_verifying,
+                                                sort_keys=True)):
+                    self.log("Order update not validated for peer: " + peer)
+                    continue
+                #We now know the order is from another party, and is authenticated
+                #to be that exact party, so we can update our local orderbook.
+                
+                #TODO replay attacks!
+                
+                #Local update - note this *does* keep the signature key, because
+                #we use the original copy of the dict 'v'.
+                self.orderbook[k] = v 
+                #Trigger upstream change
+                if self.on_order_seen:
+                    self.on_order_seen(peer, k.split(',')[1],
+                                       v['otype'], v['minsize'], v['maxsize'],
+                                       v['txfee'], v['cjfee'])
+            else:
+                #our own updates dont need authentication,
+                #and we already made the signature in convert_to_obformat
+                self.orderbook[k] = v
 
     def cancel_orders(self, oid_list):
         '''Remove locally stored entries.
-        and broadcast change to all current peers.'''
+        and broadcast change to all current peers.
+        Note that this is a special case of a message
+        that should urgently flood-fill the network, so
+        we attach an auth signature and peers propagate.
+        '''
         for oid in oid_list:
             k = ','.join([self.peername, str(oid)])
             if k not in self.orderbook.keys():
                 continue
-            self.broadcast(self.current_peers, ['cancel', [oid]])
+            #TODO replay attack
+            auth_msg = ','.join(['cancel',str(oid)])
+            sig = self.hs_sign_message(auth_msg)
+            self.broadcast(self.current_peers, ['cancel',
+                                                [oid],binascii.hexlify(sig)])
             del self.orderbook[k]
 
     def send_pubkey(self, nick, pubkey):
+        '''Joinmarket callback
+        '''
         self.update_queue_add(self.get_peer_id(nick), 'pubkey', pubkey)
 
     def send_ioauth(self, nick, utxo_list, cj_pubkey, change_addr, sig):
+        '''Joinmarket callback
+        '''
         authmsg = [utxo_list, cj_pubkey, change_addr, sig]
         self.update_queue_add(self.get_peer_id(nick), 'ioauth', authmsg)
 
     def send_sigs(self, nick, sig_list):
+        '''Joinmarket callback
+        '''
         self.update_queue_add(self.get_peer_id(nick), 'sig', sig_list)
 
     def send_auth(self, nick, pubkey, sig):
+        '''Joinmarket callback
+        '''
         message = [pubkey, sig]
         self.update_queue_add(self.get_peer_id(nick), 'auth', message)
 
     def send_tx(self, nick_list, txhex):
+        '''Joinmarket callback
+        '''
         txb64 = base64.b64encode(txhex.decode('hex'))
         for nick in nick_list:
             self.update_queue_add(self.get_peer_id(nick), 'tx', txb64)
     
     def send_message(self, nick, msg):
+        '''Joinmarket callback
+        '''
         self.update_queue_add(self.get_peer_id(nick), 'message', msg)
 
     def push_tx(self, nick, txhex):
+        '''Joinmarket callback
+        '''        
         txb64 = base64.b64encode(txhex.decode('hex'))
         self.update_queue_add(self.get_peer_id(nick), 'push', txb64)
 
     def fill_orders(self, nick_order_dict, cj_amount, taker_pubkey):
+        '''Joinmarket callback
+        '''
         #self.log("In fill orders, nick order dict is: ")
         #self.log(pformat(nick_order_dict))
         for c, order in nick_order_dict.iteritems():
@@ -649,16 +757,27 @@ class JMHSPeer(MessageChannel, HSPeer):
     def convert_to_obformat(self, o):
         '''Take orders in the object format used
         by joinmarket and convert them to json for
-        propagation on p2p network'''
+        propagation on p2p network, also appends 
+        signature to authenticate this entry for 
+        non-repudiable and non-forgeable broadcast.
+        '''
+        
         #Current format: order = {'oid': 0, 'ordertype': 'relorder', 'minsize': 0,
         #		'maxsize': total_value, 'txfee': 10000, 'cjfee': '0.002'}
-        return {','.join([self.peername,
-                          str(o['oid'])]):{'minsize':o['minsize'], 
-                                           'maxsize':o['maxsize'],'otype':o['ordertype'],
-                                           'cjfee':o['cjfee'],'txfee':o['txfee']}}
+        #Construct signature on order contents:
+        order_contents = {'minsize':o['minsize'], 'maxsize':o['maxsize'],
+                          'otype':o['ordertype'], 'cjfee':o['cjfee'],
+                          'txfee':o['txfee']}
+        #self.log("Going to sign this order: " + json.dumps(order_contents, sort_keys=True))
+        #self.log("With this pubkey: " + binascii.hexlify(self.hs_pubkey))
+        sig = self.hs_sign_message(json.dumps(order_contents, sort_keys=True))
+        order_contents['sig'] = binascii.hexlify(sig)
+        return {','.join([self.peername, str(o['oid'])]):order_contents}
 
     def create_dummy_order(self):
-        '''For testing'''
+        '''For testing
+        TODO update if actually needed.
+        '''
         #just for testing; random order objects
         min_amt = random.randint(1, 1000)
         max_amt = min_amt + random.randint(1, 1000)
@@ -666,9 +785,9 @@ class JMHSPeer(MessageChannel, HSPeer):
         otype = 'relorder'
         fee = random.random()
         txfee = random.randint(1,1000)
-        order = json.dumps({','.join([self.peername,str(oid)]):{'minsize':min_amt, 
-                                                                'maxsize':max_amt,'otype':otype,
-                                                                'cjfee':fee,'txfee':txfee}})
+        order = json.dumps({','.join(
+            [self.peername,str(oid)]):{'minsize':min_amt, 'maxsize':max_amt,
+                                       'otype':otype, 'cjfee':fee, 'txfee':txfee}})
         return order
 
     def announce_orders(self, orderlist, nick=None):
