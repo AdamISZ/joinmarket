@@ -53,8 +53,8 @@ def retry(times, func, *args, **kwargs):
         d.addCallbacks(deferred.callback, error)
     def error(error):
         errorList.append(error)
-        print(str(error))
-        #print('Failed: ', func.__name__, ':', len(errorList), 'times')
+        #print(str(error))
+        print('Failed: ', func.__name__, ':', len(errorList), 'times')
         # Retry
         if len(errorList) < times:
             reactor.callLater(10, run)
@@ -296,7 +296,8 @@ class HSPeer(resource.Resource):
                 self.hs_init_privkey(config.HiddenServices[i].dir)
                 self.hs_pubkey = self.hs_get_pubkeyDER()
                 self.set_host(config.HiddenServices[i].hostname)
-                
+                #for testing peers with no orders
+                #self.add_orders()
                 if seedpeers:
                     seedpeers = [(seedpeers[0][0], seedpeers[0][1],
                                   seedpeers[0][2], seedpeers[0][3])]
@@ -601,7 +602,6 @@ class JMHSPeer(MessageChannel, HSPeer):
         self.hspeer_setup(port, seedpeers, fixed_name)
         self.orderbook = {}
         self.oid_ctr = -1
-        self.add_orders()
         self.on_welcome_sent = False
         super(JMHSPeer, self).__init__()
 
@@ -646,8 +646,9 @@ class JMHSPeer(MessageChannel, HSPeer):
         '''
         if not orders:
             #Can be useful for testing:
-            #orders = self.create_dummy_order()
+            #orders = json.dumps(self.convert_to_obformat(self.create_dummy_order()))
             return
+
         o_json = json.loads(orders)
         for k, v in o_json.iteritems():
             #recognize new orders from other peers
@@ -655,7 +656,7 @@ class JMHSPeer(MessageChannel, HSPeer):
             if peer != self.peername:
                 p = self.get_peer_from_name(peer)
                 if not p:
-                    self.log("Unrecognized peer: " + peer)
+                    self.log("Not adding order, unrecognized peer: " + peer)
                     continue
                 p_pubkey = p[3]
                 order_for_verifying = v.copy()
@@ -685,6 +686,7 @@ class JMHSPeer(MessageChannel, HSPeer):
             else:
                 #our own updates dont need authentication,
                 #and we already made the signature in convert_to_obformat
+                self.log("adding my own order")
                 self.orderbook[k] = v
 
     def cancel_orders(self, oid_list):
@@ -776,7 +778,6 @@ class JMHSPeer(MessageChannel, HSPeer):
 
     def create_dummy_order(self):
         '''For testing
-        TODO update if actually needed.
         '''
         #just for testing; random order objects
         min_amt = random.randint(1, 1000)
@@ -785,10 +786,10 @@ class JMHSPeer(MessageChannel, HSPeer):
         otype = 'relorder'
         fee = random.random()
         txfee = random.randint(1,1000)
-        order = json.dumps({','.join(
-            [self.peername,str(oid)]):{'minsize':min_amt, 'maxsize':max_amt,
-                                       'otype':otype, 'cjfee':fee, 'txfee':txfee}})
-        return order
+        order_contents = {'minsize':min_amt, 'maxsize':max_amt,
+                                  'ordertype':otype, 'cjfee':fee,
+                                  'txfee':txfee, 'oid':oid}
+        return order_contents
 
     def announce_orders(self, orderlist, nick=None):
         '''nick parameter is ignored, just compatibility,

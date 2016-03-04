@@ -1,6 +1,18 @@
 #! /usr/bin/env python
 from __future__ import absolute_import, print_function
 
+"""Module to load tor for
+the hidden service message channel
+in JoinMarket. Dependencies can be 
+loaded with:
+
+sudo apt-get install tor
+(then kill the auto-started tor binary)
+
+sudo pip install txtorcon
+(this will automatically install twisted and txsocksx)
+"""
+
 import txtorcon
 import tempfile
 from twisted.internet import reactor
