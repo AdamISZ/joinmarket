@@ -10,6 +10,11 @@ import datetime
 import os
 import time
 import binascii
+import tempfile
+import functools
+import json
+import base64
+
 import bitcoin as btc
 from joinmarket import Maker
 from joinmarket import Taker
@@ -24,26 +29,15 @@ from joinmarket.wallet import estimate_tx_fee
 from joinmarket.message_channel import MessageChannel, CJPeerError
 from joinmarket.support import chunks
 from joinmarket.hsmc import JMHSPeer
-
-import tempfile
-import functools
-import time
-import json
-import base64
+from joinmarket.tor import tconfig, start_tor
 
 from twisted.internet import reactor
-from twisted.internet.endpoints import TCP4ServerEndpoint
-from twisted.web import server, resource
 from twisted.python import log as tlog
+from twisted.internet import task
 
 import random
-import txtorcon
 
 from pprint import pformat
-
-from twisted.web.client import Agent, readBody
-from twisted.web.http_headers import Headers
-from twisted.internet import task
 
 log = get_log()
 # thread which does the buy-side algorithm
@@ -321,28 +315,6 @@ class YieldGenerator(Maker):
                 confirm_time / 60.0, 2), ''])
         return self.on_tx_unconfirmed(cjorder, txid, None)
 
-
-def updates(prog, tag, summary):
-    print("%d%%: %s" % (prog, summary))
-
-
-def setup_complete(config, i, proto):
-    print("Protocol completed")
-    peers[i].tor_is_ready = True
-    onion_address = config.HiddenServices[i].hostname
-
-    print("I have a hidden (web) service running at:")
-    print("http://%s (port %d)" % (onion_address, hs_public_ports[i]))
-    print("The temporary directory for it is at:", config.HiddenServices[i].dir)
-    print()
-    print("For example, you should be able to visit it via:")
-    print("  torsocks lynx http://%s" % onion_address)
-
-
-def setup_failed(arg):
-    print("SETUP FAILED", arg)
-    reactor.stop()
-
 def make_wallets(n, wallet_structures=None, mean_amt=1, sdev_amt=0, start_index=0):
     '''n: number of wallets to be created
        wallet_structure: array of n arrays , each subarray
@@ -371,13 +343,13 @@ def make_wallets(n, wallet_structures=None, mean_amt=1, sdev_amt=0, start_index=
 
 def init_peers(result):
     print("Starting init peers")
-    task.deferLater(reactor, 1, peers[0].hspeer_run, [], config, 0)
-    peers[0].hs_init_privkey(config.HiddenServices[0].dir)
+    task.deferLater(reactor, 1, peers[0].hspeer_run, [], tconfig, 0)
+    peers[0].hs_init_privkey(tconfig.HiddenServices[0].dir)
     seed_pubkey = binascii.hexlify(peers[0].hs_get_pubkeyDER())
     print("Got seed pubkey: " + str(seed_pubkey))
     for i in range(1, Npeers):
         task.deferLater(reactor, 3, peers[i].hspeer_run,
-                            [("SEED1", hs_public_ports[0], seed_pubkey)], config, i)
+                        [("SEED1", hs_public_ports[0], seed_pubkey)], tconfig, i)
 
 def start_jm(result):
 
@@ -447,33 +419,6 @@ load_program_config()
 for i in range(Npeers):
     hs_ports.append(hs_port_start+i)
     hs_public_ports.append(8080+i)
-    hs_temps.append(tempfile.mkdtemp(prefix='torhiddenservice'))
-
-    # register something to clean up our tempdir
-    # TODO address whether having the HS entirely 'ephemeral' like
-    # this could be sub-optimal somehow, although we expect users
-    # not to use static HSs.
-    reactor.addSystemEventTrigger(
-        'before', 'shutdown',
-        functools.partial(
-            txtorcon.util.delete_file_or_tree,
-            hs_temps[i]
-        )
-    )
-
-# HS configuration
-config = txtorcon.TorConfig()
-config.SOCKSPort = 9150
-config.ORPort = 9089
-for i in range(Npeers):
-    config.HiddenServices.append(
-        txtorcon.HiddenService(
-            config,
-            hs_temps[i],
-            ["%d 127.0.0.1:%d" % (hs_public_ports[i], hs_ports[i])]
-        )
-    )
-config.save()
 
 peers = []
 #Set up a static seed node peer
@@ -482,19 +427,9 @@ peers.append(JMHSPeer(hs_public_ports[0], [], fixed_name="SEED1"))
 for i in range(1, Npeers):
     peers.append(JMHSPeer(hs_public_ports[i], []))
 
-# set up HS servers, start Tor
-for i in range(Npeers):
-    site = server.Site(peers[i])
-    hs_endpoint = TCP4ServerEndpoint(reactor, hs_ports[i], interface='127.0.0.1')
-    hs_endpoint.listen(site)
-d = txtorcon.launch_tor(config, reactor, progress_updates=updates)
-#add chain of callbacks for actions after Tor is set up correctly.
-for i in range(Npeers):
-    d.addCallback(functools.partial(setup_complete, config, i))
-    d.addErrback(setup_failed)
+d = start_tor(peers, hs_public_ports, hs_ports)
 d.addCallback(init_peers)
 d.addCallback(start_jm)
-
 
 tlog.startLogging(open('hsexptlog0.txt', 'w'))
 
