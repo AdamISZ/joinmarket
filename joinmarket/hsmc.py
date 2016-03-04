@@ -298,8 +298,8 @@ class HSPeer(resource.Resource):
                 self.set_host(config.HiddenServices[i].hostname)
                 
                 if seedpeers:
-                    seedpeers = [(seedpeers[0][0], config.HiddenServices[0].hostname,
-                                  seedpeers[0][1], seedpeers[0][2])]
+                    seedpeers = [(seedpeers[0][0], seedpeers[0][1],
+                                  seedpeers[0][2], seedpeers[0][3])]
                     self.add_peers(seedpeers)
     
             #TODO investigate better algorithms, this may be too "floody" to scale.
