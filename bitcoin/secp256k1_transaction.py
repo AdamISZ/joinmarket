@@ -53,6 +53,7 @@ def deserialize(tx):
     # so that it is call-by-reference
     pos = [0]
 
+    #TODO: these are disgustingly ignorant of overrun errors!
     def read_as_int(bytez):
         pos[0] += bytez
         return decode(tx[pos[0] - bytez:pos[0]][::-1], 256)
@@ -72,9 +73,24 @@ def deserialize(tx):
     def read_var_string():
         size = read_var_int()
         return read_bytes(size)
+    
+    def read_flag_byte(val):
+        flag = read_bytes(1)
+        if from_byte_to_int(flag)==val:
+            return True
+        else:
+            pos[0] -= 1
+            return False
+        
 
     obj = {"ins": [], "outs": []}
     obj["version"] = read_as_int(4)
+    segwit = False
+    if read_flag_byte(0): segwit = True
+    if segwit:
+        if not read_flag_byte(1): #BIP141 is currently "MUST" ==1
+            raise Exception("Invalid segwit transaction format")
+    
     ins = read_var_int()
     for i in range(ins):
         obj["ins"].append({
@@ -82,6 +98,7 @@ def deserialize(tx):
                 "hash": read_bytes(32)[::-1],
                 "index": read_as_int(4)
             },
+            #TODO this will probably crap out on null for segwit
             "script": read_var_string(),
             "sequence": read_as_int(4)
         })
@@ -91,6 +108,22 @@ def deserialize(tx):
             "value": read_as_int(8),
             "script": read_var_string()
         })
+    if segwit:
+        #read witness data
+        #there must be one witness object for each txin
+        #technically, we could parse the contents of the witness
+        #into objects, but we'll just replicate the behaviour of the
+        #rpc decoderawtx, and attach a "txinwitness" for each in, with
+        #the items in the witness space separated
+        for i in range(ins):
+            num_items = read_var_int()
+            items = []
+            for ni in range(num_items):
+                items.append(read_var_string())
+            #due to json/changebase setup, can't split these currently
+            obj["ins"][i]["txinwitness"] = "".join(items)
+            
+        
     obj["locktime"] = read_as_int(4)
     return obj
 
@@ -391,12 +424,16 @@ def is_inp(arg):
 def mktx(*args):
     # [in0, in1...],[out0, out1...] or in0, in1 ... out0 out1 ...
     ins, outs = [], []
-    for arg in args:
-        if isinstance(arg, list):
-            for a in arg:
-                (ins if is_inp(a) else outs).append(a)
-        else:
-            (ins if is_inp(arg) else outs).append(arg)
+    if len(args)==3:
+        segwit = True
+        ins, outs, witnesses = args
+    if not segwit:
+        for arg in args:
+            if isinstance(arg, list):
+                for a in arg:
+                    (ins if is_inp(a) else outs).append(a)
+            else:
+                (ins if is_inp(arg) else outs).append(arg)
 
     txobj = {"locktime": 0, "version": 1, "ins": [], "outs": []}
     for i in ins:

@@ -58,4 +58,4 @@ def setup(request):
     time.sleep(3)
     #generate blocks
     local_command([bitcoin_path + "bitcoin-cli", "-regtest", "-rpcpassword=" +
-                   bitcoin_rpcpassword, "generate", "101"])
+                   bitcoin_rpcpassword, "generate", "433"])
