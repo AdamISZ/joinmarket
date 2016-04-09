@@ -21,8 +21,7 @@ from joinmarket.support import chunks, select_gradual, \
      select_greedy, select_greediest
 
 log = get_log()
-
-
+'''
 def test_segwit_valid_txs(setup_segwit):
     with open("test/tx_segwit_valid.json", "r") as f:
             json_data = f.read()
@@ -35,33 +34,44 @@ def test_segwit_valid_txs(setup_segwit):
         print pformat(deserialized_tx)
         #TODO use bcinterface to decoderawtransaction
         #and compare the json values
+'''
+
 
 def test_spend_p2wpkh(setup_segwit):
     #first spend to an output which is of type p2wpkh
-    #first, make a script <pubkey OP_CHECKSIG>
-    #then make a sha256 of it and a hash160 of it
-    #then make a p2sh script addr of <0020<that sha256>>
-    priv = binascii.hexlify('\x03'*32+'\x01')
+    priv = binascii.hexlify('\x03' * 32 + '\x01')
     pub = btc.privtopub(priv)
     #receiving address is of form p2sh_p2wpkh
     addr1 = btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=196)
     print "got address for p2shp2wpkh: " + addr1
-    #now we have an output address, construct an output with createrawtx
     txid = jm_single().bc_interface.grab_coins(addr1, 1)
-    time.sleep(5)
-    starting = jm_single().bc_interface.get_received_by_addr(
-                [addr1], None)['data'][0]['balance']
-    print "Started with : " + str(starting)
+    time.sleep(3)
     in_amt = 100000000
-    fee = 5000
-    outamount = in_amt - fee
+    fee = 10000
+    changeamount = 50000000
+    outamount = in_amt - fee - changeamount
+
     #second, use this new tx input 0 as input to a new transaction,
     #then sign using segwit flag
-    output_addr = btc.privkey_to_address(binascii.hexlify('\x07'*32 + '\x01'),
-                                         magicbyte=get_p2pk_vbyte())
-    ins = [txid + ":" + "0"]
+    output_addr = btc.privkey_to_address(
+        binascii.hexlify('\x07' * 32 + '\x01'),
+        magicbyte=get_p2pk_vbyte())
+    change_addr = btc.privkey_to_address(
+        binascii.hexlify('\x08' * 32 + '\x01'),
+        magicbyte=get_p2pk_vbyte())
+    #find the correct outpoint for what we've just received;
+    #normally this job is done by "sync wallet" in blockchaininterface
+    rawtx = jm_single().bc_interface.rpc("getrawtransaction", [txid, 1])
+    ins = []
+    print rawtx["vout"]
+    for u in rawtx["vout"]:
+        if u["scriptPubKey"]["addresses"][0] == addr1:
+            ins.append(txid + ":" + str(u["n"]))
+    assert len(ins) == 1
+
     outs = [{'value': outamount,
-                 'address': output_addr}]
+             'address': output_addr}, {'value': changeamount,
+                                       'address': change_addr}]
     tx = btc.mktx(ins, outs)
     print btc.deserialize(tx)
     #signature must cover amount; script is calculated automatically for tx type
@@ -71,14 +81,13 @@ def test_spend_p2wpkh(setup_segwit):
     assert txid2
     time.sleep(3)
     received = jm_single().bc_interface.get_received_by_addr(
-            [output_addr], None)['data'][0]['balance']
+        [output_addr], None)['data'][0]['balance']
     assert received == outamount
 
 
 @pytest.fixture(scope="module")
 def setup_segwit():
     load_program_config()
-
     '''
     An example of a valid segwit from the json with parsing
     
@@ -122,7 +131,6 @@ def setup_segwit():
     locktime
     00000000", "P2SH,WITNESS"],
     '''
-    
     '''
     P2WSH example
     01000000
