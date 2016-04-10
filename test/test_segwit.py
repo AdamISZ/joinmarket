@@ -21,23 +21,128 @@ from joinmarket.support import chunks, select_gradual, \
      select_greedy, select_greediest
 
 log = get_log()
-'''
+
+
 def test_segwit_valid_txs(setup_segwit):
     with open("test/tx_segwit_valid.json", "r") as f:
-            json_data = f.read()
+        json_data = f.read()
     valid_txs = json.loads(json_data)
     for j in valid_txs:
         if len(j) < 2:
             continue
-        #print j
         deserialized_tx = btc.deserialize(str(j[1]))
         print pformat(deserialized_tx)
+        assert btc.serialize(deserialized_tx) == str(j[1])
         #TODO use bcinterface to decoderawtransaction
         #and compare the json values
-'''
+
+
+def make_sign_and_push(ins_sw,
+                       wallet,
+                       amount,
+                       other_ins=None,
+                       output_addr=None,
+                       change_addr=None,
+                       hashcode=btc.SIGHASH_ALL):
+    """A more complicated version of the function in test_tx_creation;
+    will merge to this one once finished.
+    ins_sw have this structure:
+    {"txid:n":(amount, priv), "txid2:n2":(amount2, priv), ..}
+    if other_ins is not None, it has the same format, 
+    these inputs are assumed to be plain p2pkh;
+    these addresses get given those coins in advance and then spent from
+    All amounts are in satoshis and only converted to btc for grab_coins
+    """
+    #total value of all inputs
+    total = sum([x[0] for x in ins_sw.values()])
+    total += sum([x[0] for x in other_ins.values()])
+    #construct the other inputs
+    ins1 = []
+    ins1.extend(other_ins.keys())
+    ins1.extend(ins_sw.keys())
+
+    #random output address and change addr
+    output_addr = wallet.get_new_addr(1, 1) if not output_addr else output_addr
+    change_addr = wallet.get_new_addr(1, 0) if not change_addr else change_addr
+    outs = [{'value': amount,
+             'address': output_addr}, {'value': total - amount - 10000,
+                                       'address': change_addr}]
+
+    tx = btc.mktx(ins1, outs)
+    de_tx = btc.deserialize(tx)
+    for index, ins in enumerate(de_tx['ins']):
+        utxo = ins['outpoint']['hash'] + ':' + str(ins['outpoint']['index'])
+        if utxo in ins_sw.keys():
+            segwit = True
+            amt, priv = ins_sw[utxo]
+        elif utxo in other_ins.keys():
+            segwit = False
+            amt, priv = other_ins[utxo]
+        else:
+            assert False
+        #for better test code coverage
+        if index % 2:
+            priv = binascii.unhexlify(priv)
+        if segwit:
+            tx = btc.p2sh_p2wpkh_sign(tx, index, priv, amt, hashcode=hashcode)
+        else:
+            tx = btc.sign(tx, index, priv, hashcode=hashcode)
+    #pushtx returns False on any error
+    print btc.deserialize(tx)
+    txid = jm_single().bc_interface.pushtx(tx)
+    time.sleep(3)
+    received = jm_single().bc_interface.get_received_by_addr(
+        [output_addr], None)['data'][0]['balance']
+    assert received == amount
+    return txid
+
+
+def get_utxo_from_txid(txid, addr):
+    rawtx = jm_single().bc_interface.rpc("getrawtransaction", [txid, 1])
+    ins = []
+    for u in rawtx["vout"]:
+        if u["scriptPubKey"]["addresses"][0] == addr:
+            ins.append(txid + ":" + str(u["n"]))
+    assert len(ins) == 1
+    return ins[0]
+
+
+def test_spend_p2sh_p2wpkh_multi(setup_segwit):
+    """Creates a wallet from which non-segwit inputs/
+    outputs can be created, constructs one or more
+    segwit spendable utxos and tests spending them
+    in combination
+    """
+    wallet = make_wallets(1, [[4, 0, 0, 0, 1]], 3)[0]['wallet']
+    jm_single().bc_interface.sync_wallet(wallet)
+    amount = 350000000
+    ins_full = wallet.select_utxos(0, amount)
+    #retrieve the privkey for all the utxos we got
+    other_ins = {}
+    ctr = 0
+    for k, v in ins_full.iteritems():
+        ctr += 1
+        other_ins[k] = (v["value"], wallet.get_key_from_addr(v["address"]))
+        #how many do we want?
+        if ctr == 2:
+            break
+    #build a single segwit input from a random key
+    priv = binascii.hexlify('\x03' * 32 + '\x01')
+    pub = btc.privtopub(priv)
+    #receiving address is of form p2sh_p2wpkh
+    addr1 = btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=196)
+    print "got address for p2shp2wpkh: " + addr1
+    txid = jm_single().bc_interface.grab_coins(addr1, 1)
+    ins_sw = {get_utxo_from_txid(txid, addr1): (100000000, priv)}
+    txid = make_sign_and_push(ins_sw, wallet, amount, other_ins)
+    assert txid
 
 
 def test_spend_p2wpkh(setup_segwit):
+    """Original version of the test with a single input.
+    Leaving here until the more flexible version of the test
+    is battle hardened.
+    """
     #first spend to an output which is of type p2wpkh
     priv = binascii.hexlify('\x03' * 32 + '\x01')
     pub = btc.privtopub(priv)
@@ -61,14 +166,7 @@ def test_spend_p2wpkh(setup_segwit):
         magicbyte=get_p2pk_vbyte())
     #find the correct outpoint for what we've just received;
     #normally this job is done by "sync wallet" in blockchaininterface
-    rawtx = jm_single().bc_interface.rpc("getrawtransaction", [txid, 1])
-    ins = []
-    print rawtx["vout"]
-    for u in rawtx["vout"]:
-        if u["scriptPubKey"]["addresses"][0] == addr1:
-            ins.append(txid + ":" + str(u["n"]))
-    assert len(ins) == 1
-
+    ins = [get_utxo_from_txid(txid, addr1)]
     outs = [{'value': outamount,
              'address': output_addr}, {'value': changeamount,
                                        'address': change_addr}]
@@ -88,87 +186,89 @@ def test_spend_p2wpkh(setup_segwit):
 @pytest.fixture(scope="module")
 def setup_segwit():
     load_program_config()
-    '''
-    An example of a valid segwit from the json with parsing
-    
-    ["Valid P2WPKH (Private key of segwit tests is 
-    L5AQtV2HDm4xGsseLokK2VAT2EtYKcTm3c7HwqnJBFt9LdaQULsM)"],
-    
-    [[["0000000000000000000000000000000000000000000000000000000000000100", 
-    0, "0x00 0x14 0x4c9c3dfac4207d5d8cb89df5722cb3d712385e3f", 1000]],
-    
-    "01000000
-    00
-    01
-    ins start
-    in num
-    01
-    in txid
-    000100000000000000000000000000000000000000000000000000000000000000
-    in txid out index
-    00000000
-    sequence
-    ffffffff
-    num outs
-    01
-    amount
-    e803000000000000
-    script
-    1976a9144c9c3dfac4207d5d8cb89df5722cb3d712385e3f88ac
-    (number of witnesses = 1, implied by txin length)
-    witnesses : number 1
-    item count for this witness
-    02
-    signature length
-    48
-    signature + hashcode 01
-    3045022100cfb07164b36ba64c1b1e8c7720a56ad64d96f6ef332d3d37f9cb3c96477dc4450220
-    0a464cd7a9cf94cd70f66ce4f4f0625ef650052c7afcfe29d7d7e01830ff91ed01
-    pubkey length
-    21
-    pubkey
-    03596d3451025c19dbbdeb932d6bf8bfb4ad499b95b6f88db8899efac102e5fc71
-    locktime
-    00000000", "P2SH,WITNESS"],
-    '''
-    '''
-    P2WSH example
-    01000000
-    00
-    01
-    01
-    00010000000000000000000000000000000000000000000000000000000000000000
-    000000
-    ffffffff
-    01
-    amount
-    e803000000000000
-    length 25
-    19
-    OP_DUP OP_HASH160
-    76a9
-    hash length
-    14
-    ripemd160(sha256(pubkey))
-    4c9c3dfac4207d5d8cb89df5722cb3d712385e3f
-    OP_EQUALVERIFY OP_CHECKSIG
-    88ac
-    num items in witness 1
-    02
-    length of sig
-    48
-    3045022100aa5d8aa40a90f23ce2c3d11bc845ca4a12acd99cbea37de6b9f6d86edebba8cb0220
-    22dedc2aa0a255f74d04c0b76ece2d7c691f9dd11a64a8ac49f62a99c3a05f9d01
-    length of scriptSig
-    23
-    length of pubkey
-    21
-    pubkey
-    03596d3451025c19dbbdeb932d6bf8bfb4ad499b95b6f88db8899efac102e5fc71
-    CHECKSIG
-    ac
-    locktime
-    00000000
+
+
+'''
+Examples of valid segwit from the json with parsing
+
+["Valid P2WPKH (Private key of segwit tests is 
+L5AQtV2HDm4xGsseLokK2VAT2EtYKcTm3c7HwqnJBFt9LdaQULsM)"],
+
+[[["0000000000000000000000000000000000000000000000000000000000000100", 
+0, "0x00 0x14 0x4c9c3dfac4207d5d8cb89df5722cb3d712385e3f", 1000]],
+
+"01000000
+00
+01
+ins start
+in num
+01
+in txid
+000100000000000000000000000000000000000000000000000000000000000000
+in txid out index
+00000000
+sequence
+ffffffff
+num outs
+01
+amount
+e803000000000000
+script
+1976a9144c9c3dfac4207d5d8cb89df5722cb3d712385e3f88ac
+(number of witnesses = 1, implied by txin length)
+witnesses : number 1
+item count for this witness
+02
+signature length
+48
+signature + hashcode 01
+3045022100cfb07164b36ba64c1b1e8c7720a56ad64d96f6ef332d3d37f9cb3c96477dc4450220
+0a464cd7a9cf94cd70f66ce4f4f0625ef650052c7afcfe29d7d7e01830ff91ed01
+pubkey length
+21
+pubkey
+03596d3451025c19dbbdeb932d6bf8bfb4ad499b95b6f88db8899efac102e5fc71
+locktime
+00000000", "P2SH,WITNESS"],
+'''
+'''
+P2WSH example
+01000000
+00
+01
+01
+00010000000000000000000000000000000000000000000000000000000000000000
+000000
+ffffffff
+01
+amount
+e803000000000000
+length 25
+19
+OP_DUP OP_HASH160
+76a9
+hash length
+14
+ripemd160(sha256(pubkey))
+4c9c3dfac4207d5d8cb89df5722cb3d712385e3f
+OP_EQUALVERIFY OP_CHECKSIG
+88ac
+num items in witness 1
+02
+length of sig
+48
+3045022100aa5d8aa40a90f23ce2c3d11bc845ca4a12acd99cbea37de6b9f6d86edebba8cb0220
+22dedc2aa0a255f74d04c0b76ece2d7c691f9dd11a64a8ac49f62a99c3a05f9d01
+length of scriptSig
+23
+length of pubkey
+21
+pubkey
+03596d3451025c19dbbdeb932d6bf8bfb4ad499b95b6f88db8899efac102e5fc71
+CHECKSIG
+ac
+locktime
+00000000
     
 "
 Example with SIGHASH_SINGLE|SIGHASH_ANYONECANPAY
