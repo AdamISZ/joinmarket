@@ -448,6 +448,11 @@ def sign(tx, i, priv, hashcode=SIGHASH_ALL, usenonce=None):
     return serialize(txobj)
 
 def p2sh_p2wpkh_sign(tx, i, priv, amount, hashcode=SIGHASH_ALL, usenonce=None):
+    """Given a serialized transaction, index, private key in hex,
+    amount in satoshis and optionally hashcode, return the serialized
+    transaction containing a signature and witness for this input; it's
+    assumed that the input is of type pay-to-witness-pubkey-hash nested in p2sh.
+    """
     pub = privkey_to_pubkey(priv)
     script = pubkey_to_p2sh_p2wpkh_script(pub)
     scriptCode = "76a914"+hash160(binascii.unhexlify(pub))+"88ac"

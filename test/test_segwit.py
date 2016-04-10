@@ -47,20 +47,34 @@ def make_sign_and_push(ins_sw,
     """A more complicated version of the function in test_tx_creation;
     will merge to this one once finished.
     ins_sw have this structure:
-    {"txid:n":(amount, priv), "txid2:n2":(amount2, priv), ..}
+    {"txid:n":(amount, priv, index), "txid2:n2":(amount2, priv2, index2), ..}
     if other_ins is not None, it has the same format, 
-    these inputs are assumed to be plain p2pkh;
-    these addresses get given those coins in advance and then spent from
+    these inputs are assumed to be plain p2pkh.
+    All of these inputs in these two sets will be consumed.
+    They are ordered according to the "index" fields (to allow testing
+    of specific ordering)
+    It's assumed that they contain sufficient coins to satisy the
+    required output specified in "amount", plus some extra for fees and a
+    change output.
+    The output_addr and change_addr, if None, are taken from the wallet
+    and are ordinary p2pkh outputs.
     All amounts are in satoshis and only converted to btc for grab_coins
     """
     #total value of all inputs
+    print ins_sw
+    print other_ins
     total = sum([x[0] for x in ins_sw.values()])
     total += sum([x[0] for x in other_ins.values()])
     #construct the other inputs
-    ins1 = []
-    ins1.extend(other_ins.keys())
-    ins1.extend(ins_sw.keys())
-
+    ins1 = other_ins
+    ins1.update(ins_sw)
+    ins1 = sorted(ins1.keys(), key=lambda k: ins1[k][2])
+    print ins1
+    raw_input()
+    #ins1.extend(other_ins.keys())
+    #ins1.extend(ins_sw.keys())
+    #reorder ins list according to indices
+    
     #random output address and change addr
     output_addr = wallet.get_new_addr(1, 1) if not output_addr else output_addr
     change_addr = wallet.get_new_addr(1, 0) if not change_addr else change_addr
@@ -81,14 +95,14 @@ def make_sign_and_push(ins_sw,
         else:
             assert False
         #for better test code coverage
-        if index % 2:
-            priv = binascii.unhexlify(priv)
+        #if index % 2:
+        #    priv = binascii.unhexlify(priv)
         if segwit:
             tx = btc.p2sh_p2wpkh_sign(tx, index, priv, amt, hashcode=hashcode)
         else:
             tx = btc.sign(tx, index, priv, hashcode=hashcode)
     #pushtx returns False on any error
-    print btc.deserialize(tx)
+    print pformat(btc.deserialize(tx))
     txid = jm_single().bc_interface.pushtx(tx)
     time.sleep(3)
     received = jm_single().bc_interface.get_received_by_addr(
@@ -98,6 +112,9 @@ def make_sign_and_push(ins_sw,
 
 
 def get_utxo_from_txid(txid, addr):
+    """Given a txid and an address for one of the outputs,
+    return "txid:n" where n is the index of the output
+    """
     rawtx = jm_single().bc_interface.rpc("getrawtransaction", [txid, 1])
     ins = []
     for u in rawtx["vout"]:
@@ -106,38 +123,48 @@ def get_utxo_from_txid(txid, addr):
     assert len(ins) == 1
     return ins[0]
 
-
-def test_spend_p2sh_p2wpkh_multi(setup_segwit):
+@pytest.mark.parametrize(
+    "wallet_structure, in_amt, amount, segwit_amt, segwit_ins, o_ins", [
+        ([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0,2], [1,3]),
+    ])
+def test_spend_p2sh_p2wpkh_multi(setup_segwit, wallet_structure,
+                                 in_amt, amount, segwit_amt, segwit_ins, o_ins):
     """Creates a wallet from which non-segwit inputs/
     outputs can be created, constructs one or more
-    segwit spendable utxos and tests spending them
-    in combination
+    p2wpkh in p2sh spendable utxos (by paying into the
+    corresponding address) and tests spending them
+    in combination.
     """
-    wallet = make_wallets(1, [[4, 0, 0, 0, 1]], 3)[0]['wallet']
+    wallet = make_wallets(1, wallet_structure, in_amt)[0]['wallet']
     jm_single().bc_interface.sync_wallet(wallet)
-    amount = 350000000
     ins_full = wallet.select_utxos(0, amount)
     #retrieve the privkey for all the utxos we got
     other_ins = {}
     ctr = 0
     for k, v in ins_full.iteritems():
+        other_ins[k] = (v["value"], wallet.get_key_from_addr(v["address"]),
+                        o_ins[ctr])
         ctr += 1
-        other_ins[k] = (v["value"], wallet.get_key_from_addr(v["address"]))
         #how many do we want?
-        if ctr == 2:
+        if ctr == len(o_ins):
             break
-    #build a single segwit input from a random key
-    priv = binascii.hexlify('\x03' * 32 + '\x01')
-    pub = btc.privtopub(priv)
-    #receiving address is of form p2sh_p2wpkh
-    addr1 = btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=196)
-    print "got address for p2shp2wpkh: " + addr1
-    txid = jm_single().bc_interface.grab_coins(addr1, 1)
-    ins_sw = {get_utxo_from_txid(txid, addr1): (100000000, priv)}
+    ins_sw = {}
+    for i in range(len(segwit_ins)):
+        #build segwit ins from "deterministic-random" keys
+        seed = json.dumps([i, wallet_structure, in_amt, amount, segwit_ins,
+                           other_ins])
+        priv = btc.sha256(seed)+"01"
+        pub = btc.privtopub(priv)
+        #magicbyte is testnet p2sh
+        addr1 = btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=196)
+        print "got address for p2shp2wpkh: " + addr1
+        txid = jm_single().bc_interface.grab_coins(addr1, segwit_amt)
+        ins_sw[get_utxo_from_txid(txid, addr1)] = (segwit_amt*100000000, priv,
+                                                   segwit_ins[i])
     txid = make_sign_and_push(ins_sw, wallet, amount, other_ins)
     assert txid
 
-
+'''
 def test_spend_p2wpkh(setup_segwit):
     """Original version of the test with a single input.
     Leaving here until the more flexible version of the test
@@ -181,7 +208,7 @@ def test_spend_p2wpkh(setup_segwit):
     received = jm_single().bc_interface.get_received_by_addr(
         [output_addr], None)['data'][0]['balance']
     assert received == outamount
-
+'''
 
 @pytest.fixture(scope="module")
 def setup_segwit():
