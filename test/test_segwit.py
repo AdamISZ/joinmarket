@@ -6,10 +6,6 @@ import sys
 import os
 import time
 import binascii
-import pexpect
-import random
-import subprocess
-import unittest
 import json
 from commontest import local_command, interact, make_wallets
 from pprint import pformat
@@ -17,9 +13,7 @@ import bitcoin as btc
 import pytest
 from joinmarket import load_program_config, jm_single
 from joinmarket import get_p2pk_vbyte, get_log, Wallet
-from joinmarket.support import chunks, select_gradual, \
-     select_greedy, select_greediest
-
+from decimal import Decimal
 log = get_log()
 
 
@@ -35,6 +29,19 @@ def test_segwit_valid_txs(setup_segwit):
         assert btc.serialize(deserialized_tx) == str(j[1])
         #TODO use bcinterface to decoderawtransaction
         #and compare the json values
+
+
+def get_utxo_from_txid(txid, addr):
+    """Given a txid and an address for one of the outputs,
+    return "txid:n" where n is the index of the output
+    """
+    rawtx = jm_single().bc_interface.rpc("getrawtransaction", [txid, 1])
+    ins = []
+    for u in rawtx["vout"]:
+        if u["scriptPubKey"]["addresses"][0] == addr:
+            ins.append(txid + ":" + str(u["n"]))
+    assert len(ins) == 1
+    return ins[0]
 
 
 def make_sign_and_push(ins_sw,
@@ -69,146 +76,99 @@ def make_sign_and_push(ins_sw,
     ins1 = other_ins
     ins1.update(ins_sw)
     ins1 = sorted(ins1.keys(), key=lambda k: ins1[k][2])
-    print ins1
-    raw_input()
-    #ins1.extend(other_ins.keys())
-    #ins1.extend(ins_sw.keys())
-    #reorder ins list according to indices
-    
     #random output address and change addr
     output_addr = wallet.get_new_addr(1, 1) if not output_addr else output_addr
     change_addr = wallet.get_new_addr(1, 0) if not change_addr else change_addr
     outs = [{'value': amount,
              'address': output_addr}, {'value': total - amount - 10000,
                                        'address': change_addr}]
-
     tx = btc.mktx(ins1, outs)
     de_tx = btc.deserialize(tx)
     for index, ins in enumerate(de_tx['ins']):
         utxo = ins['outpoint']['hash'] + ':' + str(ins['outpoint']['index'])
         if utxo in ins_sw.keys():
             segwit = True
-            amt, priv = ins_sw[utxo]
+            amt, priv, n = ins_sw[utxo]
         elif utxo in other_ins.keys():
             segwit = False
-            amt, priv = other_ins[utxo]
+            amt, priv, n = other_ins[utxo]
         else:
             assert False
         #for better test code coverage
         #if index % 2:
         #    priv = binascii.unhexlify(priv)
         if segwit:
+            print "Signing segwit for amount, priv, index:"
+            print ' '.join([str(x) for x in [amt, priv, index]])
             tx = btc.p2sh_p2wpkh_sign(tx, index, priv, amt, hashcode=hashcode)
         else:
+            print "Signing non-segwit for amount, priv, index:"
+            print ' '.join([str(x) for x in [amt, priv, index]])
             tx = btc.sign(tx, index, priv, hashcode=hashcode)
-    #pushtx returns False on any error
     print pformat(btc.deserialize(tx))
     txid = jm_single().bc_interface.pushtx(tx)
     time.sleep(3)
     received = jm_single().bc_interface.get_received_by_addr(
         [output_addr], None)['data'][0]['balance']
+    #check coins were transferred as expected
     assert received == amount
+    #pushtx returns False on any error
     return txid
 
 
-def get_utxo_from_txid(txid, addr):
-    """Given a txid and an address for one of the outputs,
-    return "txid:n" where n is the index of the output
-    """
-    rawtx = jm_single().bc_interface.rpc("getrawtransaction", [txid, 1])
-    ins = []
-    for u in rawtx["vout"]:
-        if u["scriptPubKey"]["addresses"][0] == addr:
-            ins.append(txid + ":" + str(u["n"]))
-    assert len(ins) == 1
-    return ins[0]
-
 @pytest.mark.parametrize(
     "wallet_structure, in_amt, amount, segwit_amt, segwit_ins, o_ins", [
-        ([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0,2], [1,3]),
+        ([[1, 0, 0, 0, 0]], 1, 1000000, 1, [0, 1, 2], []),
+        ([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0, 2], [1, 3]),
+        ([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0, 5], [1, 2, 3, 4]),
+        ([[2, 0, 0, 0, 2]], 2, 200000007, 0.3, [0, 1, 4, 5], [2, 3, 6]),
     ])
-def test_spend_p2sh_p2wpkh_multi(setup_segwit, wallet_structure,
-                                 in_amt, amount, segwit_amt, segwit_ins, o_ins):
+def test_spend_p2sh_p2wpkh_multi(setup_segwit, wallet_structure, in_amt, amount,
+                                 segwit_amt, segwit_ins, o_ins):
     """Creates a wallet from which non-segwit inputs/
     outputs can be created, constructs one or more
     p2wpkh in p2sh spendable utxos (by paying into the
     corresponding address) and tests spending them
     in combination.
+    wallet_structure is in accordance with commontest.make_wallets, see docs there
+    in_amt is the amount to pay into each address into the wallet (non-segwit adds)
+    amount (in satoshis) is how much we will pay to the output address
+    segwit_amt in BTC is the amount we will fund each new segwit address with
+    segwit_ins is a list of input indices (where to place the funding segwit utxos)
+    other_ins is a list of input indices (where to place the funding non-sw utxos)
     """
     wallet = make_wallets(1, wallet_structure, in_amt)[0]['wallet']
     jm_single().bc_interface.sync_wallet(wallet)
-    ins_full = wallet.select_utxos(0, amount)
-    #retrieve the privkey for all the utxos we got
     other_ins = {}
     ctr = 0
-    for k, v in ins_full.iteritems():
+    for k, v in wallet.unspent.iteritems():
         other_ins[k] = (v["value"], wallet.get_key_from_addr(v["address"]),
                         o_ins[ctr])
         ctr += 1
-        #how many do we want?
+        #only extract as many non-segwit utxos as we need;
+        #doesn't matter which they are
         if ctr == len(o_ins):
             break
     ins_sw = {}
     for i in range(len(segwit_ins)):
-        #build segwit ins from "deterministic-random" keys
+        #build segwit ins from "deterministic-random" keys;
+        #intended to be the same for each run with the same parameters
         seed = json.dumps([i, wallet_structure, in_amt, amount, segwit_ins,
                            other_ins])
-        priv = btc.sha256(seed)+"01"
+        priv = btc.sha256(seed) + "01"
         pub = btc.privtopub(priv)
         #magicbyte is testnet p2sh
         addr1 = btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=196)
         print "got address for p2shp2wpkh: " + addr1
         txid = jm_single().bc_interface.grab_coins(addr1, segwit_amt)
-        ins_sw[get_utxo_from_txid(txid, addr1)] = (segwit_amt*100000000, priv,
-                                                   segwit_ins[i])
+        #TODO - int cast, fix?
+        ins_sw[get_utxo_from_txid(txid, addr1)] = (int(segwit_amt * 100000000),
+                                                   priv, segwit_ins[i])
+    #make_sign_and_push will sanity check the received amount is correct
     txid = make_sign_and_push(ins_sw, wallet, amount, other_ins)
+    #will always be False if it didn't push.
     assert txid
 
-'''
-def test_spend_p2wpkh(setup_segwit):
-    """Original version of the test with a single input.
-    Leaving here until the more flexible version of the test
-    is battle hardened.
-    """
-    #first spend to an output which is of type p2wpkh
-    priv = binascii.hexlify('\x03' * 32 + '\x01')
-    pub = btc.privtopub(priv)
-    #receiving address is of form p2sh_p2wpkh
-    addr1 = btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=196)
-    print "got address for p2shp2wpkh: " + addr1
-    txid = jm_single().bc_interface.grab_coins(addr1, 1)
-    time.sleep(3)
-    in_amt = 100000000
-    fee = 10000
-    changeamount = 50000000
-    outamount = in_amt - fee - changeamount
-
-    #second, use this new tx input 0 as input to a new transaction,
-    #then sign using segwit flag
-    output_addr = btc.privkey_to_address(
-        binascii.hexlify('\x07' * 32 + '\x01'),
-        magicbyte=get_p2pk_vbyte())
-    change_addr = btc.privkey_to_address(
-        binascii.hexlify('\x08' * 32 + '\x01'),
-        magicbyte=get_p2pk_vbyte())
-    #find the correct outpoint for what we've just received;
-    #normally this job is done by "sync wallet" in blockchaininterface
-    ins = [get_utxo_from_txid(txid, addr1)]
-    outs = [{'value': outamount,
-             'address': output_addr}, {'value': changeamount,
-                                       'address': change_addr}]
-    tx = btc.mktx(ins, outs)
-    print btc.deserialize(tx)
-    #signature must cover amount; script is calculated automatically for tx type
-    tx2 = btc.p2sh_p2wpkh_sign(tx, 0, priv, in_amt)
-    print btc.deserialize(tx2)
-    txid2 = jm_single().bc_interface.pushtx(tx2)
-    assert txid2
-    time.sleep(3)
-    received = jm_single().bc_interface.get_received_by_addr(
-        [output_addr], None)['data'][0]['balance']
-    assert received == outamount
-'''
 
 @pytest.fixture(scope="module")
 def setup_segwit():

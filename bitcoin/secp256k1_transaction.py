@@ -226,6 +226,10 @@ def signature_form(tx, i, script, hashcode=SIGHASH_ALL):
     newtx = copy.deepcopy(tx)
     for inp in newtx["ins"]:
         inp["script"] = ""
+        #Any witnesses must not be included in the
+        #serialization for the template for non-segwit signings.
+        if "txinwitness" in inp.keys():
+            del inp["txinwitness"]
     newtx["ins"][i]["script"] = script
     if hashcode%SIGHASH_ANYONECANPAY == SIGHASH_NONE:
         newtx["outs"] = []
@@ -245,8 +249,6 @@ def signature_form(tx, i, script, hashcode=SIGHASH_ALL):
                 inp["sequence"] = 0
     if hashcode > SIGHASH_ANYONECANPAY:
         newtx["ins"] = [newtx["ins"][i]]
-    else:
-        pass
     return newtx
 
 def txhash(tx, hashcode=None):
