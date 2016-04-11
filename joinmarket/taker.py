@@ -254,6 +254,8 @@ class CoinJoinTX(object):
         for i, u in utxo.iteritems():
             if utxo_data[i] is None:
                 continue
+            #TODO: assume that the sender serialize_scripted the amount to the end
+            #of the sig if using segwit; this is our segwit flag
             sig_good = btc.verify_tx_input(
                     txhex, u[0], utxo_data[i]['script'],
                     *btc.deserialize_script(sig))

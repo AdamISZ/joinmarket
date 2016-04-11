@@ -375,7 +375,7 @@ def serialize_script_unit(unit):
         if unit < 16:
             return from_int_to_byte(unit + 80)
         else:
-            return bytes([unit])
+            return from_int_to_byte(unit)
     elif unit is None:
         return b'\x00'
     else:
@@ -392,13 +392,24 @@ def serialize_script_unit(unit):
 if is_python2:
 
     def serialize_script(script):
+        #bugfix: if *every* item in the script is of type int,
+        #for example a script of OP_TRUE, or None,
+        #then the previous version would always report json_is_base as True,
+        #resulting in an infinite loop (look who's demented now).
+        #There is no easy solution without being less flexible;
+        #here we default to returning a hex serialization in cases where
+        #there are no strings to use as flags.
+        if all([(isinstance(x, int) or x is None) for x in script]):
+            #no indication given whether output should be hex or binary, so..?
+            return binascii.hexlify(''.join(map(serialize_script_unit, script)))
         if json_is_base(script, 16):
             return binascii.hexlify(serialize_script(json_changebase(
-                script, lambda x: binascii.unhexlify(x))))
+            script, lambda x: binascii.unhexlify(x))))
         return ''.join(map(serialize_script_unit, script))
 else:
 
     def serialize_script(script):
+        #TODO Python 3 bugfix as above needed
         if json_is_base(script, 16):
             return safe_hexlify(serialize_script(json_changebase(
                 script, lambda x: binascii.unhexlify(x))))
@@ -420,7 +431,8 @@ def mk_multisig_script(*args):  # [pubs],k or pub1,pub2...pub[n],k
 # Signing and verifying
 
 
-def verify_tx_input(tx, i, script, sig, pub):
+def verify_tx_input(tx, i, script, sig, pub, amount=None):
+    
     if re.match('^[0-9a-fA-F]*$', tx):
         tx = binascii.unhexlify(tx)
     if re.match('^[0-9a-fA-F]*$', script):
@@ -429,8 +441,15 @@ def verify_tx_input(tx, i, script, sig, pub):
         sig = safe_hexlify(sig)
     if not re.match('^[0-9a-fA-F]*$', pub):
         pub = safe_hexlify(pub)
+    if amount:
+        if not re.match('^[0-9a-fA-F]*$', amount):
+            amount = safe_hexlify(amount)
     hashcode = decode(sig[-2:], 16)
-    modtx = signature_form(tx, int(i), script, hashcode)
+    if amount:
+        modtx = segwit_signature_form(deserialize(tx), int(i), script,
+                                      amount, hashcode)
+    else:
+        modtx = signature_form(tx, int(i), script, hashcode)
     return ecdsa_tx_verify(modtx, sig, pub, hashcode)
 
 
