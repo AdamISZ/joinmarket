@@ -75,19 +75,21 @@ def setup_import(request):
 
 
 @pytest.mark.parametrize(
-    "nw, wallet_structures, mean_amt, sdev_amt, amount",
+    "nw, wallet_structures, mean_amt, sdev_amt, amount, segwit",
     [
         #TODO create structures that cover edge cases like
         #"return [high[0]]" in select_greediest
         (3, [[1, 0, 0, 0, 0], [0, 4, 2, 0, 1], [2, 6, 0, 0, 0]], 4, 1.4,
-         800000000),
+         800000000, True),
+        (3, [[1, 0, 0, 0, 0], [0, 4, 2, 0, 1], [2, 6, 0, 0, 0]], 4, 1.4,
+                 800000000, False),
     ])
 def test_utxo_selection(setup_wallets, nw, wallet_structures, mean_amt,
-                        sdev_amt, amount):
+                        sdev_amt, amount, segwit):
     """Check that all the utxo selection algorithms work with a random
     variety of wallet contents.
     """
-    wallets = make_wallets(nw, wallet_structures, mean_amt, sdev_amt)
+    wallets = make_wallets(nw, wallet_structures, mean_amt, sdev_amt, segwit=segwit)
     for w in wallets.values():
         jm_single().bc_interface.sync_wallet(w['wallet'])
     for k, w in enumerate(wallets.values()):

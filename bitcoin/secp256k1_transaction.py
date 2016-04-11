@@ -434,13 +434,16 @@ def verify_tx_input(tx, i, script, sig, pub):
     return ecdsa_tx_verify(modtx, sig, pub, hashcode)
 
 
-def sign(tx, i, priv, hashcode=SIGHASH_ALL, usenonce=None):
+def sign(tx, i, priv, hashcode=SIGHASH_ALL, usenonce=None, amount=None):
     i = int(i)
     if (not is_python2 and isinstance(re, bytes)) or not re.match(
             '^[0-9a-fA-F]*$', tx):
         return binascii.unhexlify(sign(safe_hexlify(tx), i, priv))
     if len(priv) <= 33:
         priv = safe_hexlify(priv)
+    if amount:
+        return p2sh_p2wpkh_sign(tx, i, priv, amount, hashcode=hashcode,
+                                usenonce=usenonce)
     pub = privkey_to_pubkey(priv, True)
     address = pubkey_to_address(pub)
     signing_tx = signature_form(tx, i, mk_pubkey_script(address), hashcode)

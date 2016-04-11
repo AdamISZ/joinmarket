@@ -301,6 +301,12 @@ class Wallet(AbstractWallet):
         log.debug('get_utxos_by_mixdepth = \n' + pprint.pformat(mix_utxo_list))
         return mix_utxo_list
 
+class SegwitWallet(Wallet):
+    def get_addr(self, mixing_depth, forchange, i):
+        pub = btc.privtopub(self.get_key(mixing_depth, forchange, i))
+        #magicbyte is p2sh
+        magicbyte = 5 if get_p2pk_vbyte()==0 else 196
+        return btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=magicbyte)
 
 class BitcoinCoreWallet(AbstractWallet):
     def __init__(self, fromaccount):

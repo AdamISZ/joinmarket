@@ -15,7 +15,7 @@ from decimal import Decimal
 data_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(data_dir))
 
-from joinmarket import jm_single, Wallet, get_log
+from joinmarket import jm_single, Wallet, SegwitWallet, get_log
 from joinmarket.support import chunks
 
 log = get_log()
@@ -57,7 +57,8 @@ def make_wallets(n,
                  mean_amt=1,
                  sdev_amt=0,
                  start_index=0,
-                 fixed_seeds=None):
+                 fixed_seeds=None,
+                 segwit=False):
     '''n: number of wallets to be created
        wallet_structure: array of n arrays , each subarray
        specifying the number of addresses to be populated with coins
@@ -72,9 +73,10 @@ def make_wallets(n,
     else:
         seeds = fixed_seeds
     wallets = {}
+    walletclass = SegwitWallet if segwit else Wallet
     for i in range(n):
         wallets[i + start_index] = {'seed': seeds[i],
-                                    'wallet': Wallet(seeds[i],
+                                    'wallet': walletclass(seeds[i],
                                                      max_mix_depth=5)}
         for j in range(5):
             for k in range(wallet_structures[i][j]):

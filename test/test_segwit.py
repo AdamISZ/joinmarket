@@ -86,25 +86,13 @@ def make_sign_and_push(ins_sw,
     de_tx = btc.deserialize(tx)
     for index, ins in enumerate(de_tx['ins']):
         utxo = ins['outpoint']['hash'] + ':' + str(ins['outpoint']['index'])
-        if utxo in ins_sw.keys():
-            segwit = True
-            amt, priv, n = ins_sw[utxo]
-        elif utxo in other_ins.keys():
-            segwit = False
-            amt, priv, n = other_ins[utxo]
-        else:
-            assert False
+        temp_ins = ins_sw if utxo in ins_sw.keys() else other_ins
+        amt, priv, n = temp_ins[utxo]
+        temp_amt = amt if utxo in ins_sw.keys() else None
         #for better test code coverage
-        #if index % 2:
-        #    priv = binascii.unhexlify(priv)
-        if segwit:
-            print "Signing segwit for amount, priv, index:"
-            print ' '.join([str(x) for x in [amt, priv, index]])
-            tx = btc.p2sh_p2wpkh_sign(tx, index, priv, amt, hashcode=hashcode)
-        else:
-            print "Signing non-segwit for amount, priv, index:"
-            print ' '.join([str(x) for x in [amt, priv, index]])
-            tx = btc.sign(tx, index, priv, hashcode=hashcode)
+        if index % 2:
+            priv = binascii.unhexlify(priv)
+        tx = btc.sign(tx, index, priv, hashcode=hashcode, amount=temp_amt)
     print pformat(btc.deserialize(tx))
     txid = jm_single().bc_interface.pushtx(tx)
     time.sleep(3)
@@ -142,13 +130,13 @@ def test_spend_p2sh_p2wpkh_multi(setup_segwit, wallet_structure, in_amt, amount,
     other_ins = {}
     ctr = 0
     for k, v in wallet.unspent.iteritems():
-        other_ins[k] = (v["value"], wallet.get_key_from_addr(v["address"]),
-                        o_ins[ctr])
-        ctr += 1
         #only extract as many non-segwit utxos as we need;
         #doesn't matter which they are
         if ctr == len(o_ins):
             break
+        other_ins[k] = (v["value"], wallet.get_key_from_addr(v["address"]),
+                        o_ins[ctr])
+        ctr += 1
     ins_sw = {}
     for i in range(len(segwit_ins)):
         #build segwit ins from "deterministic-random" keys;
