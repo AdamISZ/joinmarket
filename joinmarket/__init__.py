@@ -18,7 +18,7 @@ from .taker import Taker, OrderbookWatch
 from .wallet import AbstractWallet, BitcoinCoreInterface, Wallet, \
     BitcoinCoreWallet, SegwitWallet
 from .configure import load_program_config, jm_single, get_p2pk_vbyte, \
-    get_network, jm_single, get_network, validate_address
+     get_p2sh_vbyte, get_network, jm_single, get_network, validate_address
 from .blockchaininterface import BlockrInterface
 # Set default logging handler to avoid "No handler found" warnings.
 

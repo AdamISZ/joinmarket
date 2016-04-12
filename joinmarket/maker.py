@@ -8,12 +8,13 @@ import threading
 
 import bitcoin as btc
 from joinmarket import IRCMessageChannel
-from joinmarket.configure import get_p2pk_vbyte, load_program_config, jm_single
+from joinmarket.configure import get_p2pk_vbyte, load_program_config, jm_single, \
+     get_p2sh_vbyte
 from joinmarket.enc_wrapper import init_keypair, as_init_encryption, init_pubkey
 
 from joinmarket.support import get_log, calc_cj_fee, debug_dump_object
 from joinmarket.taker import CoinJoinerPeer
-from joinmarket.wallet import Wallet
+from joinmarket.wallet import Wallet, SegwitWallet
 
 log = get_log()
 
@@ -91,9 +92,9 @@ class CoinJoinOrder(object):
         # authorisation of taker passed
         # (but input utxo pubkey is checked in verify_unsigned_tx).
         # Send auth request to taker
-        # TODO the next 2 lines are a little inefficient.
         btc_key = self.maker.wallet.get_key_from_addr(self.cj_addr)
         btc_pub = btc.privtopub(btc_key)
+        btc_pub = btc_pub + self.maker.wallet.vflag
         btc_sig = btc.ecdsa_sign(self.kp.hex_pk(), btc_key)
         self.maker.msgchan.send_ioauth(nick, self.utxos.keys(), btc_pub,
                                        self.change_addr, btc_sig)
@@ -117,10 +118,20 @@ class CoinJoinOrder(object):
             if utxo not in self.utxos:
                 continue
             addr = self.utxos[utxo]['address']
+            s_amt = self.utxos[utxo]['value'] if isinstance(
+                self.maker.wallet, SegwitWallet) else None
             txs = btc.sign(txhex, index,
-                           self.maker.wallet.get_key_from_addr(addr))
-            sigs.append(base64.b64encode(btc.deserialize(txs)['ins'][index][
-                                             'script'].decode('hex')))
+                           self.maker.wallet.get_key_from_addr(addr),
+                           amount=s_amt)
+            sigmsg = btc.deserialize(txs)['ins'][index][
+                                             'script'].decode('hex')
+            if 'txinwitness' in btc.deserialize(txs)['ins'][index].keys():
+                #we *prepend* the witness data since we want (sig, pub, scriptcode)
+                #also, the items in witness are not serialize_scripted
+                sigmsg = ''.join([btc.serialize_script_unit(
+                    x.decode('hex')) for x in btc.deserialize(
+                    txs)['ins'][index]['txinwitness']]) + sigmsg
+            sigs.append(base64.b64encode(sigmsg))
         # len(sigs) > 0 guarenteed since i did verify_unsigned_tx()
 
         jm_single().bc_interface.add_tx_notify(
@@ -166,7 +177,9 @@ class CoinJoinOrder(object):
         input_addresses = [u['address'] for u in input_utxo_data]
         if btc.pubtoaddr(
                 self.i_utxo_pubkey, get_p2pk_vbyte()) not in input_addresses:
-            return False, "authenticating bitcoin address is not contained"
+            if btc.pubkey_to_p2sh_p2wpkh_address(
+                self.i_utxo_pubkey, get_p2sh_vbyte()) not in input_addresses:
+                return False, "authenticating bitcoin address is not contained"
 
         my_utxo_set = set(self.utxos.keys())
         if not tx_utxo_set.issuperset(my_utxo_set):
@@ -185,7 +198,7 @@ class CoinJoinOrder(object):
         times_seen_cj_addr = 0
         times_seen_change_addr = 0
         for outs in txd['outs']:
-            addr = btc.script_to_address(outs['script'], get_p2pk_vbyte())
+            addr = self.maker.wallet.script_to_address(outs['script'])
             if addr == self.cj_addr:
                 times_seen_cj_addr += 1
                 if outs['value'] != self.cj_amount:
@@ -373,7 +386,7 @@ class Maker(CoinJoinerPeer):
     def on_tx_confirmed(self, cjorder, confirmations, txid):
         to_announce = []
         for i, out in enumerate(cjorder.tx['outs']):
-            addr = btc.script_to_address(out['script'], get_p2pk_vbyte())
+            addr = self.wallet.script_to_address(out['script'])
             if addr == cjorder.change_addr:
                 neworder = {'oid': self.get_next_oid(),
                             'ordertype': 'absorder',

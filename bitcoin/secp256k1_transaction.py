@@ -266,7 +266,6 @@ def bin_txhash(tx, hashcode=None):
 
 
 def ecdsa_tx_sign(tx, priv, hashcode=SIGHASH_ALL, usenonce=None):
-    print txhash(tx, hashcode)
     sig = ecdsa_raw_sign(
         txhash(tx, hashcode),
         priv,
@@ -431,7 +430,7 @@ def mk_multisig_script(*args):  # [pubs],k or pub1,pub2...pub[n],k
 # Signing and verifying
 
 
-def verify_tx_input(tx, i, script, sig, pub, amount=None):
+def verify_tx_input(tx, i, script, sig, pub, witness=None, amount=None):
     
     if re.match('^[0-9a-fA-F]*$', tx):
         tx = binascii.unhexlify(tx)
@@ -441,13 +440,14 @@ def verify_tx_input(tx, i, script, sig, pub, amount=None):
         sig = safe_hexlify(sig)
     if not re.match('^[0-9a-fA-F]*$', pub):
         pub = safe_hexlify(pub)
-    if amount:
-        if not re.match('^[0-9a-fA-F]*$', amount):
-            amount = safe_hexlify(amount)
+    if witness:
+        if not re.match('^[0-9a-fA-F]*$', witness):
+            witness = safe_hexlify(witness)
     hashcode = decode(sig[-2:], 16)
-    if amount:
-        modtx = segwit_signature_form(deserialize(tx), int(i), script,
-                                      amount, hashcode)
+    if witness and amount:
+        scriptCode = "76a914"+hash160(binascii.unhexlify(pub))+"88ac"
+        modtx = segwit_signature_form(deserialize(binascii.hexlify(tx)), int(i),
+                                      scriptCode, amount, hashcode)
     else:
         modtx = signature_form(tx, int(i), script, hashcode)
     return ecdsa_tx_verify(modtx, sig, pub, hashcode)

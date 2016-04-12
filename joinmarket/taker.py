@@ -11,7 +11,7 @@ import threading
 from decimal import InvalidOperation, Decimal
 
 import bitcoin as btc
-from joinmarket.configure import jm_single, get_p2pk_vbyte
+from joinmarket.configure import jm_single, get_p2pk_vbyte, get_p2sh_vbyte
 from joinmarket.enc_wrapper import init_keypair, as_init_encryption, init_pubkey
 from joinmarket.support import get_log, calc_cj_fee
 from joinmarket.wallet import estimate_tx_fee
@@ -142,7 +142,11 @@ class CoinJoinTX(object):
                'cjamount={:d} txfee={:d} realcjfee={:d}').format
         log.debug(fmt(nick, total_input, self.cj_amount,
             self.active_orders[nick]['txfee'], real_cjfee))
-        cj_addr = btc.pubtoaddr(cj_pub, get_p2pk_vbyte())
+        if len(cj_pub) == 68 and cj_pub[-2:]:
+            cj_addr = btc.pubkey_to_p2sh_p2wpkh_address(cj_pub[:66],
+                                                        get_p2sh_vbyte())
+        else:
+            cj_addr = btc.pubtoaddr(cj_pub, get_p2pk_vbyte())
         self.outputs.append({'address': cj_addr, 'value': self.cj_amount})
         self.cjfee_total += real_cjfee
         self.maker_txfee_contributions += self.active_orders[nick]['txfee']
@@ -254,14 +258,31 @@ class CoinJoinTX(object):
         for i, u in utxo.iteritems():
             if utxo_data[i] is None:
                 continue
-            #TODO: assume that the sender serialize_scripted the amount to the end
-            #of the sig if using segwit; this is our segwit flag
-            sig_good = btc.verify_tx_input(
-                    txhex, u[0], utxo_data[i]['script'],
-                    *btc.deserialize_script(sig))
+            #Check if the sender serialize_scripted the witness
+            #item into the sig message; if so, also pick up the amount
+            #from the utxo data retrieved from the blockchain to verify
+            #the segwit-style signature. Note that this allows a mixed
+            #SW/non-SW transaction as each utxo is interpreted separately.
+            sig_deserialized = btc.deserialize_script(sig)
+            if len(sig_deserialized) == 2:
+                ver_sig, ver_pub = sig_deserialized
+                wit = None
+            elif len(sig_deserialized) == 3:
+                ver_sig, ver_pub, wit =  sig_deserialized
+            else:
+                log.debug("Invalid signature message - more than 3 items")
+                break
+            ver_amt = utxo_data[i]['value'] if wit else None
+            sig_good = btc.verify_tx_input(txhex, u[0], utxo_data[i]['script'],
+                                               ver_sig, ver_pub, witness=wit,
+                                               amount=ver_amt)
             if sig_good:
                 log.debug('found good sig at index=%d' % (u[0]))
-                self.latest_tx['ins'][u[0]]['script'] = sig
+                if wit:
+                    self.latest_tx['ins'][u[0]]['txinwitness'] = [ver_sig, ver_pub]
+                    self.latest_tx['ins'][u[0]]['script'] = "16" + wit
+                else:
+                    self.latest_tx['ins'][u[0]]['script'] = sig
                 inserted_sig = True
                 # check if maker has sent everything possible
                 self.utxos[nick].remove(u[1])
@@ -300,9 +321,9 @@ class CoinJoinTX(object):
         else:
             return donation_address(self)
 
-    def sign_tx(self, tx, i, priv):
+    def sign_tx(self, tx, i, priv, amount):
         if self.my_cj_addr:
-            return btc.sign(tx, i, priv)
+            return self.wallet.sign(tx, i, priv, amount)
         else:
             return sign_donation_tx(tx, i, priv)
 
@@ -315,7 +336,9 @@ class CoinJoinTX(object):
             if utxo not in self.input_utxos.keys():
                 continue
             addr = self.input_utxos[utxo]['address']
-            tx = self.sign_tx(tx, index, self.wallet.get_key_from_addr(addr))
+            amount = self.input_utxos[utxo]['value']
+            tx = self.sign_tx(tx, index, self.wallet.get_key_from_addr(addr),
+                              amount)
         self.latest_tx = btc.deserialize(tx)
 
     def push(self, txd):
@@ -565,7 +588,8 @@ class Taker(OrderbookWatch):
         self.cjtx.start_encryption(nick, maker_pubkey)
 
     def on_ioauth(self, nick, utxo_list, cj_pub, change_addr, btc_sig):
-        if not self.cjtx.auth_counterparty(nick, btc_sig, cj_pub):
+        v_cj_pub = cj_pub[:66]
+        if not self.cjtx.auth_counterparty(nick, btc_sig, v_cj_pub):
             fmt = ('Authenticated encryption with counterparty: {}'
                     ' not established. TODO: send rejection message').format
             log.debug(fmt(nick))

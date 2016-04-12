@@ -11,12 +11,17 @@ from getpass import getpass
 import bitcoin as btc
 from joinmarket.slowaes import decryptData
 from joinmarket.blockchaininterface import BitcoinCoreInterface
-from joinmarket.configure import jm_single, get_network, get_p2pk_vbyte
+from joinmarket.configure import jm_single, get_network, get_p2pk_vbyte, \
+     get_p2sh_vbyte
 
 from joinmarket.support import get_log, select_gradual, select_greedy, \
     select_greediest
 
 log = get_log()
+
+#Wallet types in single hex encoded byte
+JM_WALLET_P2PKH = "00"
+JM_WALLET_SW_P2SH_P2WPKH = "01"
 
 def estimate_tx_fee(ins, outs, txtype='p2pkh'):
     '''Returns an estimate of the number of satoshis required
@@ -113,6 +118,7 @@ class Wallet(AbstractWallet):
                  extend_mixdepth=False,
                  storepassword=False):
         super(Wallet, self).__init__()
+        self.vflag = JM_WALLET_P2PKH
         self.max_mix_depth = max_mix_depth
         self.storepassword = storepassword
         # key is address, value is (mixdepth, forchange, index) if mixdepth =
@@ -136,6 +142,20 @@ class Wallet(AbstractWallet):
         self.index = []
         for i in range(self.max_mix_depth):
             self.index.append([0, 0])
+
+    def sign(self, tx, i, priv, amount):
+        """Sign a transaction for pushing
+        onto the network. The amount field
+        is not used in this case (p2pkh)
+        """
+        return btc.sign(tx, i, priv)
+
+    def script_to_address(self, script):
+        """Return the address for a given output script,
+        which will be p2pkh for the default Wallet object,
+        and reading the correct network byte from the config.
+        """
+        return btc.script_to_address(script, get_p2pk_vbyte())
 
     def read_wallet_file_data(self, filename):
         self.path = None
@@ -302,11 +322,35 @@ class Wallet(AbstractWallet):
         return mix_utxo_list
 
 class SegwitWallet(Wallet):
+
+    def __init__(self, seedarg, max_mix_depth=2, gaplimit=6,
+                 extend_mixdepth=False, storepassword=False):
+        super(SegwitWallet, self).__init__(seedarg, max_mix_depth, gaplimit,
+                                           extend_mixdepth, storepassword)
+        self.vflag = JM_WALLET_SW_P2SH_P2WPKH
+
     def get_addr(self, mixing_depth, forchange, i):
+        """Construct a p2sh-p2wpkh style address for the
+        keypair corresponding to mixing depth mixing_depth,
+        branch forchange and index i
+        """
         pub = btc.privtopub(self.get_key(mixing_depth, forchange, i))
-        #magicbyte is p2sh
-        magicbyte = 5 if get_p2pk_vbyte()==0 else 196
-        return btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=magicbyte)
+        return btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=get_p2sh_vbyte())
+
+    def script_to_address(self, script):
+        """Return the address for a given output script,
+        which will be p2sh-p2wpkh for the segwit (currently).
+        The underlying witness is however invisible at this layer;
+        so it's just a p2sh address.
+        """
+        return btc.script_to_address(script, get_p2sh_vbyte())
+
+    def sign(self, tx, i, priv, amount):
+        """Sign a transaction; the amount field
+        triggers the segwit style signing.
+        """
+        log.debug("About to sign for this amount: " + str(amount))
+        return btc.sign(tx, i, priv, amount=amount)
 
 class BitcoinCoreWallet(AbstractWallet):
     def __init__(self, fromaccount):

@@ -299,7 +299,7 @@ def main():
     log.debug('starting sendpayment')
 
     if not options.userpcwallet:
-        wallet = Wallet(wallet_name, options.mixdepth + 1, options.gaplimit)
+        wallet = SegwitWallet(wallet_name, options.mixdepth + 1, options.gaplimit)
     else:
         wallet = BitcoinCoreWallet(fromaccount=wallet_name)
     jm_single().bc_interface.sync_wallet(wallet)

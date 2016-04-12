@@ -10,7 +10,7 @@ from joinmarket import BlockrInterface
 from joinmarket import jm_single, get_network, load_program_config
 from joinmarket import random_nick
 from joinmarket import get_log, calc_cj_fee, debug_dump_object
-from joinmarket import Wallet
+from joinmarket import Wallet, SegwitWallet
 
 # data_dir = os.path.dirname(os.path.realpath(__file__))
 # sys.path.insert(0, os.path.join(data_dir, 'joinmarket'))
@@ -173,7 +173,7 @@ def main():
         if ret[0] != 'y':
             return
 
-    wallet = Wallet(seed, max_mix_depth=mix_levels)
+    wallet = SegwitWallet(seed, max_mix_depth=mix_levels)
     jm_single().bc_interface.sync_wallet(wallet)
 
     # nickname is set way above
