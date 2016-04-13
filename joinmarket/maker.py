@@ -120,7 +120,7 @@ class CoinJoinOrder(object):
             addr = self.utxos[utxo]['address']
             s_amt = self.utxos[utxo]['value'] if isinstance(
                 self.maker.wallet, SegwitWallet) else None
-            txs = btc.sign(txhex, index,
+            txs = self.maker.wallet.sign(txhex, index,
                            self.maker.wallet.get_key_from_addr(addr),
                            amount=s_amt)
             sigmsg = btc.deserialize(txs)['ins'][index][
