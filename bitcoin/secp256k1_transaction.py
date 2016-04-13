@@ -461,6 +461,7 @@ def sign(tx, i, priv, hashcode=SIGHASH_ALL, usenonce=None, amount=None):
     if len(priv) <= 33:
         priv = safe_hexlify(priv)
     if amount:
+        print "for index: " + str(i) + ", signing segwit"
         return p2sh_p2wpkh_sign(tx, i, priv, amount, hashcode=hashcode,
                                 usenonce=usenonce)
     pub = privkey_to_pubkey(priv, True)

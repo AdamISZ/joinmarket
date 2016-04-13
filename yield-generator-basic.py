@@ -159,6 +159,11 @@ def main():
     load_program_config()
     import sys
     seed = sys.argv[1]
+    #This is just a simple hack; will fold into config PR that was added recently
+    if len(sys.argv) > 2:
+        segwit = int(sys.argv[2])
+    else:
+        segwit = 0
     if isinstance(jm_single().bc_interface, BlockrInterface):
         c = ('\nYou are running a yield generator by polling the blockr.io '
              'website. This is quite bad for privacy. That site is owned by '
@@ -172,8 +177,8 @@ def main():
         ret = raw_input('\nContinue? (y/n):')
         if ret[0] != 'y':
             return
-
-    wallet = SegwitWallet(seed, max_mix_depth=mix_levels)
+    wallet_class = SegwitWallet if segwit==1 else Wallet
+    wallet = wallet_class(seed, max_mix_depth=mix_levels)
     jm_single().bc_interface.sync_wallet(wallet)
 
     # nickname is set way above

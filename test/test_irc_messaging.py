@@ -41,7 +41,7 @@ class RawIRCThread(threading.Thread):
 
 def test_junk_messages(setup_messaging):
     #start a yg bot just to receive messages
-    wallets = make_wallets(1,
+    wallets = make_wallets(1, [False],
                            wallet_structures=[[1,0,0,0,0]],
                            mean_amt=1)
     wallet = wallets[0]['wallet']

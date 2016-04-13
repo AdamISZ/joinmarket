@@ -52,17 +52,18 @@ def local_command(command, bg=False, redirect=''):
         return subprocess.check_output(command)
 
 
-def make_wallets(n,
+def make_wallets(n, swflags,
                  wallet_structures=None,
                  mean_amt=1,
                  sdev_amt=0,
                  start_index=0,
-                 fixed_seeds=None,
-                 segwit=False):
+                 fixed_seeds=None):
     '''n: number of wallets to be created
+       swflags: a list of booleans indicating whether each wallet should
+       be segwit-enabled or not
        wallet_structure: array of n arrays , each subarray
        specifying the number of addresses to be populated with coins
-       at each depth (for now, this will only populate coins into 'receive' addresses)
+       at each depth (for now, this will only populate coins into 'external' addresses)
        mean_amt: the number of coins (in btc units) in each address as above
        sdev_amt: if randomness in amouts is desired, specify here.
        Returns: a dict of dicts of form {0:{'seed':seed,'wallet':Wallet object},1:..,}'''
@@ -73,8 +74,8 @@ def make_wallets(n,
     else:
         seeds = fixed_seeds
     wallets = {}
-    walletclass = SegwitWallet if segwit else Wallet
     for i in range(n):
+        walletclass = SegwitWallet if swflags[i] else Wallet
         wallets[i + start_index] = {'seed': seeds[i],
                                     'wallet': walletclass(seeds[i],
                                                      max_mix_depth=5)}

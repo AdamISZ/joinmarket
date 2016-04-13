@@ -26,17 +26,17 @@ yg_cmd = 'yield-generator-basic.py'
 
 
 @pytest.mark.parametrize(
-    "num_ygs, wallet_structures, mean_amt, mixdepth, sending_amt, segwit",
+    "num_ygs, wallet_structures, mean_amt, mixdepth, sending_amt, segwit_sp, segwit_yg",
     [
         # basic 1sp 2yg
-        (2, [[1, 0, 0, 0, 0]] * 3, 10, 0, 100000000, True),
+        (2, [[1, 0, 0, 0, 0]] * 3, 10, 0, 100000000, True, True),
         # 1sp 4yg, 2 mixdepths
-        (4, [[1, 2, 0, 0, 0]] * 5, 4, 1, 1234500, True),
+        (4, [[1, 2, 0, 0, 0]] * 5, 4, 1, 1234500, True, False),
         # 1sp 3yg, 2 mixdepths, sweep from depth1
-        (3, [[1, 3, 0, 0, 0]] * 4, 4, 1, 0, True),
+        #(3, [[1, 3, 0, 0, 0]] * 4, 4, 1, 0, True),
     ])
 def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
-                     mixdepth, sending_amt, segwit):
+                     mixdepth, sending_amt, segwit_sp, segwit_yg):
     """Test of sendpayment code, with yield generators in background.
     """
     log = get_log()
@@ -45,9 +45,11 @@ def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
     txfee = 5000
     waittime = 5
     amount = sending_amt
-    wallets = make_wallets(makercount + 1,
+    #prepare segwit flags for the wallets
+    swflags = [segwit_yg]*num_ygs + [segwit_sp]
+    wallets = make_wallets(makercount + 1, swflags,
                            wallet_structures=wallet_structures,
-                           mean_amt=mean_amt, segwit=segwit)
+                           mean_amt=mean_amt)
     #the sendpayment bot uses the last wallet in the list
     wallet = wallets[makercount]['wallet']
 

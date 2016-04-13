@@ -38,7 +38,7 @@ vpubs = ["03e9a06e539d6bf5cf1ca5c41b59121fa3df07a338322405a312c67b6349a707e9",
     ])
 def test_create_p2sh_output_tx(setup_tx_creation, nw, wallet_structures,
                                mean_amt, sdev_amt, amount, pubs, k):
-    wallets = make_wallets(nw, wallet_structures, mean_amt, sdev_amt)
+    wallets = make_wallets(nw, [False]*nw, wallet_structures, mean_amt, sdev_amt)
     for w in wallets.values():
         jm_single().bc_interface.sync_wallet(w['wallet'])
     for k, w in enumerate(wallets.values()):
@@ -90,7 +90,7 @@ def test_create_sighash_txs(setup_tx_creation):
     #non-standard hash codes:
     for sighash in [btc.SIGHASH_ANYONECANPAY + btc.SIGHASH_SINGLE,
                     btc.SIGHASH_NONE, btc.SIGHASH_SINGLE]:
-        wallet = make_wallets(1, [[2, 0, 0, 0, 1]], 3)[0]['wallet']
+        wallet = make_wallets(1, [False], [[2, 0, 0, 0, 1]], 3)[0]['wallet']
         jm_single().bc_interface.sync_wallet(wallet)
         amount = 350000000
         ins_full = wallet.select_utxos(0, amount)
@@ -119,7 +119,7 @@ def test_spend_p2sh_utxos(setup_tx_creation):
     script = btc.mk_multisig_script(pubs, 2)
     msig_addr = btc.scriptaddr(script, magicbyte=196)
     #pay into it
-    wallet = make_wallets(1, [[2, 0, 0, 0, 1]], 3)[0]['wallet']
+    wallet = make_wallets(1, [False], [[2, 0, 0, 0, 1]], 3)[0]['wallet']
     jm_single().bc_interface.sync_wallet(wallet)
     amount = 350000000
     ins_full = wallet.select_utxos(0, amount)

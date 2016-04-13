@@ -89,7 +89,7 @@ def test_utxo_selection(setup_wallets, nw, wallet_structures, mean_amt,
     """Check that all the utxo selection algorithms work with a random
     variety of wallet contents.
     """
-    wallets = make_wallets(nw, wallet_structures, mean_amt, sdev_amt, segwit=segwit)
+    wallets = make_wallets(nw, [segwit]*nw, wallet_structures, mean_amt, sdev_amt)
     for w in wallets.values():
         jm_single().bc_interface.sync_wallet(w['wallet'])
     for k, w in enumerate(wallets.values()):

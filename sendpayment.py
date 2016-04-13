@@ -268,6 +268,14 @@ def main():
         help=('Use the Bitcoin Core wallet through json rpc, instead '
               'of the internal joinmarket wallet. Requires '
               'blockchain_source=json-rpc'))
+    parser.add_option(
+        '-s',
+        '--segwit',
+        type='int',
+        action='store',
+        dest='segwit',
+        help='set to 1 for segwit-style wallets, default 0 (does not use segwit)'
+        default=0)
     (options, args) = parser.parse_args()
 
     if len(args) < 3:
@@ -299,7 +307,8 @@ def main():
     log.debug('starting sendpayment')
 
     if not options.userpcwallet:
-        wallet = SegwitWallet(wallet_name, options.mixdepth + 1, options.gaplimit)
+        wallet_class = SegwitWallet if options.segwit==1 else Wallet
+        wallet = wallet_class(wallet_name, options.mixdepth + 1,options.gaplimit)
     else:
         wallet = BitcoinCoreWallet(fromaccount=wallet_name)
     jm_single().bc_interface.sync_wallet(wallet)

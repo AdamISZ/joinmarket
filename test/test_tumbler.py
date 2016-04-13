@@ -82,7 +82,7 @@ def test_tumbler(setup_tumbler, num_ygs, wallet_structures, mean_amt, sdev_amt,
     options.mincjamount = 1000000
     options.liquiditywait = 5
 
-    wallets = make_wallets(num_ygs + 1,
+    wallets = make_wallets(num_ygs + 1, [False]*(num_ygs + 1),
                            wallet_structures=wallet_structures,
                            mean_amt=mean_amt, sdev_amt=sdev_amt)
     #need to make sure that at least some ygs have substantially

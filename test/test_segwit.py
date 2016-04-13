@@ -90,8 +90,11 @@ def make_sign_and_push(ins_sw,
         amt, priv, n = temp_ins[utxo]
         temp_amt = amt if utxo in ins_sw.keys() else None
         #for better test code coverage
+        print "signing tx index: " + str(index) + ", priv: " + priv
         if index % 2:
             priv = binascii.unhexlify(priv)
+        ms = "other" if not temp_amt else "amount: " + str(temp_amt)
+        print ms
         tx = btc.sign(tx, index, priv, hashcode=hashcode, amount=temp_amt)
     print pformat(btc.deserialize(tx))
     txid = jm_single().bc_interface.pushtx(tx)
@@ -106,10 +109,10 @@ def make_sign_and_push(ins_sw,
 
 @pytest.mark.parametrize(
     "wallet_structure, in_amt, amount, segwit_amt, segwit_ins, o_ins", [
-        ([[1, 0, 0, 0, 0]], 1, 1000000, 1, [0, 1, 2], []),
+        #([[1, 0, 0, 0, 0]], 1, 1000000, 1, [0, 1, 2], []),
         ([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0, 2], [1, 3]),
-        ([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0, 5], [1, 2, 3, 4]),
-        ([[2, 0, 0, 0, 2]], 2, 200000007, 0.3, [0, 1, 4, 5], [2, 3, 6]),
+        #([[4, 0, 0, 0, 1]], 3, 100000000, 1, [0, 5], [1, 2, 3, 4]),
+        #([[2, 0, 0, 0, 2]], 2, 200000007, 0.3, [0, 1, 4, 5], [2, 3, 6]),
     ])
 def test_spend_p2sh_p2wpkh_multi(setup_segwit, wallet_structure, in_amt, amount,
                                  segwit_amt, segwit_ins, o_ins):
@@ -125,7 +128,7 @@ def test_spend_p2sh_p2wpkh_multi(setup_segwit, wallet_structure, in_amt, amount,
     segwit_ins is a list of input indices (where to place the funding segwit utxos)
     other_ins is a list of input indices (where to place the funding non-sw utxos)
     """
-    wallet = make_wallets(1, wallet_structure, in_amt)[0]['wallet']
+    wallet = make_wallets(1, [True], wallet_structure, in_amt)[0]['wallet']
     jm_single().bc_interface.sync_wallet(wallet)
     other_ins = {}
     ctr = 0

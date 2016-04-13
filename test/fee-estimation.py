@@ -66,13 +66,13 @@ class FeeEstimateTests(unittest.TestCase):
         #for a 0.2% fee for 1 counterparty + a large tx fee.
         #(but not large enough to handle the bad wallet)
         wallet_structures = [[1, 0, 0, 0, 0]] * (self.n)
-        self.wallets = make_wallets(self.n,
+        self.wallets = make_wallets(self.n, [False]*n,
                                     wallet_structures=wallet_structures,
                                     mean_amt=1.00300000)
         #the sender is wallet (n), i.e. index wallets[n-1]
         #we need a counterparty with a huge set of utxos.
         bad_wallet_struct = [[1, 0, 0, 0, 0]]
-        self.wallets.update(make_wallets(1,
+        self.wallets.update(make_wallets(1, [False],
                                          wallet_structures=bad_wallet_struct,
                                          mean_amt=0.01,
                                          start_index=2))
@@ -85,7 +85,7 @@ class FeeEstimateTests(unittest.TestCase):
             time.sleep(1)
         #for sweep, create a yg wallet with enough for the mix
         #of the bad wallet above (acting as sender)
-        self.wallets.update(make_wallets(1,
+        self.wallets.update(make_wallets(1, [False],
                                          wallet_structures=[[1, 0, 0, 0, 0]],
                                          mean_amt=3,
                                          start_index=3))

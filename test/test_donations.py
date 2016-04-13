@@ -27,7 +27,8 @@ log = get_log()
      "6024a6c3ed859f03ac88ac33280600", "msWrR3Gm2mBmdLZH8vGHbHifM53N2vuYBq"),
 ])
 def test_donation_address(setup_donations, tx_type, tx_id, tx_hex, address):
-    wallets = make_wallets(1, wallet_structures=[[1, 1, 1, 0, 0]], mean_amt=0.5)
+    wallets = make_wallets(1, [False], wallet_structures=[[1, 1, 1, 0, 0]],
+                           mean_amt=0.5)
     wallet = wallets[0]['wallet']
     priv, addr = donation_address(tx_hex, wallet)
     print addr
