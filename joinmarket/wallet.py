@@ -292,10 +292,13 @@ class Wallet(AbstractWallet):
         self.spent_utxos += removed_utxos.keys()
         return removed_utxos
 
+    def get_vbyte(self):
+        return get_p2pk_vbyte()
+
     def add_new_utxos(self, tx, txid):
         added_utxos = {}
         for index, outs in enumerate(tx['outs']):
-            addr = btc.script_to_address(outs['script'], get_p2pk_vbyte())
+            addr = btc.script_to_address(outs['script'], self.get_vbyte())
             if addr not in self.addr_cache:
                 continue
             addrdict = {'address': addr, 'value': outs['value']}
@@ -329,13 +332,16 @@ class SegwitWallet(Wallet):
                                            extend_mixdepth, storepassword)
         self.vflag = JM_WALLET_SW_P2SH_P2WPKH
 
+    def get_vbyte(self):
+        return get_p2sh_vbyte()
+
     def get_addr(self, mixing_depth, forchange, i):
         """Construct a p2sh-p2wpkh style address for the
         keypair corresponding to mixing depth mixing_depth,
         branch forchange and index i
         """
         pub = btc.privtopub(self.get_key(mixing_depth, forchange, i))
-        return btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=get_p2sh_vbyte())
+        return btc.pubkey_to_p2sh_p2wpkh_address(pub, magicbyte=self.get_vbyte())
 
     def script_to_address(self, script):
         """Return the address for a given output script,

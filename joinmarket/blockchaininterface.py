@@ -495,7 +495,7 @@ class BitcoinCoreInterface(BlockchainInterface):
         blockchainInfo = self.jsonRpc.call("getblockchaininfo", [])
         actualNet = blockchainInfo['chain']
 
-        netmap = {'main': 'mainnet', 'test': 'testnet', 'regtest': 'regtest'}
+        netmap = {'main': 'mainnet', 'test': 'testnet', 'regtest': 'regtest', 'segnet4': 'segnet'}
         if netmap[actualNet] != network:
             raise Exception('wrong network configured')
 

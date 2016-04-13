@@ -7,8 +7,8 @@ import os
 import sys
 from optparse import OptionParser
 
-from joinmarket import load_program_config, get_network, Wallet, encryptData, \
-    get_p2pk_vbyte, jm_single, mn_decode, mn_encode
+from joinmarket import load_program_config, get_network, Wallet, SegwitWallet, \
+     encryptData, get_p2pk_vbyte, jm_single, mn_decode, mn_encode
 
 import bitcoin as btc
 
@@ -68,6 +68,14 @@ parser.add_option('-M',
                   dest='mixdepth',
                   help='mixing depth to import private key into',
                   default=0)
+parser.add_option(
+        '-s',
+        '--segwit',
+        type='int',
+        action='store',
+        dest='segwit',
+        help='set to 1 for segwit-style wallets, default 0 (does not use segwit)',
+        default=0)
 (options, args) = parser.parse_args()
 
 # if the index_cache stored in wallet.json is longer than the default
@@ -93,7 +101,8 @@ if args[0] in noseed_methods:
 else:
     seed = args[0]
     method = ('display' if len(args) == 1 else args[1].lower())
-    wallet = Wallet(seed,
+    wallet_class = SegwitWallet if options.segwit==1 else Wallet
+    wallet = wallet_class(seed,
                     options.maxmixdepth,
                     options.gaplimit,
                     extend_mixdepth=not maxmixdepth_configured,

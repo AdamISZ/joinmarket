@@ -298,7 +298,8 @@ def mk_scripthash_script(addr):
 
 
 def address_to_script(addr):
-    if addr[0] == '3' or addr[0] == '2':
+    #TODO - more sensible way of distinguishing outputs
+    if addr[0] == '3' or addr[0] == '2' or addr[0] == 'M':
         return mk_scripthash_script(addr)
     else:
         return mk_pubkey_script(addr)
@@ -313,13 +314,9 @@ def script_to_address(script, vbyte=0):
             script) == 25:
         return bin_to_b58check(script[3:-2], vbyte)  # pubkey hash addresses
     else:
-        if vbyte in [111, 196]:
-            # Testnet
-            scripthash_byte = 196
-        else:
-            scripthash_byte = 5
-        # BIP0016 scripthash addresses
-        return bin_to_b58check(script[2:-1], scripthash_byte)
+        # BIP0016 scripthash addresses; requires explicit vbyte set
+        if vbyte==0: raise Exception("Invalid version byte for P2SH")
+        return bin_to_b58check(script[2:-1], vbyte)
 
 def pubkey_to_p2sh_p2wpkh_script(pub):
     if re.match('^[0-9a-fA-F]*$', pub):

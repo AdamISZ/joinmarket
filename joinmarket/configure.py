@@ -169,15 +169,23 @@ def get_network():
 def get_p2sh_vbyte():
     if get_network() == 'testnet':
         return 0xc4
-    else:
+    elif get_network() == 'segnet':
+        return 50
+    elif get_network() == 'mainnet':
         return 0x05
+    else:
+        raise Exception("Unrecognized network")
 
 
 def get_p2pk_vbyte():
-    if get_network() == 'testnet':
+    if get_network() =='testnet':
         return 0x6f
-    else:
+    elif get_network() == 'segnet':
+        return 30
+    elif get_network() == 'mainnet':
         return 0x00
+    else:
+        raise Exception("Unrecognized network")
 
 
 def validate_address(addr):
