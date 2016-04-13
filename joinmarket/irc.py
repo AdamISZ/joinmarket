@@ -37,8 +37,8 @@ B_PER_SEC = 450
 B_PER_SEC_INTERVAL = 4.0
 
 encrypted_commands = ["auth", "ioauth", "tx", "sig"]
-plaintext_commands = ["fill", "error", "pubkey", "orderbook", "relorder",
-                      "absorder", "push"]
+valid_orders = ["relorder", "absorder", "swrelorder", "swabsorder"]
+plaintext_commands = ["fill", "error", "pubkey", "orderbook", "push"] + valid_orders
 
 log = get_log()
 

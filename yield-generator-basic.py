@@ -77,8 +77,9 @@ class YieldGenerator(Maker):
 
         # print mix_balance
         max_mix = max(mix_balance, key=mix_balance.get)
+        or_typ = 'swrelorder' if isinstance(self.wallet, SegwitWallet) else 'relorder'
         order = {'oid': 0,
-                 'ordertype': 'relorder',
+                 'ordertype': or_typ,
                  'minsize': minsize,
                  'maxsize': mix_balance[max_mix] - jm_single().DUST_THRESHOLD,
                  'txfee': txfee,

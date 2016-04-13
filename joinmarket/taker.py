@@ -142,9 +142,10 @@ class CoinJoinTX(object):
                'cjamount={:d} txfee={:d} realcjfee={:d}').format
         log.debug(fmt(nick, total_input, self.cj_amount,
             self.active_orders[nick]['txfee'], real_cjfee))
-        if len(cj_pub) == 68 and cj_pub[-2:]:
-            cj_addr = btc.pubkey_to_p2sh_p2wpkh_address(cj_pub[:66],
-                                                        get_p2sh_vbyte())
+        #TODO: this will be updated to be controlled by the jm_single config.
+        #Controlling via ordertype is the right way for backwards-compatibility
+        if self.active_orders[nick]['ordertype'][:2]=='sw':
+            cj_addr = btc.pubkey_to_p2sh_p2wpkh_address(cj_pub, get_p2sh_vbyte())
         else:
             cj_addr = btc.pubtoaddr(cj_pub, get_p2pk_vbyte())
         self.outputs.append({'address': cj_addr, 'value': self.cj_amount})
@@ -507,7 +508,7 @@ class OrderbookWatch(CoinJoinerPeer):
                        "from {}").format
                 log.debug(fmt(minsize, maxsize, counterparty))
                 return
-            if ordertype == 'absorder' and not isinstance(cjfee, int):
+            if ordertype in ['absorder', 'swabsorder'] and not isinstance(cjfee, int):
                 try:
                     cjfee = int(cjfee)
                 except ValueError:

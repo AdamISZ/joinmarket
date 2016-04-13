@@ -184,9 +184,9 @@ def select_greediest(unspent, value):
 
 
 def calc_cj_fee(ordertype, cjfee, cj_amount):
-    if ordertype == 'absorder':
+    if ordertype in ['absorder', 'swabsorder']:
         real_cjfee = int(cjfee)
-    elif ordertype == 'relorder':
+    elif ordertype in ['relorder', 'swrelorder']:
         real_cjfee = int(
                 (Decimal(cjfee) * Decimal(cj_amount)).quantize(Decimal(1)))
     else:
@@ -328,9 +328,9 @@ def choose_sweep_orders(db,
         sumtxfee_contribution = 0
         for order in ordercombo:
             sumtxfee_contribution += order['txfee']
-            if order['ordertype'] == 'absorder':
+            if order['ordertype'] in ['absorder', 'swabsorder']:
                 sumabsfee += int(order['cjfee'])
-            elif order['ordertype'] == 'relorder':
+            elif order['ordertype'] in ['relorder', 'swrelorder']:
                 sumrelfee += Decimal(order['cjfee'])
             else:
                 raise RuntimeError('unknown order type: {}'.format(

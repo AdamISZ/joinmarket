@@ -94,7 +94,6 @@ class CoinJoinOrder(object):
         # Send auth request to taker
         btc_key = self.maker.wallet.get_key_from_addr(self.cj_addr)
         btc_pub = btc.privtopub(btc_key)
-        btc_pub = btc_pub + self.maker.wallet.vflag
         btc_sig = btc.ecdsa_sign(self.kp.hex_pk(), btc_key)
         self.maker.msgchan.send_ioauth(nick, self.utxos.keys(), btc_pub,
                                        self.change_addr, btc_sig)

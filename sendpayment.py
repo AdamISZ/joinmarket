@@ -274,7 +274,7 @@ def main():
         type='int',
         action='store',
         dest='segwit',
-        help='set to 1 for segwit-style wallets, default 0 (does not use segwit)'
+        help='set to 1 for segwit-style wallets, default 0 (does not use segwit)',
         default=0)
     (options, args) = parser.parse_args()
 

@@ -33,7 +33,7 @@ yg_cmd = 'yield-generator-basic.py'
         # 1sp 4yg, 2 mixdepths
         (4, [[1, 2, 0, 0, 0]] * 5, 4, 1, 1234500, True, False),
         # 1sp 3yg, 2 mixdepths, sweep from depth1
-        #(3, [[1, 3, 0, 0, 0]] * 4, 4, 1, 0, True),
+        (3, [[1, 3, 0, 0, 0]] * 4, 4, 1, 0, False, True),
     ])
 def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
                      mixdepth, sending_amt, segwit_sp, segwit_yg):
@@ -55,8 +55,9 @@ def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
 
     yigen_procs = []
     for i in range(makercount):
+        sw_arg = 1 if segwit_yg else 0
         ygp = local_command([python_cmd, yg_cmd,\
-                             str(wallets[i]['seed'])], bg=True)
+                             str(wallets[i]['seed']), str(sw_arg)], bg=True)
         time.sleep(2)  #give it a chance
         yigen_procs.append(ygp)
 
