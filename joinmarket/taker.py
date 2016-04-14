@@ -163,7 +163,8 @@ class CoinJoinTX(object):
         if self.my_change_addr:
             #Estimate fee per choice of next/3/6 blocks targetting.
             estimated_fee = estimate_tx_fee(len(sum(
-                self.utxos.values(),[])), len(self.outputs)+2)
+                self.utxos.values(),[])), len(self.outputs)+2,
+                                            txtype=self.wallet.get_txtype())
             log.debug("Based on initial guess: "+str(
                 self.total_txfee)+", we estimated a fee of: "+str(estimated_fee))
             #reset total

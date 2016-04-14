@@ -204,11 +204,18 @@ def test_serialization_roundtrip(tx_type, tx_id, tx_hex):
     [
         (4, 3, "p2pkh", True),
         (4, 3, "p2sh", False),
+        (4, 3, "p2sh-p2wpkh", True),
     ])
 def test_estimate_tx_size(ins, outs, txtype, valid):
     #TODO: this function should throw on invalid number of ins or outs
     if valid:
-        assert btc.estimate_tx_size(ins, outs, txtype)== 10 + 147*ins + 34*outs
+        if txtype=="p2pkh":
+            assert btc.estimate_tx_size(ins, outs, txtype)== 10 + 147*ins + 34*outs
+        elif txtype=="p2sh-p2wpkh":
+            witness_estimate = ins*109
+            non_witness_estimate = 4 + 4 + outs*34 + ins*64
+            expected = (witness_estimate, non_witness_estimate)
+            assert expected==btc.estimate_tx_size(ins, outs, txtype)
     else:
         with pytest.raises(NotImplementedError) as e_info:
             btc.estimate_tx_size(ins, outs, txtype)

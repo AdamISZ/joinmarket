@@ -28,12 +28,18 @@ def estimate_tx_fee(ins, outs, txtype='p2pkh'):
     for a transaction with the given number of inputs and outputs,
     based on information from the blockchain interface.
     '''
-    tx_estimated_bytes = btc.estimate_tx_size(ins, outs, txtype)
-    log.debug("Estimated transaction size: "+str(tx_estimated_bytes))
     fee_per_kb = jm_single().bc_interface.estimate_fee_per_kb(
-        jm_single().config.getint("POLICY","tx_fees"))
-    log.debug("got estimated tx bytes: "+str(tx_estimated_bytes))
-    return int((tx_estimated_bytes * fee_per_kb)/Decimal(1000.0))
+                jm_single().config.getint("POLICY","tx_fees"))
+    if txtype=='p2pkh':
+        tx_estimated_bytes = btc.estimate_tx_size(ins, outs, txtype)
+        log.debug("Estimated transaction size: "+str(tx_estimated_bytes))
+        log.debug("got estimated tx bytes: "+str(tx_estimated_bytes))
+        return int((tx_estimated_bytes * fee_per_kb)/Decimal(1000.0))
+    elif txtype=='p2sh-p2wpkh':
+        witness_estimate, non_witness_estimate = btc.estimate_tx_size(
+            ins, outs, 'p2sh-p2wpkh')
+        return int(int((non_witness_estimate + 0.25*witness_estimate)*fee_per_kb)/
+                   Decimal(1000.0))
 
 class AbstractWallet(object):
     """
@@ -142,6 +148,12 @@ class Wallet(AbstractWallet):
         self.index = []
         for i in range(self.max_mix_depth):
             self.index.append([0, 0])
+
+    def get_txtype(self):
+        """Return string defining wallet type
+        for purposes of transaction size estimates
+        """
+        return 'p2pkh'
 
     def sign(self, tx, i, priv, amount):
         """Sign a transaction for pushing
@@ -334,6 +346,12 @@ class SegwitWallet(Wallet):
 
     def get_vbyte(self):
         return get_p2sh_vbyte()
+
+    def get_txtype(self):
+        """Return string defining wallet type
+        for purposes of transaction size estimates
+        """
+        return 'p2sh-p2wpkh'
 
     def get_addr(self, mixing_depth, forchange, i):
         """Construct a p2sh-p2wpkh style address for the

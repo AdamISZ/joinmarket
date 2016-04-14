@@ -70,7 +70,8 @@ class PaymentThread(threading.Thread):
             log.debug("Estimated ins: "+str(est_ins))
             est_outs = 2*self.taker.makercount + 1
             log.debug("Estimated outs: "+str(est_outs))
-            estimated_fee = estimate_tx_fee(est_ins, est_outs)
+            estimated_fee = estimate_tx_fee(est_ins, est_outs,
+                                            self.taker.wallet.get_txtype())
             log.debug("We have a fee estimate: "+str(estimated_fee))
             log.debug("And a requested fee of: "+str(
                 self.taker.txfee * self.taker.makercount))

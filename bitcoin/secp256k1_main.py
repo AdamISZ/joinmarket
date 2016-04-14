@@ -362,14 +362,24 @@ def ecdsa_raw_verify(msg, pub, sig, usehex, rawmsg=False):
     return newpub.ecdsa_verify(msg, sigobj, raw=rawmsg)
 
 def estimate_tx_size(ins, outs, txtype='p2pkh'):
-    '''Estimate transaction size.
-    Assuming p2pkh:
-    out: 8+1+3+2+20=34, in: 1+32+4+1+1+~73+1+1+33=147,
-    ver:4,seq:4, +2 (len in,out)
-    total ~= 34*len_out + 147*len_in + 10 (sig sizes vary slightly)
-    '''
+    """Estimate the size of a transaction from the
+    integer number of inputs and outputs.
+    """
     if txtype == 'p2pkh':
+        #out: 8+1+3+2+20=34, in: 1+32+4+1+1+~73+1+1+33=147,
+        #ver:4,seq:4, +2 (len in,out)
+        #total ~= 34*len_out + 147*len_in + 10 (sig sizes vary slightly)
         return 10 + ins * 147 + 34 * outs
+    elif txtype == 'p2sh-p2wpkh':
+        #return the estimate for the witness and non-witness
+        #portions of the transaction, assuming that all the inputs
+        #are of segwit type p2sh-p2wpkh
+        #witness are roughly 3+~73+33 for each input
+        #non-witness input fields are roughly 32+4+4+20+4=64, so total becomes
+        #n_in * 64 + 4(ver) + 4(locktime) + n_out*34 + n_in * 109
+        witness_estimate = ins*109
+        non_witness_estimate = 4 + 4 + outs*34 + ins*64
+        return (witness_estimate, non_witness_estimate)
     else:
-        raise NotImplementedError("Non p2pkh transaction size estimation not" +
-                                  "yet implemented")
+        raise NotImplementedError("Transaction size estimation not yet implemented"
+                                  " for type: " + txtype )
