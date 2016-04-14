@@ -15,7 +15,7 @@ from joinmarket import validate_address, jm_single
 from joinmarket import random_nick
 from joinmarket import get_log, choose_sweep_orders, choose_orders, \
     pick_order, cheapest_order_choose, weighted_order_choose, debug_dump_object
-from joinmarket import Wallet, BitcoinCoreWallet
+from joinmarket import Wallet, BitcoinCoreWallet, SegwitWallet
 from joinmarket.wallet import estimate_tx_fee
 
 log = get_log()

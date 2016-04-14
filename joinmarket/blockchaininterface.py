@@ -640,13 +640,18 @@ class BitcoinCoreInterface(BlockchainInterface):
         et = time.time()
         log.debug('bitcoind sync_unspent took ' + str((et - st)) + 'sec')
 
-    def add_tx_notify(self, txd, unconfirmfun, confirmfun, notifyaddr):
+    def add_tx_notify(self, txd, unconfirmfun, confirmfun, notifyaddr, vb):
+	"""Construct and add a tuple of (transaction outputs, unconfirm
+	callback function, confirm callback function) based on the given
+	transaction and notification address, using the given version byte
+	(vb) to flag the address type.
+	"""
         if not self.notifythread:
             self.notifythread = BitcoinCoreNotifyThread(self)
             self.notifythread.start()
         one_addr_imported = False
         for outs in txd['outs']:
-            addr = btc.script_to_address(outs['script'], get_p2pk_vbyte())
+            addr = btc.script_to_address(outs['script'], vb)
             if self.rpc('getaccount', [addr]) != '':
                 one_addr_imported = True
                 break
@@ -682,11 +687,12 @@ class BitcoinCoreInterface(BlockchainInterface):
         return result
 
     def estimate_fee_per_kb(self, N):
+	#TODO modify for segwit: use vsize, which is non-witness + 0.25*witness
         estimate = Decimal(1e8)*Decimal(self.rpc('estimatefee', [N]))
 	if estimate < 0:
 	    #This occurs when Core has insufficient data to estimate.
 	    #TODO anything better than a hardcoded default?
-	    return 30000 
+	    return 30000
         else:
 	    return estimate    
 

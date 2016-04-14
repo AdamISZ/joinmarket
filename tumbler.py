@@ -113,7 +113,8 @@ class TumblerThread(threading.Thread):
         if coinjointx.all_responded:
             jm_single().bc_interface.add_tx_notify(
                     coinjointx.latest_tx, self.unconfirm_callback,
-                    self.confirm_callback, coinjointx.my_cj_addr)
+                    self.confirm_callback, coinjointx.my_cj_addr,
+                    self.taker.wallet.get_vbyte())
             pushed = coinjointx.self_sign_and_push()
             if pushed:
                 self.taker.wallet.remove_old_utxos(coinjointx.latest_tx)
