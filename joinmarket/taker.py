@@ -9,6 +9,8 @@ import sys
 import time
 import threading
 import json
+import os
+import binascii
 from decimal import InvalidOperation, Decimal
 
 import bitcoin as btc
@@ -773,53 +775,22 @@ class Taker(OrderbookWatch):
 
             return (None, None)
 
-# this stuff copied and slightly modified from pybitcointools
 def donation_address(cjtx):
-    from bitcoin.main import multiply, G, deterministic_generate_k, add_pubkeys
     reusable_donation_pubkey = ('02be838257fbfddabaea03afbb9f16e852'
                                 '9dfe2de921260a5c46036d97b5eacf2a')
-
     donation_utxo_data = cjtx.input_utxos.iteritems().next()
     global donation_utxo
     donation_utxo = donation_utxo_data[0]
-    privkey = cjtx.wallet.get_key_from_addr(donation_utxo_data[1]['address'])
-    # tx without our inputs and outputs
-    tx = btc.mktx(cjtx.utxo_tx, cjtx.outputs)
-    msghash = btc.bin_txhash(tx, btc.SIGHASH_ALL)
-    # generate unpredictable k
+
     global sign_k
-    sign_k = deterministic_generate_k(msghash, privkey)
-    c = btc.sha256(multiply(reusable_donation_pubkey, sign_k))
-    sender_pubkey = add_pubkeys(
-            reusable_donation_pubkey, multiply(
-                    G, c))
+    sign_k = binascii.hexlify(os.urandom(32))
+    c = btc.sha256(btc.multiply(sign_k,
+                                reusable_donation_pubkey, True))
+    sender_pubkey = btc.add_pubkeys([reusable_donation_pubkey,
+                                     btc.privtopub(c+'01', True)], True)
     sender_address = btc.pubtoaddr(sender_pubkey, get_p2pk_vbyte())
     log.debug('sending coins to ' + sender_address)
     return sender_address
 
-
 def sign_donation_tx(tx, i, priv):
-    from bitcoin.main import fast_multiply, decode_privkey, G, inv, N
-    from bitcoin.transaction import der_encode_sig
-    k = sign_k
-    hashcode = btc.SIGHASH_ALL
-    i = int(i)
-    if len(priv) <= 33:
-        priv = btc.safe_hexlify(priv)
-    pub = btc.privkey_to_pubkey(priv)
-    address = btc.pubkey_to_address(pub)
-    signing_tx = btc.signature_form(
-            tx, i, btc.mk_pubkey_script(address), hashcode)
-
-    msghash = btc.bin_txhash(signing_tx, hashcode)
-    z = btc.hash_to_int(msghash)
-    # k = deterministic_generate_k(msghash, priv)
-    r, y = fast_multiply(G, k)
-    s = inv(k, N) * (z + r * decode_privkey(priv)) % N
-    rawsig = 27 + (y % 2), r, s
-
-    sig = der_encode_sig(*rawsig) + btc.encode(hashcode, 16, 2)
-    # sig = ecdsa_tx_sign(signing_tx, priv, hashcode)
-    txobj = btc.deserialize(tx)
-    txobj["ins"][i]["script"] = btc.serialize_script([sig, pub])
-    return btc.serialize(txobj)
+    return btc.sign(tx, i, priv, usenonce=binascii.unhexlify(sign_k))
