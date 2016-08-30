@@ -12,17 +12,17 @@ import csv
 import threading
 import copy
 
-from joinmarket import Maker, IRCMessageChannel, OrderbookWatch
+from joinmarket import Maker, IRCMessageChannel, OrderbookWatch, \
+     MessageChannelCollection
 from joinmarket import blockchaininterface, BlockrInterface
 from joinmarket import jm_single, get_network, load_program_config
-from joinmarket import random_nick
 from joinmarket import get_log, calc_cj_fee, debug_dump_object
 from joinmarket import Wallet
+from joinmarket import get_irc_mchannels
 
 config = ConfigParser.RawConfigParser()
 config.read('joinmarket.cfg')
 mix_levels = 5
-nickname = random_nick()
 nickserv_password = ''
 
 # EXPLANATION
@@ -170,9 +170,9 @@ if output_size_min != jm_single().DUST_THRESHOLD:
 
 def sanity_check(offers):
     for offer in offers:
-        if offer['ordertype'] == 'absorder':
+        if offer['ordertype'] == 'absoffer':
             assert isinstance(offer['cjfee'], int)
-        elif offer['ordertype'] == 'relorder':
+        elif offer['ordertype'] == 'reloffer':
             assert isinstance(offer['cjfee'], int) or isinstance(offer['cjfee'],
                                                                  float)
         assert offer['maxsize'] > 0
@@ -185,9 +185,9 @@ def sanity_check(offers):
         assert (isinstance(offer['maxsize'], int) or isinstance(offer['maxsize'], long))
         assert isinstance(offer['txfee'], int)
         assert offer['minsize'] >= offer_low
-        if offer['ordertype'] == 'absorder':
+        if offer['ordertype'] == 'absoffer':
             profit_max = offer['cjfee'] - offer['txfee']
-        elif offer['ordertype'] == 'relorder':
+        elif offer['ordertype'] == 'reloffer':
             profit_min = int(float(offer['cjfee']) *
                              offer['minsize']) - offer['txfee']
             profit_max = int(float(offer['cjfee']) *
@@ -199,7 +199,7 @@ def sanity_check(offers):
 def offer_data_chart(offers):
     has_rel = False
     for offer in offers:
-        if offer['ordertype'] == 'relorder':
+        if offer['ordertype'] == 'reloffer':
             has_rel = True
     offer_display = []
     header = 'oid'.rjust(4)
@@ -219,14 +219,14 @@ def offer_data_chart(offers):
     offer_display.append(header)
     for offer in offers:
         oid = str(offer['oid'])
-        if offer['ordertype'] == 'absorder':
+        if offer['ordertype'] == 'absoffer':
             ot = 'abs'
             cjfee = str(offer['cjfee'])
             minrev = '-'
             maxrev = offer['cjfee']
             minprof = '-'
             maxprof = int(maxrev - offer['txfee'])
-        elif offer['ordertype'] == 'relorder':
+        elif offer['ordertype'] == 'reloffer':
             ot = 'rel'
             cjfee = str('%.8f' % (offer['cjfee'] * 100))
             minrev = str(int(offer['cjfee'] * offer['minsize']))
@@ -363,9 +363,9 @@ def create_oscillator_offers(largest_mixdepth_size, sorted_mix_balance):
             cjfee = offer['price_ceiling']
         assert offer['type'] in ('absolute', 'relative')
         if offer['type'] == 'absolute':
-            ordertype = 'absorder'
+            ordertype = 'absoffer'
         elif offer['type'] == 'relative':
-            ordertype = 'relorder'
+            ordertype = 'reloffer'
             cjfee = float('%.10f' % (cjfee / 1e10))
         oid += 1
         offerx = {'oid': oid,
@@ -576,7 +576,7 @@ class YieldGenerator(Maker, OrderbookWatch):
         neworders = sorted(neworders, key=lambda x: x['oid'])
         oldorders = sorted(oldorders, key=lambda x: x['oid'])
         if neworders == oldorders:
-            log.debug('No orders modified for ' + nickname)
+            log.debug('No orders modified for ' + jm_single().nickname)
             return ([], [])
         """
         if neworders:
@@ -677,13 +677,13 @@ def main():
             return
     wallet = Wallet(wallet_file, max_mix_depth=mix_levels)
     jm_single().bc_interface.sync_wallet(wallet)
-    jm_single().nickname = nickname
     log.debug('starting yield generator')
-    irc = IRCMessageChannel(jm_single().nickname,
-                            realname='btcint=' + jm_single().config.get(
-                                "BLOCKCHAIN", "blockchain_source"),
-                            password=nickserv_password)
-    maker = YieldGenerator(irc, wallet)
+    mcs = [IRCMessageChannel(c,
+                             realname='btcint=' + jm_single().config.get(
+                                 "BLOCKCHAIN", "blockchain_source"),
+                        password=nickserv_password) for c in get_irc_mchannels()]
+    mcc = MessageChannelCollection(mcs)
+    maker = YieldGenerator(mcc, wallet)
 
     def timer_loop(startup=False):  # for oscillator
         if not startup:
@@ -702,7 +702,7 @@ def main():
         next_refresh = sorted(poss_refresh, key=lambda x: x)[0]
         td = next_refresh - datetime.datetime.now()
         seconds_till = (td.days * 24 * 60 * 60) + td.seconds
-        log.debug('Next offer refresh for ' + nickname + ' at ' +
+        log.debug('Next offer refresh for ' + jm_single().nickname + ' at ' +
                   next_refresh.strftime("%Y-%m-%d %I:%M:%S %p"))
         log.debug('...or after a new transaction shows up.')
         t = threading.Timer(seconds_till, timer_loop)
@@ -711,13 +711,13 @@ def main():
 
     timer_loop(startup=True)
     try:
-        log.debug('connecting to irc')
-        irc.run()
+        log.debug('connecting to message channels')
+        mcc.run()
     except:
         log.debug('CRASHING, DUMPING EVERYTHING')
         debug_dump_object(wallet, ['addr_cache', 'keys', 'seed'])
         debug_dump_object(maker)
-        debug_dump_object(irc)
+        debug_dump_object(mcc)
         import traceback
         log.debug(traceback.format_exc())
 
