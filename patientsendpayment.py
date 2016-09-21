@@ -120,6 +120,26 @@ class PatientSendPayment(Maker, Taker):
             log.debug('not enough money left, have to wait until tx confirms')
             return [0], []
 
+    def modify_orders(self, to_cancel, to_announce):
+        log.debug('modifying orders. to_cancel={}\nto_announce={}'.format(
+                   to_cancel, to_announce))
+        for oid in to_cancel:
+            order = [o for o in self.orderlist if o['oid'] == oid]
+            if len(order) == 0:
+                fmt = 'didnt cancel order which doesnt exist, oid={}'.format
+                log.debug(fmt(oid))
+            self.orderlist.remove(order[0])
+        if len(to_cancel) > 0:
+            self.msgchan.cancel_orders(to_cancel)
+        if len(to_announce) > 0:
+            self.msgchan.announce_orders(to_announce)
+            for ann in to_announce:
+                oldorder_s = [order for order in self.orderlist
+                                 if order['oid'] == ann['oid']]
+                if len(oldorder_s) > 0:
+                    self.orderlist.remove(oldorder_s[0])
+                self.orderlist += to_announce
+
     def on_tx_confirmed(self, cjorder, confirmations, txid, balance):
         if len(self.orderlist) == 0:
             order = {'oid': 0,

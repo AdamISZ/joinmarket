@@ -10,10 +10,27 @@ JOINMARKET_NICK_HEADER = 'J'
 NICK_HASH_LENGTH = 10
 NICK_MAX_ENCODED = 14 #comes from base58 expansion; recalculate if above changes
 
+"""Temp data, will be removed"""
+separator = " "
+offertypes = {"reloffer": [(int, "oid"), (int, "minsize"), (int, "maxsize"),
+                            (int, "txfee"), (float, "cjfee")],
+              "absoffer": [(int, "oid"), (int, "minsize"), (int, "maxsize"),
+                           (int, "txfee"), (int, "cjfee")]}
+
+offername_list = offertypes.keys()
+
+COMMAND_PREFIX = '!'
+JOINMARKET_NICK_HEADER = 'J'
+NICK_HASH_LENGTH = 10
+NICK_MAX_ENCODED = 14 #comes from base58 expansion; recalculate if above changes
+
+#Lists of valid commands
 encrypted_commands = ["auth", "ioauth", "tx", "sig"]
 plaintext_commands = ["fill", "error", "pubkey", "orderbook", "push"]
-plaintext_commands += jm_single().ordername_list
-plaintext_commands += jm_single().commitment_broadcast_list
+commitment_broadcast_list = ["hp2"]
+plaintext_commands += offername_list
+plaintext_commands += commitment_broadcast_list
+"""End temp data"""
 
 log = get_log()
 
@@ -81,8 +98,8 @@ class MessageChannelCollection(object):
                 #but should not kill the bot. So, we don't raise an
                 #exception, but rather allow sending to continue, which
                 #should usually result in tx completion just timing out.
-                log.debug("Couldn't find a route to send privmsg")
-                log.debug("For counterparty: " + str(cp))
+                log.warn("Couldn't find a route to send privmsg")
+                log.warn("For counterparty: " + str(cp))
         return func_wrapper
 
     def __init__(self, mchannels):
@@ -152,9 +169,9 @@ class MessageChannelCollection(object):
             #Remove all entries for the newly unavailable channel
             self.active_channels = dict([(a, ac[a]) for a in ac if ac[a] != mc])
 
-    def set_cjpeer(self, cjpeer):
+    def set_daemon(self, daemon):
         for mc in self.mchannels:
-            mc.cjpeer = cjpeer
+            mc.daemon = daemon
 
     def add_channel(self, mchannel):
         """TODO Not currently in use,
@@ -193,7 +210,7 @@ class MessageChannelCollection(object):
             time.sleep(1)
             i += 1
             if self.give_up:
-                log.debug("Shutting down all connections")
+                log.info("Shutting down all connections")
                 break
             #feature only used for testing:
             #deliberately shutdown a connection at a certain time.
@@ -224,6 +241,7 @@ class MessageChannelCollection(object):
         """Send a message onto the shared, public
         channels (the joinmarket pit).
         """
+        log.debug("Pubmsging: " + str(msg))
         for mc in self.available_channels():
             mc.pubmsg(msg)
 
@@ -255,7 +273,7 @@ class MessageChannelCollection(object):
             self.active_channels[nick].privmsg(nick, cmd, message)
             return
         else:
-            log.debug("Failed to send message to: " + str(nick) + \
+            log.info("Failed to send message to: " + str(nick) + \
                           "; cannot find on any message channel.")
             return
 
@@ -272,7 +290,7 @@ class MessageChannelCollection(object):
             orderlines.append(COMMAND_PREFIX + order['ordertype'] + \
                     ' ' + ' '.join([str(order[k]) for k in order_keys]))
         if new_mc is not None and new_mc not in self.available_channels():
-            log.debug(
+            log.info(
                 "Tried to announce orders on an unavailable message channel.")
             return
         if nick is None:
@@ -353,7 +371,7 @@ class MessageChannelCollection(object):
                 #but might not be for the bot (tx recreation etc.)
                 #TODO look for another channel via nicks_seen.
                 #Rare case so not a high priority.
-                log.debug(
+                log.info(
                     "Cannot send transaction to nick, not active: " + nick)
                 return
             if self.active_channels[nick] not in tx_nick_sets:
@@ -441,7 +459,7 @@ class MessageChannelCollection(object):
             #Is the nick available on another channel?
             other_channels = [x for x in self.available_channels() if x != mc]
             if len(other_channels) == 0:
-                log.debug(
+                log.warn(
                     "Cannot reconnect to dropped nick, no connections available.")
                 if self.on_nick_leave:
                     self.on_nick_leave(nick)
@@ -622,7 +640,7 @@ class MessageChannel(object):
         self.on_seen_tx = None
         self.on_push_tx = None
 
-        self.cjpeer = None
+        self.daemon = None
     """THIS SECTION MUST BE IMPLEMENTED BY SUBCLASSES"""
 
     #In addition to the below functions, the implementation
@@ -730,7 +748,7 @@ class MessageChannel(object):
         self._announce_orders(orderlines)
 
     def check_for_orders(self, nick, _chunks):
-        if _chunks[0] in jm_single().ordername_list:
+        if _chunks[0] in offername_list:
             try:
                 counterparty = nick
                 oid = _chunks[1]
@@ -743,7 +761,7 @@ class MessageChannel(object):
                     self.on_order_seen(self, counterparty, oid, ordertype, minsize,
                                        maxsize, txfee, cjfee)
             except IndexError as e:
-                log.warning(e)
+                log.debug(e)
                 log.debug('index error parsing chunks, possibly malformed'
                           'offer by other party. No user action required.')
                 # TODO what now? just ignore iirc
@@ -757,7 +775,7 @@ class MessageChannel(object):
         callback on_commitment_transferred. These callbacks are (for now)
         only used by Makers.
         """
-        if _chunks[0] in jm_single().commitment_broadcast_list:
+        if _chunks[0] in commitment_broadcast_list:
             try:
                 counterparty = nick
                 commitment = _chunks[1]
@@ -768,7 +786,7 @@ class MessageChannel(object):
                     if self.on_commitment_seen:
                         self.on_commitment_seen(counterparty, commitment)
             except IndexError as e:
-                log.warning(e)
+                log.debug(e)
                 log.debug('index error parsing chunks, possibly malformed'
                           'offer by other party. No user action required.')
             finally:
@@ -823,10 +841,10 @@ class MessageChannel(object):
         if cmd in plaintext_commands:
             return None, False
         else:
-            return self.cjpeer.get_crypto_box_from_nick(nick), True
+            return self.daemon.get_crypto_box_from_nick(nick), True
 
     def send_error(self, nick, errormsg):
-        log.debug('error<%s> : %s' % (nick, errormsg))
+        log.info('error<%s> : %s' % (nick, errormsg))
         self.privmsg(nick, 'error', errormsg)
         raise CJPeerError()
 
@@ -837,8 +855,8 @@ class MessageChannel(object):
         self._pubmsg(message)
 
     def privmsg(self, nick, cmd, message):
-        log.debug('>>privmsg ' + 'nick=' + nick + ' cmd=' + cmd + ' msg=' +
-                  message)
+        log.debug('>>privmsg on %s: ' %
+                  (self.hostid) + 'nick=' + nick + ' cmd=' + cmd + ' msg=' + message)
         # should we encrypt?
         box, encrypt = self.get_encryption_box(cmd, nick)
         if encrypt:

@@ -259,14 +259,13 @@ def pick_order(orders, n):
         pickedOrderIndex = -1
 
 
-def choose_orders(db, cj_amount, n, chooseOrdersBy, ignored_makers=None):
+def choose_orders(offers, cj_amount, n, chooseOrdersBy, ignored_makers=None):
     if ignored_makers is None:
         ignored_makers = []
-    sqlorders = db.execute(
-        'SELECT * FROM orderbook WHERE minsize <= :cja AND :cja <= maxsize;',
-        {'cja': cj_amount}).fetchall()
-    orders = [dict([(k, o[k]) for k in ORDER_KEYS])
-              for o in sqlorders if o['counterparty'] not in ignored_makers]
+    #Filter ignored makers and inappropriate amounts
+    orders = [o for o in offers if o['counterparty'] not in ignored_makers]
+    orders = [o for o in orders if o['minsize'] < cj_amount]
+    orders = [o for o in orders if o['maxsize'] > cj_amount]
     orders_fees = [(
         o, calc_cj_fee(o['ordertype'], o['cjfee'], cj_amount) - o['txfee'])
                    for o in orders]
