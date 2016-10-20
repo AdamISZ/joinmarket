@@ -70,6 +70,7 @@ global_singleton.config = SafeConfigParser()
 global_singleton.config_location = 'joinmarket.cfg'
 global_singleton.commit_file_location = 'cmttools/commitments.json'
 global_singleton.console_log_level = 'INFO'
+global_singleton.maker_multiple = 1.5
 global_singleton.wait_for_commitments = 0
 
 def jm_single():
@@ -154,6 +155,14 @@ absurd_fee_per_kb = 150000
 # NB: using 0 for the 1st value with scripts other than wallet-tool could cause
 # spends from unconfirmed inputs, which may then get malleated or double-spent!
 # other counterparties are likely to reject unconfirmed inputs... don't do it.
+
+#For takers: how many extra makers to request from to prepare
+#the transaction; higher means you get a better reliability of completing the
+#the transaction, but also requires more liquidity in the pit; if too high,
+#you will just get "ERROR Not enough liquidity", in which case try again with
+#a lower value; you won't burn any commitments.
+#Must be at least 1.0, can be non-integer
+maker_multiple = 1.5
 
 #options: self, random-peer, not-self, random-maker
 # self = broadcast transaction with your own ip
@@ -338,6 +347,9 @@ def load_program_config():
         log.info('TIMEOUT/maker_timeout_sec not found in .cfg file, '
                   'using default value')
 
+    if float(global_singleton.config.get("POLICY", "maker_multiple")) < 1.0:
+        raise Exception("The field maker_multiple in the POLICY section must"
+                        " be no smaller than 1.0")
     # configure the interface to the blockchain on startup
     global_singleton.bc_interface = get_blockchain_interface_instance(
         global_singleton.config)

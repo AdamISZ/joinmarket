@@ -36,7 +36,8 @@ class CoinJoinTX(object):
                  total_txfee,
                  finishcallback,
                  choose_orders_recover,
-                 commitment_creator
+                 commitment_creator,
+                 realN
                  ):
         """
         if my_change is None then there wont be a change address
@@ -54,6 +55,11 @@ class CoinJoinTX(object):
         self.db = db
         self.cj_amount = cj_amount
         self.active_orders = dict(orders)
+        #How many of the set of orders retrieved we actually
+        #want to use
+        self.realN = realN
+        self.num_available_cp = len(orders)
+        log.info("Available counterparties: " + str(self.num_available_cp))
         self.input_utxos = input_utxos
         self.finishcallback = finishcallback
         self.total_txfee = total_txfee
@@ -72,6 +78,8 @@ class CoinJoinTX(object):
         self.cjfee_total = 0
         self.maker_txfee_contributions = 0
         self.nonrespondants = list(self.active_orders.keys())
+        #The subset who actually take part in the transaction:
+        self.actual_respondants = []
         self.all_responded = False
         self.latest_tx = None
         # None means they belong to me
@@ -196,11 +204,15 @@ class CoinJoinTX(object):
         self.cjfee_total += real_cjfee
         self.maker_txfee_contributions += self.active_orders[nick]['txfee']
         self.nonrespondants.remove(nick)
-        if len(self.nonrespondants) > 0:
+        self.actual_respondants.append(nick)
+        if len(self.nonrespondants) > self.num_available_cp - self.realN:
             log.debug('nonrespondants = ' + str(self.nonrespondants))
             return
         log.info('got all parts, enough to build a tx')
-        self.nonrespondants = list(self.active_orders.keys())
+
+        #a sufficient subset have responded; reset the nonrespondants
+        #to the set actually participating to wait for their !sigs
+        self.nonrespondants = self.actual_respondants
 
         my_total_in = sum([va['value'] for u, va in
                            self.input_utxos.iteritems()])
@@ -257,14 +269,14 @@ class CoinJoinTX(object):
         #and need to add some leeway for network delays, we just add the
         #contents of jm_single().maker_timeout_sec (the user configured value)
         self.maker_timeout_sec = (len(tx) * 1.8 * len(
-            self.active_orders.keys()))/(B_PER_SEC) + jm_single().maker_timeout_sec
+            self.actual_respondants))/(B_PER_SEC) + jm_single().maker_timeout_sec
         log.info("Based on transaction size: " + str(
             len(tx)) + ", calculated time to wait for replies: " + str(
             self.maker_timeout_sec))
         self.all_responded = True
         with self.timeout_lock:
             self.timeout_lock.notify()
-        self.msgchan.send_tx(self.active_orders.keys(), tx)
+        self.msgchan.send_tx(self.actual_respondants, tx)
 
         self.latest_tx = btc.deserialize(tx)
         for index, ins in enumerate(self.latest_tx['ins']):
@@ -621,6 +633,7 @@ class Taker(OrderbookWatch):
                  my_cj_addr,
                  my_change_addr,
                  total_txfee,
+                 realN,
                  finishcallback=None,
                  choose_orders_recover=None
                  ):
@@ -634,7 +647,7 @@ class Taker(OrderbookWatch):
                 self.msgchan, wallet, self.db, cj_amount, orders,
                 input_utxos, my_cj_addr, my_change_addr,
                 total_txfee, finishcallback,
-                choose_orders_recover, self.make_commitment)
+                choose_orders_recover, self.make_commitment, realN)
 
     def on_error(self):
         pass  # TODO implement

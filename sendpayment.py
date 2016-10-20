@@ -105,7 +105,7 @@ class PaymentThread(threading.Thread):
             'SELECT COUNT(DISTINCT counterparty) FROM orderbook;').fetchone()
         counterparty_count = crow['COUNT(DISTINCT counterparty)']
         counterparty_count -= len(self.ignored_makers)
-        if counterparty_count < self.taker.makercount:
+        if counterparty_count < self.taker.makercount_m:
             print('not enough counterparties to fill order, ending')
             self.taker.msgchan.shutdown()
             return
@@ -135,6 +135,8 @@ class PaymentThread(threading.Thread):
                 #both values are integers; we can ignore small rounding errors
                 self.taker.txfee = estimated_fee / self.taker.makercount
             total_value = sum([va['value'] for va in utxos.values()])
+            #TODO currently unable to provide extended maker list for sweep,
+            #since we need to have a fixed cjfee to calculate output size
             orders, cjamount, total_cj_fee = choose_sweep_orders(
                 self.taker.db, total_value, self.taker.txfee,
                 self.taker.makercount, self.taker.chooseOrdersFunc,
@@ -152,7 +154,7 @@ class PaymentThread(threading.Thread):
                     return
         else:
             orders, total_cj_fee = self.sendpayment_choose_orders(
-                self.taker.amount, self.taker.makercount)
+                self.taker.amount, self.taker.makercount_m, self.taker.makercount)
             if not orders:
                 log.error(
                     'ERROR not enough liquidity in the orderbook, exiting')
@@ -174,7 +176,8 @@ class PaymentThread(threading.Thread):
         self.taker.start_cj(self.taker.wallet, cjamount, orders, utxos,
 			self.taker.destaddr, change_addr, 
                          self.taker.makercount*self.taker.txfee,
-                            self.finishcallback, choose_orders_recover)
+                         self.taker.makercount,
+                         self.finishcallback, choose_orders_recover)
 
     def finishcallback(self, coinjointx):
         if coinjointx.all_responded:
@@ -194,6 +197,7 @@ class PaymentThread(threading.Thread):
 
     def sendpayment_choose_orders(self,
                                   cj_amount,
+                                  makercountm,
                                   makercount,
                                   nonrespondants=None,
                                   active_nicks=None):
@@ -203,11 +207,12 @@ class PaymentThread(threading.Thread):
             active_nicks = []
         self.ignored_makers += nonrespondants
         orders, total_cj_fee = choose_orders(
-            self.taker.db, cj_amount, makercount, self.taker.chooseOrdersFunc,
+            self.taker.db, cj_amount, makercountm,
+            makercount, self.taker.chooseOrdersFunc,
             self.ignored_makers + active_nicks)
         if not orders:
             return None, 0
-        print('chosen orders to fill ' + str(orders) + ' totalcjfee=' + str(
+        log.info('chosen orders to fill ' + str(orders) + ', cjfee <=' + str(
             total_cj_fee))
         if not self.taker.answeryes:
             if len(self.ignored_makers) > 0:
@@ -215,10 +220,13 @@ class PaymentThread(threading.Thread):
             else:
                 noun = 'additional'
             total_fee_pc = 1.0 * total_cj_fee / cj_amount
-            log.info(noun + ' coinjoin fee = ' + str(float('%.3g' % (
+            log.info(noun + ' coinjoin fee <= ' + str(float('%.3g' % (
                 100.0 * total_fee_pc))) + '%')
+            log.info("This is the largest possible fee, the exact fee depends "
+                     "on which counterparties respond first.")
             check_high_fee(total_fee_pc)
-            if raw_input('send with these orders? (y/n):')[0] != 'y':
+            if raw_input('Send with these orders? (If you choose yes, '
+                         'a commitment will be used)(y/n):')[0] != 'y':
                 log.info('ending')
                 self.taker.msgchan.shutdown()
                 return None, -1
@@ -239,6 +247,9 @@ class SendPayment(Taker):
         self.destaddr = destaddr
         self.amount = amount
         self.makercount = makercount
+        #We'll request tx inputs from makercount * the configured multiple:
+        self.makercount_m = int(makercount * float(jm_single().config.get(
+            "POLICY", "maker_multiple")))
         self.txfee = txfee
         self.waittime = waittime
         self.mixdepth = mixdepth

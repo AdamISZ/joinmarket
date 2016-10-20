@@ -31,8 +31,8 @@ yg_cmd = 'yield-generator-basic.py'
 @pytest.mark.parametrize(
     "num_ygs, wallet_structures, mean_amt",
     [
-        # 1sp 3yg, 2 mixdepths, sweep from depth1
-        (4, [[1, 3, 0, 0, 0]] * 5, 2),
+        # 1sp 8yg
+        (8, [[1, 3, 0, 0, 0]] * 9, 2),
     ])
 def test_start_ygs(setup_ygrunner, num_ygs, wallet_structures, mean_amt):
     """Set up some wallets, for the ygs and 1 sp.

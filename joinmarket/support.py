@@ -246,7 +246,13 @@ def pick_order(orders, n):
         pickedOrderIndex = -1
 
 
-def choose_orders(db, cj_amount, n, chooseOrdersBy, ignored_makers=None):
+def choose_orders(db, cj_amount, n, m, chooseOrdersBy, ignored_makers=None):
+    """Choose n offers from the orderbook in the db
+    for whom cj_amount is within min<cj_amount<max, ignoring ignored_makers,
+    using algorithm chooseOrdersBy. Return the full offer list, and
+    the maximum possible fee that would be paid to the m most expensive.
+    """
+    assert m <= n
     if ignored_makers is None:
         ignored_makers = []
     sqlorders = db.execute(
@@ -283,8 +289,8 @@ def choose_orders(db, cj_amount, n, chooseOrdersBy, ignored_makers=None):
 
     log.debug('considered orders = \n' + '\n'.join([str(o) for o in orders_fees
                                                    ]))
-    total_cj_fee = 0
     chosen_orders = []
+    chosen_fees = []
     for i in range(n):
         chosen_order, chosen_fee = chooseOrdersBy(orders_fees, n)
         # remove all orders from that same counterparty
@@ -292,10 +298,11 @@ def choose_orders(db, cj_amount, n, chooseOrdersBy, ignored_makers=None):
                        for o in orders_fees
                        if o[0]['counterparty'] != chosen_order['counterparty']]
         chosen_orders.append(chosen_order)
-        total_cj_fee += chosen_fee
+        chosen_fees.append(chosen_fee)
     log.info('chosen orders = \n' + '\n'.join([str(o) for o in chosen_orders]))
     result = dict([(o['counterparty'], o) for o in chosen_orders])
-    return result, total_cj_fee
+    #Pessimistic: for fee estimate, choose the subset with the highest fees
+    return result, sum(sorted(chosen_fees)[-m:])
 
 
 def choose_sweep_orders(db,
