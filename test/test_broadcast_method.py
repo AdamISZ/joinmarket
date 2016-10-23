@@ -68,7 +68,7 @@ def create_testing_cjtx(counterparty_list):
     input_utxos = {'utxo-hex-here': {'value': 0, 'address': '1addr'}}
 
     cjtx = CoinJoinTX(DummyMessageChannel(), None, None, 0, orders, input_utxos
-        , '1cjaddr', '1changeaddr', 0, None, None, dummy_commitment_creator)
+        , '1cjaddr', '1changeaddr', 0, None, None, dummy_commitment_creator, 5)
     cjtx.latest_tx = btc.deserialize(sample_tx_hex)
     return cjtx
 

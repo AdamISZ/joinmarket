@@ -205,7 +205,7 @@ class CoinJoinTX(object):
         self.maker_txfee_contributions += self.active_orders[nick]['txfee']
         self.nonrespondants.remove(nick)
         self.actual_respondants.append(nick)
-        if len(self.nonrespondants) > self.num_available_cp - self.realN:
+        if len(self.actual_respondants) < self.realN:
             log.debug('nonrespondants = ' + str(self.nonrespondants))
             return
         log.info('got all parts, enough to build a tx')
@@ -432,8 +432,12 @@ class CoinJoinTX(object):
             log.debug('nonresponse to !fill')
             for nr in self.nonrespondants:
                 del self.active_orders[nr]
+            #Calculate how many more we need; use no multiple this time.
+            required_makers = self.realN - len(self.actual_respondants)
+            log.info("Requesting: " + str(required_makers) + " new counterparties.")
             new_orders, new_makers_fee = self.choose_orders_recover(
-                    self.cj_amount, len(self.nonrespondants),
+                    self.cj_amount, required_makers,
+                    required_makers,
                     self.nonrespondants,
                     self.active_orders.keys())
             for nick, order in new_orders.iteritems():

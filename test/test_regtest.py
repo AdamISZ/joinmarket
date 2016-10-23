@@ -69,51 +69,54 @@ def test_direct_send(setup_regtest, wallet_structures, mean_amt, mixdepth,
                                 amount, mixdepth, destaddr, answeryes=True)
 
 @pytest.mark.parametrize(
-    "num_ygs, wallet_structures, mean_amt, mixdepth, sending_amt, ygcfs, fails, donate, rpcwallet",
+    "num_ygs, wallet_structures, mean_amt, mixdepth, sending_amt, "
+    "ygcfs, fails, donate, rpcwallet, maker_multiple",
     [
         #Some tests are commented out to keep build test time reasonable.
         #Note that rpcwallet tests cannot be amt=0 and must have mixdepth=0
         # basic 1sp 2yg.
         #(4, [[1, 0, 0, 0, 0]] * 5, 10, 0, 100000000, None, None, 0.5),
         #(4, [[1, 0, 0, 0, 0]] * 5, 10, 0, 100000000, None, None, None, False),
-        (4, [[1, 0, 0, 0, 0]] * 5, 10, 0, 100000000, None, None, None, True),
+        (4, [[1, 0, 0, 0, 0]] * 5, 10, 0, 100000000, None, None, None, True, 1),
         #Testing different message channel collections. (Needs manual config at
         #the moment - create different config files for each yg).
         #(4, [[1, 0, 0, 0, 0]] * 5, 10, 0, 100000000, ["j2.cfg", "j3.cfg",
         #                                              "j4.cfg", "j5.cfg"], None),
-        # 1sp 3yg, 2 mixdepths - testing different failure times to
-        #see if recovery works.
+        #testing different failure times to see if recovery works.
         #(5, [[1, 2, 0, 0, 0]] * 6, 4, 1, 1234500, None, None),
-        (4, [[1, 2, 0, 0, 0]] * 5, 4, 1, 1234500, None, ('break',0,6), None, False),
-        #(4, [[1, 2, 0, 0, 0]] * 5, 4, 0, 1234500, None, ('break',0,6), None, True),
+        #Here 11 ygs so we can try at least 3 party, fail, select 3 more worst case
+        (11, [[1, 2, 0, 0, 0]] * 12, 4, 1, 1234500, None, ('break',0,6), None, False, 1.5),
+        #(8, [[1, 2, 0, 0, 0]] * 9, 4, 0, 1234500, None, ('break',0,6), None, True, 2),
         #(5, [[1, 2, 0, 0, 0]] * 6, 4, 1, 1234500, None, ('shutdown',0,12)),
         #(5, [[1, 2, 0, 0, 0]] * 6, 4, 1, 1234500, None, ('break',1, 6)),
         # 1sp 6yg, 4 mixdepths, sweep from depth 0 (test large number of makers)
-        (8, [[1, 3, 0, 0, 0]] * 9, 4, 0, 0, None, None, None, False),
+        (8, [[1, 3, 0, 0, 0]] * 9, 4, 0, 0, None, None, None, False, 1),
     ])
-def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
-                     mixdepth, sending_amt, ygcfs, fails, donate, rpcwallet):
+def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt, mixdepth,
+                     sending_amt, ygcfs, fails, donate, rpcwallet, maker_multiple):
     """Test of sendpayment code, with yield generators in background.
     """
     log = get_log()
-    makercount = num_ygs
+    old_multiple = jm_single().config.get("POLICY", "maker_multiple")
+    jm_single().config.set("POLICY", "maker_multiple", str(maker_multiple))
     answeryes = True
     txfee = 5000
     waittime = 5
     amount = sending_amt
-    wallets = make_wallets(makercount + 1,
+    #bump up the number of makers to handle failures and ignoring makers
+    wallets = make_wallets(num_ygs + 1,
                            wallet_structures=wallet_structures,
                            mean_amt=mean_amt)
     #the sendpayment bot uses the last wallet in the list
     if not rpcwallet:
-        wallet = wallets[makercount]['wallet']
+        wallet = wallets[num_ygs]['wallet']
     else:
         wallet = BitcoinCoreWallet(fromaccount="")
 
     yigen_procs = []
     if ygcfs:
-        assert makercount == len(ygcfs)
-    for i in range(makercount):
+        assert num_ygs == len(ygcfs)
+    for i in range(num_ygs):
         if ygcfs:
             #back up default config, overwrite before start
             os.rename("joinmarket.cfg", "joinmarket.cfg.bak")
@@ -155,7 +158,13 @@ def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
     #hack fix for #356 if multiple orders per counterparty
     #removed for now.
     #if amount==0: makercount=2
-    taker = sendpayment.SendPayment(mcc, wallet, destaddr, amount, makercount-2,
+    if fails:
+        #Need N*multiple + N
+        makercount = int(num_ygs/(maker_multiple+1) - 2)
+    else:
+        makercount = int(num_ygs/maker_multiple) - 2
+    taker = sendpayment.SendPayment(mcc, wallet, destaddr, amount,
+                                    makercount,
                                     txfee, waittime, mixdepth, answeryes,
                                     chooseOrdersFunc)
     try:
@@ -179,6 +188,7 @@ def test_sendpayment(setup_regtest, num_ygs, wallet_structures, mean_amt,
         #TODO: how to check success for sweep case?
         else:
             assert received != 0
+    jm_single().config.set("POLICY", "maker_multiple", old_multiple)
 
 
 @pytest.fixture(scope="module")

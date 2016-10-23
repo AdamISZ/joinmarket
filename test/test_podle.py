@@ -420,6 +420,9 @@ def test_external_commitments(setup_podle):
 @pytest.fixture(scope="module")
 def setup_podle(request):
     load_program_config()
+    #not testing maker multiples; set to 1
+    old_multiple = jm_single().config.get("POLICY", "maker_multiple")
+    jm_single().config.set("POLICY", "maker_multiple", "1")
     prev_commits = False
     #back up any existing commitments
     pcf = btc.get_commitment_file()
@@ -428,6 +431,7 @@ def setup_podle(request):
         os.rename(pcf, pcf + ".bak")
         prev_commits = True
     def teardown():
+        jm_single().config.set("POLICY", "maker_multiple", old_multiple)
         if prev_commits:
             os.rename(pcf + ".bak", pcf)
         else:
