@@ -13,9 +13,8 @@ from decimal import InvalidOperation, Decimal
 
 import bitcoin as btc
 from joinmarket.configure import jm_single, get_p2pk_vbyte, donation_address
-from joinmarket.enc_wrapper import init_keypair, as_init_encryption, init_pubkey, \
-     NaclError
-from joinmarket.support import get_log, calc_cj_fee, weighted_order_choose, choose_orders
+from joinmarket.support import (get_log, calc_cj_fee, weighted_order_choose,
+                                choose_orders)
 from joinmarket.wallet import estimate_tx_fee
 from joinmarket.irc import B_PER_SEC
 log = get_log()
@@ -25,14 +24,23 @@ class JMTakerError(Exception):
     pass
 
 
-class CoinJoinerPeer(object):
+class OrderbookWatch(object):
 
     def __init__(self, msgchan):
         self.msgchan = msgchan
-        self.callbackdata = {}
+        self.msgchan.register_orderbookwatch_callbacks(self.on_order_seen,
+                                                       self.on_order_cancel)
+        self.msgchan.register_channel_callbacks(
+            self.on_welcome, self.on_set_topic, None, self.on_disconnect,
+            self.on_nick_leave, None)
 
-    def get_crypto_box_from_nick(self, nick):
-        raise Exception()
+        self.dblock = threading.Lock()
+        con = sqlite3.connect(":memory:", check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        self.db = con.cursor()
+        self.db.execute("CREATE TABLE orderbook(counterparty TEXT, "
+                        "oid INTEGER, ordertype TEXT, minsize INTEGER, "
+                        "maxsize INTEGER, txfee INTEGER, cjfee TEXT);")
 
     @staticmethod
     def on_set_topic(newtopic):
@@ -52,25 +60,6 @@ class CoinJoinerPeer(object):
                 print(alert)
                 print('=' * 60)
                 jm_single().joinmarket_alert[0] = alert
-
-
-class OrderbookWatch(CoinJoinerPeer):
-
-    def __init__(self, msgchan):
-        CoinJoinerPeer.__init__(self, msgchan)
-        self.msgchan.register_orderbookwatch_callbacks(self.on_order_seen,
-                                                       self.on_order_cancel)
-        self.msgchan.register_channel_callbacks(
-            self.on_welcome, self.on_set_topic, None, self.on_disconnect,
-            self.on_nick_leave, None)
-
-        self.dblock = threading.Lock()
-        con = sqlite3.connect(":memory:", check_same_thread=False)
-        con.row_factory = sqlite3.Row
-        self.db = con.cursor()
-        self.db.execute("CREATE TABLE orderbook(counterparty TEXT, "
-                        "oid INTEGER, ordertype TEXT, minsize INTEGER, "
-                        "maxsize INTEGER, txfee INTEGER, cjfee TEXT);")
 
     def on_order_seen(self, counterparty, oid, ordertype, minsize, maxsize,
                       txfee, cjfee):

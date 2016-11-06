@@ -21,7 +21,8 @@ from .configure import load_program_config, jm_single, get_p2pk_vbyte, \
     check_utxo_blacklist
 from .blockchaininterface import BlockrInterface, BlockchainInterface
 from .yieldgenerator import YieldGenerator, ygmain
-from .joinmarketd import startup_joinmarketd, JMServerProtocol
+from .joinmarketd import startup_joinmarketd, JMProtocol
+from .client_protocol import JMTakerClientProtocolFactory, start_reactor
 
 # Set default logging handler to avoid "No handler found" warnings.
 

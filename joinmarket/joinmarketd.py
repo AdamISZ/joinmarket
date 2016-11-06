@@ -11,11 +11,13 @@ import time
 import threading
 from twisted.internet import protocol, reactor, defer, task
 from twisted.protocols import basic
+
 """Joinmarket application protocol control flow.
 For documentation on protocol (formats, message sequence) see
 https://github.com/JoinMarket-Org/JoinMarket-Docs/blob/master/
 Joinmarket-messaging-protocol.md
 """
+
 """
 ***
 API
@@ -170,29 +172,10 @@ class MCThread(threading.Thread):
     def run(self):
         self.mc.run()
 
-
 class JMProtocolError(Exception):
     pass
 
-
-class JMClientProtocol(basic.LineReceiver):
-
-    def __init__(self, factory):
-        self.factory = factory
-
-    def connectionMade(self):
-        self.factory.client_proto_inst = self
-        print("Made connection back to client")
-
-
-class JMClientProtocolFactory(protocol.ClientFactory):
-    protocol = JMClientProtocol
-
-    def buildProtocol(self, addr):
-        return JMClientProtocol(self)
-
-
-class JMServerProtocol(basic.LineReceiver):
+class JMProtocol(basic.LineReceiver):
 
     def send_data(self, cmd, data):
         assert isinstance(data, list)
@@ -226,7 +209,7 @@ class JMServerProtocol(basic.LineReceiver):
             return getattr(self, 'on_' + k)(*v)
 
 
-class JMServerDaemonProtocol(JMServerProtocol, OrderbookWatch):
+class JMServerDaemonProtocol(JMProtocol, OrderbookWatch):
 
     def __init__(self, factory):
         self.factory = factory
@@ -265,13 +248,6 @@ class JMServerDaemonProtocol(JMServerProtocol, OrderbookWatch):
 
     def on_JM_INIT(self):
         print("got a hello: ")
-        #port = int(port)
-        #assert host == "localhost"
-        #We received a line that requires us to create
-        #a client connection to host host, port port
-        #self.clientfactory = JMClientProtocolFactory()
-        #reactor.connectTCP(host, port, self.clientfactory)
-        #time.sleep(3)
         self.init_connections()
 
     def on_JM_SETUP(self, role, n_counterparties):
@@ -294,7 +270,6 @@ class JMServerDaemonProtocol(JMServerProtocol, OrderbookWatch):
         """Reports the current state of the orderbook.
         This call is stateless."""
         rows = self.db.execute('SELECT * FROM orderbook;').fetchall()
-        print("Got these rows: " + str(rows))
         self.orderbook = [dict([(k, o[k]) for k in ORDER_KEYS]) for o in rows]
         self.send_data("JM_OFFERS", [self.orderbook])
 
