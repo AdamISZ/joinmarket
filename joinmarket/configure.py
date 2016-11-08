@@ -198,6 +198,7 @@ def get_irc_mchannels():
     configs = []
     for i in range(len(configdata['host'])):
         newconfig = dict([(x, configdata[x][i]) for x in configdata])
+        newconfig['btcnet'] = get_network()
         configs.append(newconfig)
     return configs
 

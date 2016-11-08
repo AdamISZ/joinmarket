@@ -9,7 +9,7 @@ from twisted.python import log
 import json
 import time
 import threading
-from twisted.internet import protocol, reactor, defer, task
+from twisted.internet import protocol, reactor
 from twisted.protocols import basic
 
 """Joinmarket application protocol control flow.

@@ -138,6 +138,7 @@ def main():
     destaddr = args[2]
 
     load_program_config()
+    jm_single().maker_timeout_sec = 5
     addr_valid, errormsg = validate_address(destaddr)
     if not addr_valid:
         print('ERROR: Address invalid. ' + errormsg)
